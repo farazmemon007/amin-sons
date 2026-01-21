@@ -30,7 +30,7 @@ class SaleController extends Controller
 
 public function ajaxPost(Request $request)
 {
-    
+
     return DB::transaction(function () use ($request) {
 
         // ========== VALIDATION ==========
@@ -39,9 +39,7 @@ public function ajaxPost(Request $request)
 
         // ========== FETCH BOOKING ==========
         $booking = Productbooking::with('items')->lockForUpdate()->findOrFail($request->booking_id);
-        echo "<pre>";
-    print_r($booking);
-    dd();
+   
         if ($booking->is_posted) abort(422, 'Invoice already posted');
 
         // ========== STEP 1: UPDATE WAREHOUSE ID ==========
