@@ -290,7 +290,7 @@
         </div>
     </li>
     <!-- User Management Menu -->
-    @if(auth()->user()->email === 'admin@admin.com')
+   
     <li class="nav-item">
         <a href="#" class="nav-link">
             <i class="menu_icon feather ft-clipboard"></i>
@@ -306,20 +306,20 @@
             </ul>
         </div>
     </li>
-    @endif
+    
 
     </ul>
     </div>
     </div>
     </nav>
 
-    @yield('content')
+        @yield('content')
 
-    <footer>
-        <div class="footer-area">
-            <p>&copy; Copyright 2025. All right reserved. Ameen & Sons .</p>
-        </div>
-    </footer>
+        <footer>
+            <div class="footer-area">
+                <p>&copy; Copyright 2025. All right reserved. Ameen & Sons .</p>
+            </div>
+        </footer>
     </div>
     <!-- Jquery Js -->
     <script src="{{ asset('assets/js/jquery.min.js') }}"></script>

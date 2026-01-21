@@ -13,7 +13,7 @@
         "laravel/sanctum": "^3.2",
         "laravel/tinker": "^2.8",
         "milon/barcode": "^11.0",
-        "spatie/laravel-permission": "^6.21"
+        "spatie/laravel-permission": "^6.24"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

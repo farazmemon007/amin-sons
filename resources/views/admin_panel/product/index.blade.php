@@ -92,27 +92,36 @@
 
 
 </style>
- <div class="card shadow-sm border-0">
+
+@can('View Product')
+<div class="card shadow-sm border-0">
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <div>
             <h5 class="mb-0 fw-bold">📦 Product List</h5>
             <small class="text-muted">Manage all products here</small>
         </div>
+        
         <div class="d-flex justify-content-between align-items-end gap-1" >
-              @if(auth()->user()->can(' Discount.index') || auth()->user()->email === 'admin@admin.com')
+            
+            @can('view discount')
             <a href="{{ route('discount.index') }}" class="btn btn-success btn-sm">
                 View Discount
             </a>
-        @endif
-          <a href="create_prodcut" class="btn btn-primary"> Add product</a>
-
-                <button id="createDiscountBtn" class="btn btn-success btn-sm">
-        ➡ Create Discount
-    </button>
+            @endcan
+            
+            @can('Create Product')
+                <a href="{{ url('create_prodcut') }}" class="btn btn-primary">
+                    Add Product
+                </a>
+            @endcan
+            @can('create discount')
+                
+            <button id="createDiscountBtn" class="btn btn-success btn-sm">
+                ➡ Create Discount
+            </button>
+            @endcan
         </div>
-
     </div>
-
     <div class="card-body">
         @if (session()->has('success'))
             <div class="alert alert-success alert-dismissible fade show">
@@ -120,12 +129,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
-
         <div class="table-responsive">
             <table id="productTable" class="table table-striped table-bordered align-middle nowrap" style="width:100%">
                 <thead class="table-light">
                     <tr>
-                          <th><input type="checkbox" id="selectAll"></th>
+                        <th><input type="checkbox" id="selectAll"></th>
                         <th>#</th>
                         <th>Item Code</th>
                         <th>Image</th>
@@ -141,9 +149,8 @@
                 </thead>
                 <tbody>
                     @foreach($products as $key => $product)
-                    {{-- @dd($product->stock->qty) --}}
                     <tr>
-                           <td><input type="checkbox" class="selectProduct" value="{{ $product->id }}"></td>
+                        <td><input type="checkbox" class="selectProduct" value="{{ $product->id }}"></td>
                         <td>{{ $key + 1 }}</td>
                         <td class="fw-bold">{{ $product->item_code }}</td>
                         <td>
@@ -165,66 +172,60 @@
                         <td>{{ $product->stock->qty ?? '- ' }}</td>
                         <td>{{ $product->alert_quantity }}</td>
                         <td>{{ $product->brand->name ?? '-' }}</td>
-                       <td class="text-center">
-
-    <!-- VIEW BUTTON -->
-    <button 
-        type="button"
-        class="btn btn-sm btn-warning viewProductBtn"
-        data-id="{{ $product->id }}">
-        👁 View
-    </button>
-
-    <!-- MORE OPTIONS DROPDOWN -->
-    <div class="btn-group">
-        <button 
-            type="button" 
-            class="btn btn-sm btn-secondary dropdown-toggle"
-            data-bs-toggle="dropdown"
-            aria-expanded="false">
-            More
-        </button>
-
-       
-        <ul class="dropdown-menu dropdown-menu-end shadow-lg custom-dropdown">
-
-            @if(auth()->user()->can('Edit Product') || auth()->user()->email === 'admin@admin.com')
-                <li>
-                     <a class="dropdown-item d-flex align-items-center gap-2"
-                       href="{{ route('products.edit', $product->id) }}">
-                        ✏ Edit Product
-                    </a>
-                </li>
-            @endif
-
-            <li>
-                <a class="dropdown-item d-flex align-items-center gap-2"
-                   href="{{ route('generate-barcode-image', $product->id) }}">
-                    🏷 Generate Barcode
-                </a>
-            </li>
-
-            @if($product->is_assembled)
-                <li>
-                   <a class="dropdown-item d-flex align-items-center gap-2"
-                       href="{{ route('assembly.report.show', $product->id) }}">
-                        ⚙ Assembly Report
-                    </a>
-                </li>
-            @endif
-
-        </ul>
-    </div>
-
-</td>
-
+                        <td class="text-center">
+                            <!-- VIEW BUTTON -->
+                            <button 
+                                type="button"
+                                class="btn btn-sm btn-warning viewProductBtn"
+                                data-id="{{ $product->id }}">
+                                👁 View
+                            </button>
+                            <!-- MORE OPTIONS DROPDOWN -->
+                            @can('edit product')
+                                
+                            <div class="btn-group">
+                                <button 
+                                type="button" 
+                                class="btn btn-sm btn-secondary dropdown-toggle"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                                More
+                            </button>
+                            @endcan
+                                <ul class="dropdown-menu dropdown-menu-end shadow-lg custom-dropdown">
+                                    @if(auth()->user()->can('Edit Product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2 btn btn btn-warning"
+                                               href="{{ route('products.edit', $product->id) }}">
+                                                ✏ Edit Product
+                                            </a>
+                                        </li>
+                                    @endif
+                                    <li>
+                                        <a class="dropdown-item d-flex align-items-center gap-2"
+                                           href="{{ route('generate-barcode-image', $product->id) }}">
+                                            🏷 Generate Barcode
+                                        </a>
+                                    </li>
+                                    @if($product->is_assembled)
+                                        <li>
+                                            <a class="dropdown-item d-flex align-items-center gap-2"
+                                               href="{{ route('assembly.report.show', $product->id) }}">
+                                                ⚙ Assembly Report
+                                            </a>
+                                        </li>
+                                    @endif
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
     </div>
 </div>
-
+@endcan
 {{-- add product modal --}}
 
 <div class="modal fade bd-example-modal-lg" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">

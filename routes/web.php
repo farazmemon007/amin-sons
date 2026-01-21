@@ -206,19 +206,24 @@ Route::get('/search_products', [ProductController::class, 'searchProducts'])
     Route::resource('branch', BranchController::class)->names('branch')->only(['index', 'store']);
     Route::get('/branch/delete/{id}', [BranchController::class, 'delete'])->name('branch.delete');
 
+
+
+
+    Route::middleware(['role:super admin|admin'])->group(function () {
     // Roles
     Route::resource('roles', RoleController::class)->names('roles')->only(['index', 'store']);
-    Route::get('/roles/delete/{id}', [RoleController::class, 'delete'])->name('roles.delete');
+    Route::get('/roles/delete/{id}', [RoleController::class, 'delete'])->name('roles.delete')->middleware('permission:delete role');
     Route::post('/admin/roles/update-permission', [RoleController::class, 'updatePermissions'])->name('roles.update.permission');
 
     // Permissions
     Route::resource('permissions', PermissionController::class)->names('permissions')->only(['index', 'store']);
-    Route::get('/permissions/delete/{id}', [PermissionController::class, 'delete'])->name('permission.delete');
+    Route::get('/permissions/delete/{id}', [PermissionController::class, 'delete'])->name('permission.delete')->middleware('permission:delete role');;
 
     // Users
     Route::resource('users', UserController::class)->names('users')->only(['index', 'store']);
-    Route::get('/users/delete/{id}', [UserController::class, 'delete'])->name('users.delete');
+    Route::get('/users/delete/{id}', [UserController::class, 'delete'])->name('users.delete')->middleware('permission:delete role');;
     Route::post('/admin/users/update-roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
+    });
     // Route::put('/users/{id}/roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
 
     // Zone

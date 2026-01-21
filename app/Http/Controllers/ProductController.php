@@ -203,9 +203,6 @@ public function searchProducts(Request $request)
     public function product()
     {
         $products = Product::with(['category_relation', 'sub_category_relation', 'unit', 'brand'])
-            ->when(Auth::user()->email !== "admin@admin.com", function ($query) {
-                return $query->where('creater_id', Auth::user()->id);
-            })
             ->get()
             ->map(function ($product) {
                 // Get stock onhand
