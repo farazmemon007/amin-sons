@@ -178,6 +178,7 @@ public function searchProducts(Request $request)
         ->where(function ($query) use ($q) {
             $query->where('item_name', 'like', "%{$q}%")
                   ->orWhere('item_code', 'like', "%{$q}%")
+                  ->orWhere('barcode_path', 'like', "%{$q}%")
                   ->orWhere('barcode_path', 'like', "%{$q}%");
         })
         ->get()
@@ -195,6 +196,26 @@ public function searchProducts(Request $request)
 
     return response()->json($products);
 }
+
+public function searchProductsForSalebypagination(Request $request)
+{
+    
+            // search text
+    $lastId = $request->last_id ?? 1;    // last loaded product id
+
+  $products = Product::where('id', '>', $lastId)
+    ->orderBy('id', 'asc')
+    ->limit(15)
+    ->get();
+
+
+    return response()->json([
+        'products' => $products,
+        'last_id'  => $products->last()->id ?? $lastId,
+        'has_more' => $products->count() == 15
+    ]);
+}
+
 
 
 

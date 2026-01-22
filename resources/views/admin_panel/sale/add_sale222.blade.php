@@ -338,7 +338,11 @@
         width: 100%;
     }
 }
-
+/* Select2 dropdown height + scroll */
+.select2-results__options {
+    max-height: 200px;   /* yahan height set karo */
+    overflow-y: auto;   /* 🔥 scroll enable */
+}
 
     </style>
 
@@ -726,77 +730,79 @@
 
 
 
-        $(document).on('keydown', function (e) {
+        // $(document).on('keydown', function (e) {
 
-            if (e.key === 'F2') {
-                e.preventDefault();
+        //     if (e.key === 'F2') {
+        //         e.preventDefault();
 
-                // jis row me cursor hai wo detect karo
-                CURRENT_PRODUCT_ROW = $(':focus').closest('tr');
+        //         // jis row me cursor hai wo detect karo
+        //         CURRENT_PRODUCT_ROW = $(':focus').closest('tr');
 
-                if (!CURRENT_PRODUCT_ROW.length) {
-                    alert('Please focus on a product row first');
-                    return;
-                }
+        //         if (!CURRENT_PRODUCT_ROW.length) {
+        //             alert('Please focus on a product row first');
+        //             return;
+        //         }
 
-                $('#productSearchInput').val('');
-                $('#productSearchResults').html(
-                    '<tr><td colspan="2" class="text-center">Type to search...</td></tr>'
-                );
+        //         $('#productSearchInput').val('');
+        //         $('#productSearchResults').html(
+        //             '<tr><td colspan="2" class="text-center">Type to search...</td></tr>'
+        //         );
 
-                $('#productSearchModal').modal('show');
+        //         $('#productSearchModal').modal('show');
 
-                setTimeout(() => $('#productSearchInput').focus(), 300);
-            }
+        //         setTimeout(() => $('#productSearchInput').focus(), 300);
+        //     }
 
-        });
-
-
+        // });
 
 
 
 
 
-        $('#productSearchInput').on('keyup', function () {
 
-            const keyword = $(this).val().trim();
 
-            if (keyword.length < 2) {
-                $('#productSearchResults').html(
-                    '<tr><td colspan="2" class="text-center">Type at least 2 characters</td></tr>'
-                );
-                return;
-            }
+        // $('#productSearchInput').on('keyup', function () {
 
-            $.get('{{ route("search_products") }}', { q: keyword }, function (products) {
+        //     const keyword = $(this).val().trim();
 
-                let html = '';
+        //     if (keyword.length < 2) {
+        //         $('#productSearchResults').html(
+        //             '<tr><td colspan="2" class="text-center">Type at least 2 characters</td></tr>'
+        //         );
+        //         return;
+        //     }
 
-                if (products.length === 0) {
-                    html = '<tr><td colspan="2" class="text-center">No product found</td></tr>';
-                } else {
-                    products.forEach(p => {
-                        html += `
-                        <tr>
-                            <td>${p.item_name}</td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-primary select-product"
-                                    data-id="${p.id}"
-                                    data-name="${p.item_name}"
-                                    data-stock="${p.stock}"
-                                    data-price="${p.retail_price}">
-                                    Select
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    });
-                }
+        //     $.get('{{ route("search_products") }}', { q: keyword }, function (products) {
 
-                $('#productSearchResults').html(html);
-            });
+        //         let html = '';
 
-        });
+        //         if (products.length === 0) {
+        //             html = '<tr><td colspan="2" class="text-center">No product found</td></tr>';
+        //         } else {
+        //             products.forEach(p => {
+        //                 html += `
+        //                 <tr>
+        //                     <td>${p.item_name}</td>
+        //                     <td class="text-center">
+        //                         <button class="btn btn-sm btn-primary select-product"
+        //                             data-id="${p.id}"
+        //                             data-name="${p.item_name}"
+        //                             data-stock="${p.stock}"
+        //                             data-price="${p.retail_price}">
+        //                             Select
+        //                         </button>
+        //                     </td>
+        //                 </tr>
+        //             `;
+        //             });
+        //         }
+
+        //         $('#productSearchResults').html(html);
+        //     });
+
+        // });
+
+        // faraz memon
 
 
 
@@ -830,18 +836,6 @@
                 CURRENT_PRODUCT_ROW.find('.sales-qty').focus();
             }, 200);
         });
-
-
-
-
-
-
-
-
-
-
-
-
     </script>
 
 
@@ -898,20 +892,6 @@
         });
 
     </script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     <!--fgdffhjkjkhgkhkh  -->
 
@@ -1030,11 +1010,6 @@
             setTimeout(() => el.addClass('d-none'), 2500);
         }
 
-
-
-
-
-
         function addNewRow() {
             $('#salesTableBody').append(`
       <tr>
@@ -1046,11 +1021,14 @@
       <div class="input-group">
 
 
-        <select class="form-select product" name="product_id[]">
-        <option value="">Select product</option>
-    </select>
+       <select class="form-select product-select" name="product_id[]" style="width:100%">
+    <option value="">Search product...</option>
+</select>
+
       </div>
     </td>
+
+ 
 
 
 
@@ -1058,7 +1036,7 @@
 
         <!-- STOCK -->
         <td class="small-col">
-          <input type="text" class="form-control stock text-center input-readonly" readonly>
+          <input type="text"  class="form-control stock text-center input-readonly" readonly>
         </td>
 
 
@@ -1108,6 +1086,140 @@
 
 
         }
+// '  <tr data-last-id="1">'
+
+$(document).ready(function () {
+
+    let last_id = 1;
+
+    $('.product-select').select2();
+
+    // Infinite scroll and product load
+    $('.product-select').on('select2:open', function () {
+        let selectEl = this;   // 🔥 VERY IMPORTANT
+        $.get('/search-products-sale', {
+            last_id: last_id
+        }, function (res) {
+            console.log('Products loaded:', res);
+            res.products.forEach(p => {
+
+ $(document).on('select2:select', '.product-select', function (e) {
+
+        const $row = $(this).closest('tr');
+        // Use the actual <option> element for data attributes
+            
+            const $option = $(e.params.data.element);
+            console.log("option",$option);
+            console.log("row",$row);
+            const stock = $option.data('stock') || '';
+            console.log("stock",stock);
+        const price = $option.data('price') || '';
+        $row.find('.stock').val(stock);
+        $row.find('.retail-price').val(price);
+    });
+
+
+
+
+                // If option not already present, add it with data attributes
+                if (!$(selectEl).find('option[value="' + p.id + '"]').length) {
+
+                    let option = new Option(p.item_name, p.id, false, false);
+                    // Attach data attributes for later use
+                    $(option).attr({
+                        'data-id': p.id,
+                        'data-name': p.item_name,
+                        'data-stock': p.stock,
+                        'data-price': p.retail_price
+                    });
+                    selectEl.appendChild(option);
+                }
+            });
+            // 🔥 Select2 refresh
+            $(selectEl).trigger('change');
+            // next request ke liye
+            last_id = res.last_id;
+        });
+    });
+});
+    // When a product is selected, fill related fields in the same row
+    // $(document).on('select2:select', '.product-select', function (e) {
+
+    //     const $row = $(this).closest('tr');
+    //     // Use the actual <option> element for data attributes
+            
+    //         const $option = $(e.params.data.element);
+    //         console.log("option",$option);
+    //         console.log("row",$row);
+    //         const stock = $option.data('stock') || '';
+    //         console.log("stock",stock);
+    //     const price = $option.data('price') || '';
+    //     $row.find('.stock').val(stock);
+    //     $row.find('.retail-price').val(price);
+    // });
+
+
+
+
+
+       
+
+        // let test = document.querySelectorAll('.product_field');
+        // console.log(test);
+
+// let last_id = 0;
+// function stackproduct(selectEl) {
+//     // alert(selectEl);
+//     // agar already loaded hai to dobara call na ho
+//     if (selectEl.dataset.loaded === "1") {
+//         return;
+//     }
+//     fetchProducts(selectEl, 0);
+// }
+
+// function fetchProducts(selectEl, startId) {
+//     fetch(`/search-products-sale?last_id=${startId}`)
+//         .then(response => response.json())
+//         .then(res => {
+//             if (startId === 0) {
+//                 // Remove all except first option
+//                 selectEl.options.length = 1;
+//             }
+//             res.products.forEach(p => {
+//                 let option = document.createElement('option');
+//                 option.value = p.id;
+//                 option.text  = p.item_name;
+//                 option.classList.add('product_field')
+//                 selectEl.appendChild(option);
+//             });
+//             // Save last_id for next fetch
+//             selectEl.dataset.lastId = res.last_id;
+            
+//             // Mark as loaded if no more
+//             if (!res.has_more) {
+//                 selectEl.dataset.loaded = "1";
+//             } else {
+//                 selectEl.dataset.loaded = "0";
+//             }
+//         })
+//         .catch(err => console.error(err));
+// }
+
+// // Infinite scroll for select
+// document.addEventListener('DOMContentLoaded', function() {
+//     document.addEventListener('scroll', function(e) {
+//         const el = e.target;
+//         if (el.classList && el.classList.contains('product')) {
+//             // Check if near bottom
+//             if (el.scrollTop + el.clientHeight >= el.scrollHeight - 5) {
+//                 if (el.dataset.loaded !== "1") {
+//                     const nextId = el.dataset.lastId || 0;
+//                     fetchProducts(el, nextId);
+//                 }
+//             }
+//         }
+//     }, true);
+// });
 
         // discunt % field
         $(document).on('click', '.discount-toggle', function () {
@@ -1810,5 +1922,91 @@
             // ensure at least one blank row exists
             if ($('#salesTableBody tr').length === 0) addNewRow();
         }
+    </script>
+
+    <script>
+        // Product dropdown infinite scroll with Select2
+function initProductSelect2(
+    selector = '.product-select',
+    url = '/search-products-sale',
+    searchUrl = '/search_products'
+) {
+    $(selector).select2({
+        ajax: {
+            transport: function (params, success, failure) {
+                // If search term is present, use search route
+                let q = params.data.q || '';
+                let ajaxUrl = q.length > 0 ? searchUrl : url;
+                let ajaxData = q.length > 0 ? { q: q } : { last_id: params.data.last_id || 0 };
+                $.ajax({
+                    url: ajaxUrl,
+                    data: ajaxData,
+                    dataType: 'json',
+                    success: function (data) {
+                        success(data);
+                    },
+                    error: failure
+                });
+            },
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term || '',
+                    last_id: params.last_id || 0
+                };
+            },
+            processResults: function (data, params) {
+                // If search, expect array; if stack, expect {products:[], has_more}
+                let results = [];
+                let more = false;
+                if (Array.isArray(data)) {
+                    // Search route
+                    results = data.map(function (p) {
+                        return { id: p.id, text: p.item_name };
+                    });
+                    more = false;
+                } else if (data.products) {
+                    results = (data.products || []).map(function (p) {
+                        return { id: p.id, text: p.item_name };
+                    });
+                    more = !!data.has_more;
+                    // Save last_id for next fetch
+                    if (results.length > 0) {
+                        params.last_id = data.last_id;
+                    }
+                }
+                return {
+                    results: results,
+                    pagination: { more: more }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 0,
+        placeholder: 'Search product...',
+        allowClear: true,
+        width: 'resolve'
+    });
+
+    // Infinite scroll on dropdown scroll
+    $(document).on('select2:open', selector, function () {
+        let results = document.querySelector('.select2-results__options');
+        if (!results) return;
+        results.addEventListener('scroll', function onScroll() {
+            if (results.scrollTop + results.clientHeight >= results.scrollHeight - 5) {
+                // Trigger Select2 to fetch more using last_id
+                let $select = $(selector);
+                let data = $select.data('select2');
+                if (data && data.isOpen() && !$select.data('select2').options.get('ajax').transport.isSearching) {
+                    $select.select2('open');
+                }
+            }
+        }, { once: true });
+    });
+}
+
+$(document).ready(function () {
+    initProductSelect2('.product-select', '/search-products-sale', '/search_products');
+});
     </script>
 @endsection

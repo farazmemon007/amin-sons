@@ -97,10 +97,13 @@ use Illuminate\Support\Facades\Route;
         ->name('products.price');
 //////
 
-
+///////////////////////////////////////////////////////////////////////////////
+    //////////
 Route::get('/search_products', [ProductController::class, 'searchProducts'])
      ->name('products_search');
+    Route::get('/search-products-sale', [ProductController::class, 'searchProductsForSalebypagination'])->name('search-products-sale');
 
+//////////////////////////////////////////////////////////////////////////////////////////////
     //////////
     Route::get('/create_prodcut', [ProductController::class, 'view_store'])->name('store');
     Route::post('/store-product', [ProductController::class, 'store_product'])->name('store-product');
