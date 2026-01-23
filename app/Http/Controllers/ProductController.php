@@ -203,7 +203,7 @@ public function searchProductsForSalebypagination(Request $request)
             // search text
     $lastId = $request->last_id ?? 1;    // last loaded product id
 
-  $products = Product::where('id', '>', $lastId)
+  $products = Product::with('stock')->where('id', '>', $lastId)
     ->orderBy('id', 'asc')
     ->limit(15)
     ->get();
