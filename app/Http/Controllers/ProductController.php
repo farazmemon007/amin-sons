@@ -18,6 +18,20 @@ use Milon\Barcode\DNS1D;
 
 class ProductController extends Controller
 {
+    public function getProductDetails($id){
+        $product = Product::with(['stock'])->find($id);
+        if ($product) {
+            return response()->json([
+                'status' => 'success',
+                'product' => $product
+            ]);
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Product not found'
+            ], 404);
+        }
+    }
 
     public function getPrice(Request $request)
     {
@@ -355,7 +369,7 @@ public function searchProductsForSalebypagination(Request $request)
                     productId: $product->id,
                     qtyDelta: $opening,
                     branchId: (int)($request->branch_id ?? 1),
-                    warehouseId: (int)($request->warehouse_id ?? 1)
+                    warehouseId: (int)($request->warehouse_id ?? 2)
                 );
             }
 

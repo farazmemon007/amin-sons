@@ -1,6 +1,7 @@
 {{-- resources/views/admin_panel/product/assembly_summary.blade.php --}}
 @extends('admin_panel.layout.app')
 @section('content')
+@can('product.assembly')
 <div class="card">
   <div class="card-header">Assembly Summary</div>
   <div class="card-body">
@@ -36,5 +37,10 @@
       </table>
     </div>
   </div>
-</div>
+  </div>
+  @else
+  <div class="container py-4">
+    <div class="alert alert-danger">You do not have permission to view Assembly Summary.</div>
+  </div>
+@endcan
 @endsection

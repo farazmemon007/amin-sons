@@ -31,7 +31,9 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WarehouseStockController;
 use App\Http\Controllers\ZoneController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
 
 
 
@@ -107,6 +109,11 @@ Route::get('/search_products', [ProductController::class, 'searchProducts'])
     //////////
     Route::get('/create_prodcut', [ProductController::class, 'view_store'])->name('store');
     Route::post('/store-product', [ProductController::class, 'store_product'])->name('store-product');
+//  Route::post('/store-product', function (Request $request) {
+//     echo "<pre>";
+//     print_r($request->all());
+// })->name('store-product');
+
     Route::put('/product/update/{id}', [ProductController::class, 'update'])->name('product.update');
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->name('products.edit');
     Route::get('/generate-barcode-image', [ProductController::class, 'generateBarcode'])->name('generate-barcode-image');
@@ -283,7 +290,7 @@ Route::get('/search_products', [ProductController::class, 'searchProducts'])
     //     return view('admin_panel.purchase.add_purchase');
     // });
     // Route::get('/get-items-by-category/{categoryId}', [PurchaseController::class, 'getItemsByCategory'])->name('get-items-by-category');
-    // Route::get('/get-product-details/{productName}', [ProductController::class, 'getProductDetails'])->name('get-product-details');
+    Route::get('/get-product-details/{id}', [ProductController::class, 'getProductDetails'])->name('get-product-details');
 
     // Route::get('booking/system', [SaleController::class,'booking-system'])->name('booking.index');
     Route::get('sale', [SaleController::class, 'index'])->name('sale.index');

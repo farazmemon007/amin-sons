@@ -15,8 +15,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Run other seeders
+        // Run other seeders (including permissions)
         $this->call([
+            \Database\Seeders\PermissionSeeder::class,
             CategorySeeder::class,
             ProductSeeder::class,
             WarehouseSeeder::class,
@@ -38,13 +39,47 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('admin'),
             ]
         );
+        $SuperAdmin = User::firstOrCreate(
+            ['email' => 'f@gmail.com'],
+            [
+                'name' => 'faraz memon',
+                'password' => Hash::make('123'),
+            ]
+        );
 
         // Define permissions
         $permissions = [
-            'Create Product',
-            'Delete Product',
-            'View Product',
-            'Edit Product',
+            'create product',
+            'edit product',
+            'delete product',
+            'view product',
+
+            // dotted-style permissions (used in views / @can checks)
+            'product.view',
+            'product.create',
+            'product.edit',
+            'product.delete',
+            'product.barcode',
+            'product.assembly',
+            'product.discount.view',
+            'product.discount.create',
+            'product.discount.barcode',
+
+            // Purchase dotted permissions
+            'purchase.view',
+            'purchase.create',
+            'purchase.edit',
+            'purchase.delete',
+            'purchase.invoice',
+            'purchase.return.view',
+            'purchase.return.create',
+            'purchase.return',
+
+            'create role',
+            'update role',
+
+            'view dashboard',
+            'view discount',
         ];
 
         foreach ($permissions as $permission) {

@@ -15,10 +15,12 @@ class CustomerController extends Controller
   // 🔹 Load customers list by type
  public function saleindex(Request $request)
 {
-    $type = $request->type ?? 'Main Customer';
-
-    $customers = Customer::where('customer_type', $type)
-        ->select('id', 'customer_id','customer_name', 'mobile', 'address', 'opening_balance')
+    // For the sales UI we prefer returning active customers with key fields.
+    // The UI has used different labels historically ("Main Customer" vs "customer").
+    // To avoid mismatches return active customers and include `customer_type`.
+    $customers = Customer::where('status', 'active')
+        ->select('id', 'customer_id', 'customer_name', 'mobile', 'address', 'opening_balance', 'customer_type')
+        ->orderBy('customer_name')
         ->get();
 
     return response()->json($customers);
@@ -27,7 +29,7 @@ class CustomerController extends Controller
     // 🔹 Single customer detail
     public function show($id)
     {
-        return Customer::findOrFail($id);
+        return Customer::with('ledgers')->findOrFail($id);
     }
 
 
@@ -160,7 +162,11 @@ class CustomerController extends Controller
             $userId = Auth::id();
             $CustomerLedgers = CustomerLedger::with('customer')
                 ->where('admin_or_user_id', $userId)
+                ->orderBy('id','desc')
                 ->get();
+            //     echo "<pre>";
+            // print_r($CustomerLedgers);
+            //     dd();
             return view('admin_panel.customers.customer_ledger', compact('CustomerLedgers'));
         } else {
             return redirect()->back();

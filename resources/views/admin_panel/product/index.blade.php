@@ -1,6 +1,7 @@
 
 @extends('admin_panel.layout.app')
 @section('content')
+@can('product.view')
     <style>
         div.dataTables_wrapper div.dataTables_length select {
     width: 75px !important
@@ -93,7 +94,7 @@
 
 </style>
 
-@can('View Product')
+
 <div class="card shadow-sm border-0">
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <div>
@@ -103,23 +104,22 @@
         
         <div class="d-flex justify-content-between align-items-end gap-1" >
             
-            @can('view discount')
+         
             <a href="{{ route('discount.index') }}" class="btn btn-success btn-sm">
                 View Discount
             </a>
-            @endcan
+          
             
-            @can('Create Product')
+          
                 <a href="{{ url('create_prodcut') }}" class="btn btn-primary">
                     Add Product
                 </a>
-            @endcan
-            @can('create discount')
+            
                 
             <button id="createDiscountBtn" class="btn btn-success btn-sm">
                 ➡ Create Discount
             </button>
-            @endcan
+           
         </div>
     </div>
     <div class="card-body">
@@ -181,7 +181,7 @@
                                 👁 View
                             </button>
                             <!-- MORE OPTIONS DROPDOWN -->
-                            @can('edit product')
+                            
                                 
                             <div class="btn-group">
                                 <button 
@@ -191,7 +191,7 @@
                                 aria-expanded="false">
                                 More
                             </button>
-                            @endcan
+                           
                                 <ul class="dropdown-menu dropdown-menu-end shadow-lg custom-dropdown">
                                     @if(auth()->user()->can('Edit Product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
                                         <li>
@@ -225,7 +225,7 @@
         </div>
     </div>
 </div>
-@endcan
+
 {{-- add product modal --}}
 
 <div class="modal fade bd-example-modal-lg" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
@@ -576,6 +576,11 @@ $(document).ready(function() {
 
 <!-- DataTables CSS -->
 
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to view Products.</div>
+    </div>
+@endcan
 @endsection
 <script src="https://code.jquery.com/jquery-3.7.1.slim.min.js"></script>
 

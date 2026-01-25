@@ -1,5 +1,6 @@
 @extends('admin_panel.layout.app')
 @section('content')
+@can('product.discount.view')
 <div class="card shadow-sm border-0">
     <div class="card-header bg-light d-flex justify-content-between align-items-center">
         <div>
@@ -118,4 +119,9 @@ $(document).ready(function() {
     });
 });
 </script>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to view Product Discounts.</div>
+    </div>
+@endcan
 @endsection

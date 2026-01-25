@@ -1,3 +1,5 @@
+@section('content')
+@can('product.discount.barcode')
 <!DOCTYPE html>
 <html>
 <head>
@@ -68,5 +70,11 @@
     <div class="price discount-price">Discount Price: {{ $discount->final_price }}</div>
 </div>
 
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to view Discount Barcode.</div>
+    </div>
+@endcan
+@endsection
 </body>
 </html>

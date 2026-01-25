@@ -77,4 +77,9 @@ public function stock()
     // Stock model me foreign key product_id hai
     return $this->hasOne(Stock::class, 'product_id', 'id');
 }
+
+  public function saleItems()
+    {
+        return $this->hasMany(SaleItem::class, 'product_id', 'id');
+    }
 }

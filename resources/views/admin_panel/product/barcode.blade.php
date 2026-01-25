@@ -43,6 +43,7 @@
 </head>
 <body>
 
+@can('product.barcode')
 <div class="label">
     <div class="brand-name" style="letter-spacing: 2px">WIJDAN</div>
 
@@ -56,6 +57,11 @@
 
     <div class="price">PKR: {{ number_format($product->price) }}</div>
 </div>
+@else
+    <div style="padding:20px; text-align:center;">
+        <div class="alert alert-danger">You do not have permission to view this barcode.</div>
+    </div>
+@endcan
 
 
 </body>

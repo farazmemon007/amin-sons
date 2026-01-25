@@ -1,6 +1,7 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+@can('purchase.view')
 <div class="main-content">
     <div class="main-content-inner">
         <div class="container">
@@ -61,18 +62,25 @@
                                             <td>{{ $purchase->purchase_date }}</td>
                                             <td>
                                                 <div class="btn-group" role="group" aria-label="Actions">
+                                                    @can('purchase.edit')
                                                     <a href="{{ route('purchase.edit', $purchase->id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                                    @endcan
+
+                                                    @can('purchase.return')
                                                     <a href="{{ route('purchase.return.show', $purchase->id) }}" class="btn btn-sm btn-danger">Return</a>
+                                                    @endcan
 
+                                                    @can('purchase.invoice')
                                                     <a href="{{ route('purchase.invoice', $purchase->id) }}" class="btn btn-sm btn-info text-white">Invoice</a>
+                                                    @endcan
 
+                                                    @can('purchase.delete')
                                                      <form action="{{ route('purchase.destroy', $purchase->id) }}" method="POST" class="d-inline delete-form">
     @csrf
     @method('DELETE')
     <button type="button" class="btn btn-danger btn-sm delete-btn mb-1">Delete</button>
 </form>
-
-                                                   
+                                                    @endcan
 
                                                 </div>
                                             </td>
@@ -210,4 +218,9 @@
         </div>
     </div>
 </div>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to view Purchases.</div>
+    </div>
+@endcan
 @endsection

@@ -34,6 +34,30 @@
             flex-wrap: nowrap;
         }
 
+        /* helper text for discount input — absolutely positioned to avoid layout shift */
+        .discount-help {
+            position: absolute;
+            left: 0;
+            bottom: -36px;
+            font-size: 0.85rem;
+            line-height: 1;
+            color: #dc3545; /* Bootstrap danger */
+            background: rgba(255,255,255,0.9);
+            padding: 0 4px;
+            border-radius: 3px;
+        }
+
+        /* Further increased row height and cell padding so helper text fits comfortably */
+        .sales-table td {
+            padding-top: 1.2rem;
+            padding-bottom: 1.4rem;
+            vertical-align: middle;
+        }
+
+        .sales-table tbody tr {
+            min-height: 86px;
+        }
+
         /* 🔹 INPUT – NOT TOO SMALL */
         .discount-wrapper .discount-value {
             width: 60px;
@@ -351,7 +375,9 @@
     <div class="container-fluid py-4">
         <div class="main-container bg-white border shadow-sm mx-auto p-3 rounded-3">
 
+            {{-- <div id="alertBox" class="alert d-none mb-3" role="alert"></div> --}}
             <div id="alertBox" class="alert d-none mb-3" role="alert"></div>
+
 
             <form id="saleForm" autocomplete="off">
                 @csrf
@@ -419,8 +445,10 @@
                         </div>
                         {{-- ///////////////////// --}}
                         <div class="mb-2">
-                            <label class="form-label fw-bold mb-1">Customer id & name</label>
-                            <input type="text" class="form-control" id="customer_id" name="customer_id" value="">
+                            <label class="form-label fw-bold mb-1">Customer</label>
+                            <input type="hidden" id="customer_id" name="customer_id" value="">
+                            <input type="hidden" id="customer" name="customer" value="">
+                            <input type="text" class="form-control" id="customerDisplay" name="customer_display" value="" readonly>
                             <small class="text-muted" id="customerCountHint"></small>
                         </div>
 
@@ -533,10 +561,12 @@
                                 <div class="col-5 text-end fw-semibold"><span id="tSub">0.00</span></div>
                             </div>
                             <div class="row py-1">
-                                <div class="col-7">Aditional Discount %</div>
-                                <div class="col-5 text-end">
-                                    <input type="text" class="form-control text-end" name="discountPercent"
-                                        id="discountPercent" value="0" style="max-width:120px; margin-left:auto">
+                                <div class="col-7">Aditional Discount</div>
+                                <div class="col-5 text-end d-flex justify-content-end align-items-center">
+                                    <input type="text" class="form-control text-end me-2" name="discountPercent"
+                                        id="discountPercent" value="0" style="max-width:120px;">
+                                    <button type="button" id="orderDiscountToggle" class="btn btn-outline-secondary btn-sm"
+                                        data-type="pkr">PKR</button>
                                 </div>
                             </div>
                             <div class="row py-1">
@@ -635,17 +665,39 @@
         </div>
     </div>
 
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
 
+        const alertBox = document.getElementById('alertBox');
+        if (!alertBox) return;
+
+        const message = alertBox.innerText.trim();
+        if (message === '') return;
+
+        let icon = 'info';
+        if (alertBox.classList.contains('alert-success')) icon = 'success';
+        if (alertBox.classList.contains('alert-danger')) icon = 'error';
+        if (alertBox.classList.contains('alert-warning')) icon = 'warning';
+
+        Swal.fire({
+            icon: icon,
+            title: 'Message',
+            text: message
+        });
+
+        alertBox.classList.add('d-none');
+    });
+</script>
     <script>
         function faraz() {
             const productIds = [];
             $('#salesTableBody tr').each(function () {
-                const pid = $(this).find('.product').val();
+                const pid = $(this).find('.product-select').val();
                 if (pid) productIds.push(pid);
             });
             if (productIds.length === 0) {
@@ -689,26 +741,16 @@
             $('#warehouseModal').modal('hide');
 
             $('#salesTableBody tr').each(function () {
-
-                const productId = $(this).find('.product').val();
+                const productId = $(this).find('.product-select').val();
 
                 if (productId) {
-
-                    // ✅ pehle variable define karo
                     const $warehouseInput = $(this).find('.warehouse-id');
-
-                    // ✅ phir value set karo
                     $warehouseInput
                         .attr('name', `warehouse_id[${productId}]`)
                         .val(warehouseId);
 
-                    // ✅ ab console me safely dekh sakte ho
-                    console.log(
-                        'Product ID:', productId,
-                        'Warehouse Value:', $warehouseInput.val()
-                    );
+                    console.log('Product ID:', productId, 'Warehouse Value:', $warehouseInput.val());
                 }
-
             });
 
             ensureSaved().then(postNow);
@@ -816,7 +858,7 @@
             const price = $(this).data('price');
 
             // product dropdown me add + select
-            const $productSelect = CURRENT_PRODUCT_ROW.find('.product');
+            const $productSelect = CURRENT_PRODUCT_ROW.find('.product-select');
 
             if ($productSelect.find(`option[value="${id}"]`).length === 0) {
                 $productSelect.append(`<option value="${id}">${name}</option>`);
@@ -931,9 +973,9 @@
 
                     if (data.length > 0) {
                         data.forEach(row => {
-                            html += `<option value="${row.id}">
-                            ${row.customer_id} -- ${row.customer_name}
-                          </option>`;
+                            // show customer name first for clarity
+                            const label = (row.customer_name || '(No name)') + ' — ' + (row.customer_id || '');
+                            html += `<option value="${row.id}">` + label + `</option>`;
                         });
                         $('#customerCountHint').text(data.length + ' record(s) found');
                     } else {
@@ -946,25 +988,42 @@
             }
 
             // 🔹 When customer selected → load detail
-            $(document).on('change', '#customerSelect', function () {
-                const id = $(this).val();
-                $('#customer_id').val(id);
-                if (!id) return;
+        $(document).on('change', '#customerSelect', function () {
+    const id = $(this).val();
+    $('#customer_id').val(id);
+    $('#customer').val(id);
+    if (!id) return;
 
-                $.get(
-                    '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
-                    function (d) {
-                        $('#address').val(d.address || '');
-                        $('#tel').val(d.mobile || '');
-                        $('#remarks').val(d.status || '');
-                        $('#previousBalance').val((+d.opening_balance || 0).toFixed(2));
-                    }
-                );
-            });
+    $.get(
+        '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
+        function (d) {
+
+            // basic customer info
+            $('#address').val(d.address || '');
+            $('#tel').val(d.mobile || '');
+            $('#remarks').val(d.remarks || d.status || '');
+
+                    // Display selected customer's id + name in the visible field
+                    $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
+
+            // 🔹 default previous balance — prefer latest ledger closing_balance,
+            // fallback to opening_balance stored on the customer record.
+            let previousBalance = parseFloat(d.opening_balance || 0);
+            if (d.ledgers && d.ledgers.length > 0) {
+                let latestLedger = d.ledgers.reduce((a, b) => parseInt(a.id) > parseInt(b.id) ? a : b);
+                previousBalance = parseFloat(latestLedger.closing_balance || latestLedger.previous_balance || previousBalance);
+            }
+
+            // show balance (positive / negative as-it-is)
+            $('#previousBalance').val(previousBalance.toFixed(2));
+        }
+    );
+});
 
             // 🔹 Clear button
             $('#clearCustomerData').on('click', function () {
                 $('#customerSelect').val('');
+                $('#customer_id, #customer, #customerDisplay').val('');
                 $('#address,#tel,#remarks').val('');
                 $('#previousBalance').val('0');
             });
@@ -1006,7 +1065,27 @@
 
         function showAlert(type, msg) {
             const el = $('#alertBox');
-            el.removeClass('d-none alert-success alert-danger').addClass('alert-' + type).text(msg);
+            el.removeClass('d-none alert-success alert-danger alert-warning alert-info').addClass('alert-' + type).text(msg);
+            console.log('Showing alert:', msg);
+
+            // Map our types to SweetAlert icons
+            let icon = 'info';
+            if (type === 'success') icon = 'success';
+            else if (type === 'danger' || type === 'error') icon = 'error';
+            else if (type === 'warning') icon = 'warning';
+
+            // Show SweetAlert2 popup with the message
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: icon,
+                    title: icon === 'success' ? 'Success' : (icon === 'error' ? 'Error' : 'Notice'),
+                    text: msg,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            }
+
+            // keep the inline alert as a short-lived mirror
             setTimeout(() => el.addClass('d-none'), 2500);
         }
 
@@ -1084,64 +1163,67 @@
       </tr>
       `);
 
+                        // initialize select2 on the newly appended product-select
+                        initProductSelect2('#salesTableBody tr:last-child .product-select', '/search-products-sale', '/search_products');
 
         }
 
 
-$(document).ready(function () {
+// $(document).ready(function () {
 
-    let last_id = 1;
+//     let last_id = 1;
 
-    $('.product-select').select2();
+//     $('.product-select').select2();
 
-    // Infinite scroll and product load
-    $('.product-select').on('select2:open', function () {
-        let selectEl = this;   // 🔥 VERY IMPORTANT
-        $.get('/search-products-sale', {
-            last_id: last_id
-        }, function (res) {
-            console.log('Products loaded:', res);
-            res.products.forEach(p => {
+//     // Infinite scroll and product load
+//     $('.product-select').on('select2:open', function () {
+//         let selectEl = this;   // 🔥 VERY IMPORTANT
+//         $.get('/search-products-sale', {
+//             last_id: last_id
+//         }, function (res) {
+//             // console.log('Products loaded:', res);
+//             res.products.forEach(p => {
 
- $(document).on('select2:select', '.product-select', function (e) {
+//  $(document).on('select2:select', '.product-select', function (e) {
 
-        const $row = $(this).closest('tr');
-        // Use the actual <option> element for data attributes
+//         const $row = $(this).closest('tr');
+//         // Use the actual <option> element for data attributes
             
-            const $option = $(e.params.data.element);
-            console.log("option",$option);
-            console.log("row",$row);
-            const stock = $option.data('stock') || '';
-            console.log("stock",stock);
-        const price = $option.data('price') || '';
-        $row.find('.stock').val(stock);
-        $row.find('.retail-price').val(price);
-    });
+//             const $option = $(e.params.data.element);
+//             // console.log("option",$option);
+//            // console.log("row",$row);
+//             const stock = $option.data('stock') || '';
+//            // console.log("stock",stock);
+//         const price = $option.data('price') || '';
+//         $row.find('.stock').val(stock);
+//         $row.find('.retail-price').val(price);
+//     });
 
 
 
 
-                // If option not already present, add it with data attributes
-                if (!$(selectEl).find('option[value="' + p.id + '"]').length) {
+//                 // If option not already present, add it with data attributes
+//                 if (!$(selectEl).find('option[value="' + p.id + '"]').length) {
 
-                    let option = new Option(p.item_name, p.id, false, false);
-                    // Attach data attributes for later use
-                    $(option).attr({
-                        'data-id': p.id,
-                        'data-name': p.item_name,
-                        'data-stock': p.stock,
-                        'data-price': p.retail_price
-                    });
-                    selectEl.appendChild(option);
-                }
-            });
-            // 🔥 Select2 refresh
-            $(selectEl).trigger('change');
-            // next request ke liye
-            last_id = res.last_id;
-        });
-    });
-});
+//                     let option = new Option(p.item_name, p.id, false, false);
+//                     // Attach data attributes for later use
+                    
+//                     $(option).attr({
+//                         'data-id': p.id,
+//                         'data-name': p.item_name,
+//                         'data-stock': p.stock,
+//                         'data-price': p.retail_price
+//                     });
+//                     selectEl.appendChild(option);
+//                 }
+//             });
+//             // 🔥 Select2 refresh
+//             $(selectEl).trigger('change');
+//             // next request ke liye
+//             last_id = res.last_id;
+//         });
+//     });
+// });
     // When a product is selected, fill related fields in the same row
     // $(document).on('select2:select', '.product-select', function (e) {
 
@@ -1249,7 +1331,7 @@ $(document).ready(function () {
         function canPost() {
             let ok = false;
             $('#salesTableBody tr').each(function () {
-                const pid = $(this).find('.product').val();
+                const pid = $(this).find('.product-select').val();
                 const qty = parseFloat($(this).find('.sales-qty').val() || '0');
                 if (pid && qty > 0) {
                     ok = true;
@@ -1270,10 +1352,22 @@ $(document).ready(function () {
         }
 
         function ensureSaved() {
+            console.log('ensureSaved called');
             return new Promise(function (resolve, reject) {
 
                 const existing = $('#booking_id').val();
                 if (existing) return resolve(existing);
+
+                // Recompute every row so discount % and discount amount fields are populated
+                $('#salesTableBody tr').each(function () {
+                    try {
+                        computeRow($(this));
+                    } catch (e) {
+                        // continue if computeRow fails for a row
+                        console.warn('computeRow error', e);
+                    }
+                });
+                updateGrandTotals();
 
                 // 🔴 TESTING: form ka data console me print
                 const formData = serializeForm();
@@ -1302,7 +1396,27 @@ $(document).ready(function () {
                         console.error('❌ AJAX ERROR RESPONSE:', xhr.responseText);
 
                         $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
-                        showAlert('danger', 'Save error');
+
+                        // Attempt to extract a useful message from the server response
+                        let msg = 'Save error';
+                        try {
+                            // Prefer parsed JSON if available
+                            const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+                            if (json && (json.message || json.msg)) {
+                                msg = json.message || json.msg;
+                            } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                                // fallback: take first non-empty line
+                                msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                            }
+                        } catch (err) {
+                            if (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) {
+                                msg = xhr.responseJSON.message || xhr.responseJSON.msg;
+                            } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                                msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                            }
+                        }
+
+                        showAlert('danger', msg);
                         reject(xhr);
                     });
             });
@@ -1315,9 +1429,20 @@ $(document).ready(function () {
 
             let data = $('#saleForm').serializeArray();
 
+            // Validate receipts before posting — if invalid, show message and abort
+            const receiptValidation = validateReceipts();
+            // If there are any receipt amounts > 0 but receipts are invalid, prevent post
+            let hasReceiptAmount = false;
+            $('.rv-amount').each(function() { if (toNum($(this).val()) > 0) hasReceiptAmount = true; });
+            if (hasReceiptAmount && !receiptValidation.ok) {
+                showAlert('danger', receiptValidation.firstMessage || 'Please fix receipt rows before posting');
+                if (receiptValidation.firstEl) receiptValidation.firstEl.focus();
+                return;
+            }
+
             // warehouse_id[product_id] build karo
             $('#salesTableBody tr').each(function () {
-                let productId = $(this).find('.product').val();
+                let productId = $(this).find('.product-select').val();
                 let warehouseId = $(this).find('.warehouse-id').val();
 
                 if (productId && warehouseId) {
@@ -1332,6 +1457,14 @@ $(document).ready(function () {
             data.push({
                 name: 'booking_id',
                 value: bookingId
+            });
+
+            // Include receipt rows (if any) so ajaxPost can create/process them
+            $('.rv-account').each(function (i) {
+                const acc = $(this).val();
+                const amt = $('.rv-amount').eq(i).val() || '';
+                data.push({ name: 'receipt_account_id[]', value: acc });
+                data.push({ name: 'receipt_amount[]', value: amt });
             });
 
             // 🔹 GET request ke liye data query string me convert karo
@@ -1361,7 +1494,25 @@ $(document).ready(function () {
                 .fail(function (xhr) {
                     console.error('Server Error:', xhr.responseText);
                     $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
-                    showAlert('danger', 'Server error while posting');
+
+                    // Try to extract a useful message from server JSON or responseText
+                    let msg = 'Server error while posting';
+                    try {
+                        const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+                        if (json && (json.message || json.msg)) {
+                            msg = json.message || json.msg;
+                        } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                            msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                        }
+                    } catch (err) {
+                        if (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) {
+                            msg = xhr.responseJSON.message || xhr.responseJSON.msg;
+                        } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                            msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                        }
+                    }
+
+                    showAlert('danger', msg);
                 });
         }
 
@@ -1418,53 +1569,117 @@ $(document).ready(function () {
 
 
         /* ---------- Row compute ---------- */
-        function toNum(v) {
-            return parseFloat(v || 0) || 0;
-        }
-        function computeRow($row) {
+  function toNum(v) {
+    return parseFloat(v || 0) || 0;
+}
 
-            const rp = toNum($row.find('.retail-price').val());
-            const qty = toNum($row.find('.sales-qty').val());
+function computeRow($row, manualAmount = false, formatDiscount = true) {
 
-            const discValue = toNum($row.find('.discount-value').val());
-            const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
+    const rp = toNum($row.find('.retail-price').val());
+    // console.log("retail price",rp);
+    const qty = toNum($row.find('.sales-qty').val());
+// console.log("qty:",qty);
 
-            let dam = toNum($row.find('.discount-amount').val());
+    // 🔹 Safe discount value (never negative)
+    const $discInput = $row.find('.discount-value');
+    const rawDisc = Math.max(0, $discInput.val());
+    let discValue = rawDisc;
 
-            // 🔹 GROSS
-            const gross = rp * qty;
+    const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
+     console.log("percent discount:",discType) ;
+    let dam = toNum($row.find('.discount-amount').val());
 
-            /* ===== AUTO DISCOUNT ===== */
-            if (discValue > 0) {
+    // 🔹 GROSS
+    const gross = rp * qty;
 
-                if (discType === 'percent') {
-                    dam = (gross * discValue) / 100;   // % from retail
+    /* ===== AUTO DISCOUNT ===== */
+    if (discValue > 0) {
+
+        if (discType === 'percent') {
+           
+            // If user entered >100%, mark invalid and show helper text
+            const $help = $row.find('.discount-help');
+                if (rawDisc > 101) {
+                markInvalid($discInput);
+                const $wrapper = $row.find('.discount-wrapper');
+                if ($wrapper.find('.discount-help').length === 0) {
+                    $wrapper.append('<div class="discount-help">Discount never be <= 100%</div>');
                 } else {
-                    dam = discValue * qty;            // PKR × qty
+                    $wrapper.find('.discount-help').text('Discount must be <= 100%');
                 }
-
-                $row.find('.discount-amount').val(dam.toFixed(2));
-
+                // use 100 for calculation but keep visual warning
+                discValue = 100;
             } else {
-                // ✅ NEW FEATURE → jab disc% / PKR empty ya 0 ho
-                dam = 0;
-                $row.find('.discount-amount').val('0.00');
+                
+                clearInvalid($discInput);
+                $row.find('.discount-help').remove();
+                discValue = Math.min(discValue, 100);
             }
 
-            /* ===== NET ===== */
-            const net = Math.max(0, gross - dam);
-            $row.find('.sales-amount').val(net.toFixed(2));
+            dam = (gross * discValue) / 100;   // % from retail
+
+        } else {
+            // PKR discount should not exceed gross per row
+            const totalPKR = discValue * qty;
+            if (totalPKR > gross) {
+                markInvalid($discInput);
+                const $wrapper = $row.find('.discount-wrapper');
+                if ($wrapper.find('.discount-help').length === 0) {
+                    $wrapper.append('<div class="discount-help">Discount cannot exceed row gross</div>');
+                } else {
+                    $wrapper.find('.discount-help').text('Discount cannot exceed row gross');
+                }
+                // cap discount amount to gross but keep user's per-unit input unchanged
+                dam = gross;
+            } else {
+                clearInvalid($discInput);
+                $row.find('.discount-help').remove();
+                dam = totalPKR;
+            }
         }
 
+        if (formatDiscount) {
+            $discInput.val(discValue.toFixed(2));
+        }
+        $row.find('.discount-amount').val(dam.toFixed(2));
+
+    } else {
+        // 🔹 Discount empty or 0
+        dam = 0;
+        $row.find('.discount-amount').val('0.00');
+        // clear any helper/invalid state when input is empty
+        clearInvalid($discInput);
+        $row.find('.discount-help').remove();
+        $row.find('.discount-value').val('');
+    }
+
+    /* ===== NET ===== */
+    const net = Math.max(0, gross - dam);
+    $row.find('.sales-amount').val(net.toFixed(2));
+}
 
 
 
 
 
 
-        $(document).on('input', '.sales-qty, .discount-value', function () {
+
+        $(document).on('input', '.sales-qty, .discount-value', function (e) {
             const $row = $(this).closest('tr');
-            computeRow($row);
+            // If typing in discount input, do not reformat it while typing
+            if ($(this).hasClass('discount-value')) {
+                computeRow($row, false, false); // manualAmount=false, formatDiscount=false
+            } else {
+                computeRow($row);
+            }
+            updateGrandTotals();
+            refreshPostedState();
+        });
+
+        // On blur of discount input, format and validate
+        $(document).on('blur', '.discount-value', function () {
+            const $row = $(this).closest('tr');
+            computeRow($row, false, true); // now format the discount input
             updateGrandTotals();
             refreshPostedState();
         });
@@ -1513,8 +1728,15 @@ $(document).ready(function () {
             });
 
             // ===== ORDER LEVEL =====
-            const orderPct = toNum($('#discountPercent').val());
-            const orderDisc = (tNet * orderPct) / 100;
+            const orderRaw = toNum($('#discountPercent').val());
+            const orderType = $('#orderDiscountToggle').data('type') || 'percent'; // percent | pkr
+            let orderDisc = 0;
+            if (orderType === 'percent') {
+                orderDisc = (tNet * orderRaw) / 100;
+            } else {
+                // treat input as absolute PKR amount
+                orderDisc = orderRaw;
+            }
 
             const prev = toNum($('#previousBalance').val());
             const receipts = toNum($('#receiptsTotal').text());
@@ -1540,7 +1762,18 @@ $(document).ready(function () {
             $('#totalBalance').val(payable.toFixed(2));
         }
 
+        // recalc when discount/toggle/previous balance change
         $(document).on('input', '#previousBalance, #discountPercent', updateGrandTotals);
+        $(document).on('click', '#orderDiscountToggle', function () {
+            const $btn = $(this);
+            const current = $btn.data('type');
+            if (current === 'percent') {
+                $btn.data('type', 'pkr').text('PKR');
+            } else {
+                $btn.data('type', 'percent').text('%');
+            }
+            updateGrandTotals();
+        });
 
         /* ---------- Row auto-add ---------- */
         $('#salesTableBody').on('input', '.sales-qty', function () {
@@ -1605,6 +1838,9 @@ $(document).ready(function () {
             });
             $('#receiptsTotal').text(sum.toFixed(2)); // Display total in the respective element
             updateGrandTotals(); // Update other totals if needed
+            updatePostButtonState();
+            // Live-validate receipt rows and highlight invalid fields
+            validateReceipts();
         }
 
         $('#btnAddRV').on('click', function () {
@@ -1620,6 +1856,8 @@ $(document).ready(function () {
             $('#rvWrapper').append($row);
 
             loadAccountsInto($row.find('.rv-account'));
+            // keep post button state updated when a new row is added
+            updatePostButtonState();
         });
 
 
@@ -1634,10 +1872,20 @@ $(document).ready(function () {
             $('.rv-account').each(function () {
                 loadAccountsInto($(this));
             });
+            updatePostButtonState();
         });
 
         // Recompute total receipt amounts when input changes
         $(document).on('input', '.rv-amount', recomputeReceipts);
+
+        // Update post button and validate when account selection changes
+        // Also refresh other account dropdowns so the selected account is
+        // removed from the other rows (prevents selecting same account twice).
+        $(document).on('change', '.rv-account', function() {
+            updatePostButtonState();
+            validateReceipts();
+            $('.rv-account').each(function () { loadAccountsInto($(this)); });
+        });
 
         /* ---------- init ---------- */
         // function init() {
@@ -1679,8 +1927,10 @@ $(document).ready(function () {
             $('#salesTableBody tr').each(function (rowIndex) {
                 const $row = $(this);
                 // const $wh = $row.find('.warehouse');
-                const $prod = $row.find('.product');
+                const $prod = $row.find('.product-select');
                 const $qty = $row.find('.sales-qty');
+                // console.log("$prod",$prod);
+                // console.log("$qty",$qty);
 
                 // Warehouse
                 // if (!$wh.val()) {
@@ -1749,6 +1999,23 @@ $(document).ready(function () {
                 firstMessage,
                 firstEl
             };
+        }
+
+        // Enable/disable Post button depending on receipts validity and row validation
+        function updatePostButtonState() {
+            const postBtn = $('#btnPosted');
+            const headerPostBtn = $('#btnHeaderPosted');
+
+            const rowsValid = validateRows().ok;
+            const receiptsValid = validateReceipts().ok;
+
+            // If there are any receipt amount inputs with value > 0, require receiptsValid
+            let hasReceiptAmount = false;
+            $('.rv-amount').each(function() { if (toNum($(this).val()) > 0) hasReceiptAmount = true; });
+
+            const enable = rowsValid && (!hasReceiptAmount || receiptsValid);
+            postBtn.prop('disabled', !enable);
+            headerPostBtn.prop('disabled', !enable);
         }
 
         /**
@@ -1884,8 +2151,8 @@ $(document).ready(function () {
 
 
         function isRowMeaningful($row) {
-            const prod = $row.find('.product').val();
-            // const wh = $row.find('.warehouse').val();
+            const prod = $row.find('.product-select').val();
+            const wh = $row.find('.warehouse-id').val();
             const qty = parseFloat($row.find('.sales-qty').val() || '0') || 0;
             const discPct = parseFloat($row.find('.discount-value.discount-percent').val() || '0') || 0;
             const discAmt = parseFloat($row.find('.discount-amount').val() || '0') || 0;
@@ -1897,15 +2164,12 @@ $(document).ready(function () {
         function cleanupEmptyRows() {
             $('#salesTableBody tr').each(function () {
                 const $r = $(this);
-                const prod = $r.find('.product').val();
+                const prod = $r.find('.product-select').val();
                 // const wh = $r.find('.warehouse').val();
                 const qty = parseFloat($r.find('.sales-qty').val() || '0') || 0;
 
-                // Remove row when qty is zero or (product empty AND warehouse empty)
-                // We want to remove:
-                //  - rows where qty <= 0 (user didn't enter qty) because they are meaningless,
-                //  - or rows that are fully empty.
-                if ((qty <= 0) || ((!prod || prod === '') && (!wh || wh === ''))) {
+                // Remove row when qty is zero or product is empty
+                if ((qty <= 0) || (!prod || prod === '')) {
                     // ensure we keep at least one row in UI
                     if ($('#salesTableBody tr').length > 1) {
                         $r.remove();
@@ -1944,31 +2208,39 @@ function initProductSelect2(
                     dataType: 'json',
                     success: function (data) {
                         success(data);
+                        // console.log('Products loaded:', data);
                     },
                     error: failure
                 });
             },
             delay: 250,
             data: function (params) {
+                
                 return {
                     q: params.term || '',
                     last_id: params.last_id || 0
                 };
             },
             processResults: function (data, params) {
+                // console.log('data:',data);
                 // If search, expect array; if stack, expect {products:[], has_more}
+                // console.log('Products loaded:', params);
                 let results = [];
                 let more = false;
+                // console.log('data:',data);
                 if (Array.isArray(data)) {
+    // console.log('Products loaded:', data);
                     // Search route
                     results = data.map(function (p) {
-                        return { id: p.id, text: p.item_name };
+
+                        return { id: p.id, text: p.item_name,stocks: p.stock,price: p.retail_price  };
                     });
                     more = false;
                 } else if (data.products) {
                     results = (data.products || []).map(function (p) {
-                        return { id: p.id, text: p.item_name };
+                                                return { id: p.id, text: p.item_name,stocks: p.stock,price: p.retail_price  };
                     });
+                    // console.log(data.products);
                     more = !!data.has_more;
                     // Save last_id for next fetch
                     if (results.length > 0) {
@@ -2005,8 +2277,32 @@ function initProductSelect2(
     });
 }
 
+
+
 $(document).ready(function () {
     initProductSelect2('.product-select', '/search-products-sale', '/search_products');
+    // Log selected product id on selection
+    $(document).on('select2:select', '.product-select', function (e) {
+        if (e && e.params && e.params.data && e.params.data.id) {
+            $.get('/get-product-details/' + e.params.data.id, function (data) {
+                const $row = $(e.target).closest('tr');
+                // console.log('Product details loaded:', data);
+                if (data && data.product) {
+                    // price field may be `price` or `retail_price` depending on model
+                    const price = parseFloat(data.product.retail_price ?? data.product.price ?? 0).toFixed(2);
+                    const stockQty = (data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0;
+                    $row.find('.retail-price').val(price);
+                    $row.find('.stock').val(stockQty);
+                    // set the underlying select value (product-select) so validation/serialize picks it up
+                    $row.find('.product-select').val(data.product.id).trigger('change');
+                    // Recompute row and totals
+                    computeRow($row);
+                    updateGrandTotals();
+                    refreshPostedState();
+                }
+            });
+        }
+    });
 });
     </script>
 @endsection

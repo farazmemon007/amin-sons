@@ -1,6 +1,7 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+@can('purchase.invoice')
 <div class="main-content">
     <div class="main-content-inner">
         <div class="container">
@@ -147,4 +148,9 @@
         }
     }
 </style>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to view Purchase Invoices.</div>
+    </div>
+@endcan
 @endsection

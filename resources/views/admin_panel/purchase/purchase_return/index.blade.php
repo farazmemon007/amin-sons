@@ -1,6 +1,7 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+@can('purchase.return.view')
 <div class="main-content">
     <div class="main-content-inner">
         <div class="container">
@@ -80,4 +81,9 @@
         </div>
     </div>
 </div>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to view Purchase Returns.</div>
+    </div>
+@endcan
 @endsection

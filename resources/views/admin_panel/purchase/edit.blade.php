@@ -1,6 +1,7 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+@can('purchase.edit')
 <div class="main-content">
     <div class="main-content-inner">
         <div class="container">
@@ -199,6 +200,11 @@
         </div>
     </div>
 </div>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to edit Purchases.</div>
+    </div>
+@endcan
 @endsection
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

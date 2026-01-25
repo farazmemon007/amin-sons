@@ -14,7 +14,7 @@ class Sale extends Model
     //     'total_subtotal', 'total_items','color'
     // ];
     protected $guarded=[];
-    public function items()
+    public function saleItems()
 {
     return $this->hasMany(\App\Models\SaleItem::class, 'sale_id');
 }

@@ -298,7 +298,7 @@ public function getOpeningBalance($type, $id)
         // dd();
         DB::beginTransaction();
         try {
-            $rvid = $request->rvid; //ReceiptsVoucher::generateInvoiceNo();
+            $rvid = $request->rvid ?: \App\Models\ReceiptsVoucher::generateRVID(auth()->id());
             $narrationIds = [];
 
             foreach ($request->narration_id as $index => $narrId) {
@@ -342,6 +342,7 @@ public function getOpeningBalance($type, $id)
                 'rate'             => json_encode($request->rate),
                 'amount'           => json_encode($request->amount),
                 'total_amount'     => $request->total_amount,
+                'processed'        => true,
             ];
 
             ReceiptsVoucher::create($voucherData);

@@ -181,23 +181,43 @@ table thead th{
                 </table>
             </div>
         </div>
-
+@php
+    echo "<pre>";
+    print_r($booking->ToArray());
+    dd();
+@endphp
         {{-- ITEMS --}}
         <table>
             <thead>
                 <tr>
                     <th>#</th>
                     <th class="text-left">Description</th>
+                    <th>Warehouse</th>
                     <th>Qty</th>
                     <th>Rate</th>
                     <th>Amount</th>
                 </tr>
             </thead>
+            
             <tbody>
                 @foreach($booking->items as $i => $item)
                 <tr>
                     <td>{{ $i+1 }}</td>
-                    <td class="text-left">{{ $item->product->item_name ?? '-' }}</td>
+                    <td class="text-left">
+                        {{ $item->product->item_name ?? '-' }}
+                        @if(!empty($item->product->item_code))<br><small>Code: {{ $item->product->item_code }}</small>@endif
+                        @if(!empty($item->product->model))<br><small>Model: {{ $item->product->model }}</small>@endif
+                    </td>
+                    <td>
+                        @php
+                            $wname = $item->warehouse->name ?? null;
+                            if(!$wname && !empty($item->warehouse_id)) {
+                                $w = \App\Models\Warehouse::find($item->warehouse_id);
+                                $wname = $w->name ?? null;
+                            }
+                        @endphp
+                        {{ $wname ?? '-' }}
+                    </td>
                     <td>{{ $item->sales_qty }}</td>
                     <td>{{ number_format($item->retail_price,2) }}</td>
                     <td>{{ number_format($item->amount,2) }}</td>
@@ -213,8 +233,20 @@ table thead th{
                 <td class="text-right">{{ $booking->quantity }}</td>
             </tr>
             <tr>
-                <td class="text-right"><strong>Total Amount:</strong></td>
+                <td class="text-right"><strong>Sub Total:</strong></td>
                 <td class="text-right">{{ number_format($booking->sub_total1,2) }}</td>
+            </tr>
+            <tr>
+                <td class="text-right"><strong>Discount:</strong></td>
+                <td class="text-right">{{ number_format($booking->discount_amount ?? 0,2) }}</td>
+            </tr>
+            <tr>
+                <td class="text-right"><strong>Previous Balance:</strong></td>
+                <td class="text-right">{{ number_format($booking->previous_balance ?? ($booking->customer->opening_balance ?? 0),2) }}</td>
+            </tr>
+            <tr>
+                <td class="text-right"><strong>Total Balance:</strong></td>
+                <td class="text-right">{{ number_format($booking->total_balance ?? 0,2) }}</td>
             </tr>
         </table>
 

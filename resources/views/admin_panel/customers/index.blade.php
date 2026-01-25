@@ -34,6 +34,7 @@
                 <th>Mobile</th>
                 <th>Zone</th>
                 <th>Dabit <br> Credit</th>
+                <th>Closing Balance</th>
                 <th>Filer Type</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -47,6 +48,7 @@
                 <td>{{ $customer->mobile }}</td>
                 <td>{{ $customer->address }}</td>
                 <td><span> {{ $customer->customer_type}}  </span></td>
+                <td>{{ number_format($customer->closing_balance, 2) }}</td>
                 <td>{{ $customer->filer_type }}</td>
                 <td>{{ $customer->status }}</td>
                 <td>

@@ -14,21 +14,31 @@ class ReceiptsVoucher extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'processed' => 'boolean',
+    ];
+
+    protected $fillable = [
+        'rvid', 'receipt_date', 'entry_date', 'type', 'party_id', 'tel', 'remarks', 'reference_no', 'booking_id', 'row_account_head', 'row_account_id', 'amount', 'total_amount', 'processed'
+    ];
+
     /* ===========================
        GENERATE RVID (CORRECT)
     =========================== */
     public static function generateRVID()
     {
-        $prefix = 'RV-';
+        // Default generator: include optional user id to make RVIDs unique per user
+        $args = func_get_args();
+        $userId = $args[0] ?? null;
 
-        $last = self::orderBy('id', 'desc')->first();
+        $uidPart = $userId ? (int)$userId : 0;
+        $prefix = 'rvid00' . $uidPart . '-';
 
-        $lastNumber = 0;
-        if ($last && $last->rvid) {
-            $lastNumber = (int) filter_var($last->rvid, FILTER_SANITIZE_NUMBER_INT);
-        }
+        // Use the last numeric id as sequence to avoid parsing mixed-format rvids
+        $lastId = (int) self::max('id');
+        $seq = $lastId + 1;
 
-        return $prefix . str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($seq, 5, '0', STR_PAD_LEFT);
     }
 
     /* ===========================

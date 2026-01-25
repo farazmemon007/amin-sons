@@ -1,8 +1,4 @@
-@php
-//     echo "<pre>";
-// print_r($booking);
-// dd();
-@endphp
+
 
 
 @extends('admin_panel.layout.app')
@@ -131,6 +127,12 @@ table tbody td{
 }
 </style>
 
+{{-- @php
+// echo"<pre>";
+//     print_r($booking->toArray());
+// echo"</pre>";
+//     dd();
+// @endphp --}}
 <div class="container-fluid mt-4">
 
     {{-- PRINT BUTTON --}}
@@ -211,13 +213,28 @@ table tbody td{
                     <td>Discount</td>
                     <td class="text-end">{{ number_format($booking->discount_amount,2) }}</td>
                 </tr>
+                {{-- @php
+                    echo "<pre>";
+                    print_r($booking->toArray());
+                    echo "</pre>";
+                    dd();
+                @endphp --}}
+                @php
+                    $latestLedger = null;
+                    if(isset($booking->customer) && isset($booking->customer->ledgers)){
+                        $ledgers = collect($booking->customer->ledgers);
+                        $latestLedger = $ledgers->sortByDesc('id')->first();
+                    }
+                    $displayPrevious = $latestLedger->previous_balance ?? $booking->previous_balance ?? $booking->customer->opening_balance ?? 0;
+                    $displayClosing = $latestLedger->closing_balance ?? $booking->total_balance ?? 0;
+                @endphp
                 <tr>
                     <td>Previous Balance</td>
-                    <td class="text-end">{{ number_format($booking->previous_balance,2) }}</td>
+                    <td class="text-end">{{ number_format($displayPrevious,2) }}</td>
                 </tr>
                 <tr class="summary-total">
-                    <td>Total Balance</td>
-                    <td class="text-end">{{ number_format($booking->total_balance,2) }}</td>
+                    <td>Closing Balance</td>
+                    <td class="text-end">{{ number_format($displayClosing,2) }}</td>
                 </tr>
             </table>
         </div>

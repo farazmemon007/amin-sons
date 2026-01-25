@@ -1,6 +1,7 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+@can('product.create')
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css">
@@ -1017,4 +1018,9 @@ document.addEventListener('DOMContentLoaded', function () {
             new bootstrap.Tooltip(el)
         })
     </script>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to create Products.</div>
+    </div>
+@endcan
 @endsection

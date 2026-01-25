@@ -1,5 +1,6 @@
 @extends('admin_panel.layout.app')
 @section('content')
+@can('product.discount.create')
 <div class="card">
     <div class="card-header">
         <h5>Create Discount for Selected Products</h5>
@@ -175,4 +176,9 @@ $(document).ready(function(){
     });
 });
 </script>
+@else
+    <div class="container py-4">
+        <div class="alert alert-danger">You do not have permission to create Product Discounts.</div>
+    </div>
+@endcan
 @endsection
