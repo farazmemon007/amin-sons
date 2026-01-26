@@ -1529,6 +1529,7 @@ class SaleController extends Controller
                 'warehouses.location',
             ])
             ->get();
+          
 
         return view(
             'admin_panel.sale.booking.prints.dc2',

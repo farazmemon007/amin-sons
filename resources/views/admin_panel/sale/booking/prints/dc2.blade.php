@@ -36,12 +36,13 @@ body{
 
 /* COMPANY INFO */
 .company-info{
-    font-size:12px;
+    font-size:14px;
     margin-bottom:10px;
 }
 
 .company-info strong{
-    font-size:14px;
+    font-size:25px;
+    font-weight:800;
 }
 
 /* TOP INFO */
@@ -150,16 +151,24 @@ table thead th{
             <div>
                 <table>
                     <tr>
-                        <td><strong>Customer Name</strong></td>
-                        <td>: {{ $booking->customer->customer_name ?? '-' }}</td>
+                        <td><strong>Customer</strong></td>
+                        <td> {{ data_get($customer, 'customer_name', data_get($booking, 'customer.customer_name', '-')) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Customer ID</strong></td>
+                        <td> {{ data_get($customer, 'customer_id', data_get($booking, 'customer.customer_id', '-')) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Type</strong></td>
+                        <td> {{ data_get($customer, 'customer_type', data_get($booking, 'party_type', '-')) }}</td>
                     </tr>
                     <tr>
                         <td><strong>Address</strong></td>
-                        <td>: {{ $booking->address ?? '-' }}</td>
+                        <td> {{ data_get($booking, 'address', data_get($customer, 'address', '-')) }}</td>
                     </tr>
                     <tr>
                         <td><strong>Contact</strong></td>
-                        <td>: {{ $booking->customer->mobile_2 ?? '-' }}</td>
+                        <td> {{ data_get($customer, 'mobile', data_get($customer, 'mobile_2', data_get($booking, 'tel', '-'))) }}</td>
                     </tr>
                 </table>
             </div>
@@ -168,24 +177,28 @@ table thead th{
                 <table>
                     <tr>
                         <td><strong>DC No</strong></td>
-                        <td>: {{ $booking->invoice_no ?? '-' }}</td>
+                        <td>: {{ data_get($booking, 'invoice_no', '-') }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Invoice</strong></td>
+                        <td>: {{ data_get($booking, 'manual_invoice') ?: data_get($booking, 'invoice_no', '-') }}</td>
                     </tr>
                     <tr>
                         <td><strong>Date</strong></td>
-                        <td>: {{ $booking->created_at?->format('d-m-Y') }}</td>
+                        <td>: {{ optional(data_get($booking, 'created_at'))->format('d-m-Y') ?? date('d-m-Y') }}</td>
                     </tr>
                     <tr>
                         <td><strong>Status</strong></td>
-                        <td>: {{ ucfirst($booking->status ?? 'pending') }}</td>
+                        <td>: {{ ucfirst(data_get($booking, 'status', 'pending')) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Prepared By</strong></td>
+                        <td>: {{ data_get($booking, 'prepared_by') ?: (auth()->check() ? auth()->user()->name : '-') }}</td>
                     </tr>
                 </table>
             </div>
         </div>
-@php
-    echo "<pre>";
-    print_r($booking->ToArray());
-    dd();
-@endphp
+
         {{-- ITEMS --}}
         <table>
             <thead>
@@ -200,37 +213,62 @@ table thead th{
             </thead>
             
             <tbody>
-                @foreach($booking->items as $i => $item)
+                @php $rows = $items ?? $booking->items; @endphp
+                @foreach($rows as $i => $item)
+                @php
+                    // Support both array rows (from controller) and Eloquent models
+                    $iname = data_get($item, 'item_name') ?: data_get($item, 'product.item_name');
+                    $icode = data_get($item, 'item_code') ?: data_get($item, 'product.item_code');
+                    $imodel = data_get($item, 'model') ?: data_get($item, 'product.model');
+                    $wname = data_get($item, 'warehouse_name') ?: data_get($item, 'warehouse.name');
+                    if(!$wname && data_get($item, 'warehouse_id')) {
+                        $w = \App\Models\Warehouse::find(data_get($item, 'warehouse_id'));
+                        $wname = $w->name ?? null;
+                    }
+                    $iqty = data_get($item, 'sales_qty') ?: data_get($item, 'sales_qty');
+                    $irate = data_get($item, 'retail_price') ?: data_get($item, 'retail_price');
+                    $iamt = data_get($item, 'amount') ?: data_get($item, 'amount');
+                @endphp
                 <tr>
                     <td>{{ $i+1 }}</td>
                     <td class="text-left">
-                        {{ $item->product->item_name ?? '-' }}
-                        @if(!empty($item->product->item_code))<br><small>Code: {{ $item->product->item_code }}</small>@endif
-                        @if(!empty($item->product->model))<br><small>Model: {{ $item->product->model }}</small>@endif
+                        {{ $iname ?? '-' }}
+                        @if($icode)<br><small>Code: {{ $icode }}</small>@endif
+                        @if($imodel)<br><small>Model: {{ $imodel }}</small>@endif
                     </td>
-                    <td>
-                        @php
-                            $wname = $item->warehouse->name ?? null;
-                            if(!$wname && !empty($item->warehouse_id)) {
-                                $w = \App\Models\Warehouse::find($item->warehouse_id);
-                                $wname = $w->name ?? null;
-                            }
-                        @endphp
-                        {{ $wname ?? '-' }}
-                    </td>
-                    <td>{{ $item->sales_qty }}</td>
-                    <td>{{ number_format($item->retail_price,2) }}</td>
-                    <td>{{ number_format($item->amount,2) }}</td>
+                    <td>{{ $wname ?? '-' }}</td>
+                    <td>{{ $iqty }}</td>
+                    <td>{{ number_format($irate,2) }}</td>
+                    <td>{{ number_format($iamt,2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
 
         {{-- TOTAL --}}
+        @php
+            // Determine latest ledger entry from provided $customer or booking->customer
+            $latestLedger = null;
+            if(!empty($customer) && data_get($customer, 'ledgers')){
+                $ledgers = collect(data_get($customer, 'ledgers'));
+                $latestLedger = $ledgers->sortByDesc('id')->first();
+            } elseif(isset($booking->customer) && isset($booking->customer->ledgers)){
+                $ledgers = collect($booking->customer->ledgers);
+                $latestLedger = $ledgers->sortByDesc('id')->first();
+            }
+
+            $displayPrevious = $latestLedger->previous_balance ?? $booking->previous_balance ?? ($booking->customer->opening_balance ?? ($customer['opening_balance'] ?? 0));
+            $displayClosing = $latestLedger->closing_balance ?? $booking->total_balance ?? ($booking->customer->opening_balance ?? ($customer['opening_balance'] ?? 0));
+
+            // Compute total qty from provided items or booking items
+            $rowsForTotals = $items ?? $booking->items ?? [];
+            $totalQty = collect($rowsForTotals)->sum(function($r){ return (float) data_get($r, 'sales_qty', 0); });
+        @endphp
+
         <table class="totals">
             <tr>
                 <td class="text-right"><strong>Total Qty:</strong></td>
-                <td class="text-right">{{ $booking->quantity }}</td>
+                <td class="text-right">{{ $totalQty }}</td>
             </tr>
             <tr>
                 <td class="text-right"><strong>Sub Total:</strong></td>
@@ -241,12 +279,13 @@ table thead th{
                 <td class="text-right">{{ number_format($booking->discount_amount ?? 0,2) }}</td>
             </tr>
             <tr>
-                <td class="text-right"><strong>Previous Balance:</strong></td>
-                <td class="text-right">{{ number_format($booking->previous_balance ?? ($booking->customer->opening_balance ?? 0),2) }}</td>
+                <td class="text-right"><strong>Previous Balance</strong></td>
+                <td class="text-right">{{ number_format($displayPrevious,2) }}</td>
             </tr>
             <tr>
-                <td class="text-right"><strong>Total Balance:</strong></td>
-                <td class="text-right">{{ number_format($booking->total_balance ?? 0,2) }}</td>
+                <td class="text-right"><strong>Closing Balance</strong></td>
+                <td class="text-right">{{ number_format($displayClosing,2) }}</td>
+            </tr>
             </tr>
         </table>
 

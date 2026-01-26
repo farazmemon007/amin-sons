@@ -20,6 +20,11 @@ body{
     box-shadow:0 0 8px rgba(0,0,0,0.08);
 }
 
+/* Increase most invoice text for better readability (exclude product rows) */
+.invoice-wrapper {
+    font-size:20px;
+}
+
 /* HEADER */
 .invoice-header{
     display:flex;
@@ -179,13 +184,14 @@ table tbody td{
         </div>
 
         {{-- ITEMS TABLE --}}
-        <table>
+        <table class="items-table">
             <thead>
                 <tr>
                     <th>#</th>
                     <th>Item Name</th>
                     <th class="text-end">Qty</th>
                     <th class="text-end">Rate</th>
+                    <th class="text-end">Disc Amt</th>
                     <th class="text-end">Amount</th>
                 </tr>
             </thead>
@@ -196,11 +202,18 @@ table tbody td{
                     <td>{{ $item->product->item_name }}</td>
                     <td class="text-end">{{ number_format($item->sales_qty, 2) }}</td>
                     <td class="text-end">{{ number_format($item->retail_price, 2) }}</td>
+                    <td class="text-end">{{ number_format(data_get($item, 'discount_amount', 0), 2) }}</td>
                     <td class="text-end">{{ number_format($item->amount, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
+
+        <style>
+            /* Keep product/item rows at a compact size */
+            .items-table tbody td { font-size:14px; }
+            .items-table thead th { font-size:14px; }
+        </style>
 
         {{-- SUMMARY --}}
         <div class="summary-box">
