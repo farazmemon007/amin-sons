@@ -534,32 +534,30 @@ class SaleController extends Controller
         $productIds = $request->product_ids; // array from query string
         if (empty($productIds) || !is_array($productIds)) return response()->json([]);
 
-        $warehouseIds = \App\Models\WarehouseStock::whereIn('product_id', $productIds)
+        // Fetch warehouse stocks for the requested products
+        $rows = \App\Models\WarehouseStock::whereIn('product_id', $productIds)
             ->where('quantity', '>', 0)
-            ->groupBy('warehouse_id')
-            ->havingRaw('COUNT(DISTINCT product_id) = ?', [count($productIds)])
-            ->pluck('warehouse_id');
+            ->get(['warehouse_id', 'product_id', 'quantity']);
 
-        if ($warehouseIds->isEmpty()) return response()->json([]);
-
-        $warehouses = \App\Models\WarehouseStock::whereIn('warehouse_id', $warehouseIds)
-            ->whereIn('product_id', $productIds)
-            ->select('warehouse_id', 'product_id', 'quantity')
-            ->get()
-            ->groupBy('warehouse_id');
+        // group by product_id
+        $grouped = $rows->groupBy('product_id');
 
         $response = [];
-        foreach ($warehouses as $whId => $items) {
-            $warehouseName = \App\Models\Warehouse::where('id', $whId)->value('warehouse_name');
+        foreach ($productIds as $pid) {
+            $product = \App\Models\Product::find($pid);
+            $warehouses = ($grouped[$pid] ?? collect())->map(function ($r) {
+                $name = \App\Models\Warehouse::where('id', $r->warehouse_id)->value('warehouse_name');
+                return [
+                    'warehouse_id' => $r->warehouse_id,
+                    'warehouse_name' => $name,
+                    'quantity' => $r->quantity,
+                ];
+            })->values();
+
             $response[] = [
-                'id' => $whId,
-                'name' => $warehouseName,
-                'products' => $items->map(function ($i) {
-                    return [
-                        'product_id' => $i->product_id,
-                        'quantity' => $i->quantity
-                    ];
-                })->values()
+                'product_id' => $pid,
+                'product_name' => $product?->item_name ?? 'Product ' . $pid,
+                'warehouses' => $warehouses,
             ];
         }
 

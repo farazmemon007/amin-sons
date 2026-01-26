@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\PermissionSeeder::class,
             CategorySeeder::class,
             ProductSeeder::class,
+          
             WarehouseSeeder::class,
         ]);
 

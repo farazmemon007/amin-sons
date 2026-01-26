@@ -36,14 +36,14 @@ class Sale extends Model
     {
         $lastSale = self::orderBy('id', 'desc')->first();
 
-        if (!$lastSale || !$lastSale->invoice_no) {
-            return 'INV-0001';
+        // default start
+        $next = 1;
+        if ($lastSale && !empty($lastSale->invoice_no)) {
+            if (preg_match('/(\d+)$/', $lastSale->invoice_no, $m)) {
+                $next = (int) $m[1] + 1;
+            }
         }
 
-        // Extract numeric part
-        $lastNumber = (int) str_replace('INV-', '', $lastSale->invoice_no);
-
-        // Increment + format
-        return 'INV-' . str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+        return 'INV-' . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 }

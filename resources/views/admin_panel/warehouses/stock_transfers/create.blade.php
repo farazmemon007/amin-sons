@@ -57,11 +57,8 @@
                     <tbody id="product_body">
                         <tr class="product_row">
                             <td>
-                                <select name="product_id[]" class="form-control product-select" required>
+                                <select name="product_id[]" class="form-control product-select" required style="width:100%">
                                     <option value="">Select Product</option>
-                                    @foreach ($products as $product)
-                                        <option value="{{ $product->id }}">{{ $product->item_name }}</option>
-                                    @endforeach
                                 </select>
                             </td>
                             <td>
@@ -86,112 +83,124 @@
         </div>
     </div>
 @endsection
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function() {
-        function fetchStock() {
-            var warehouseId = $('#from_warehouse_id').val();
-            var productId = $('#product_id').val();
 
-            if (warehouseId && productId) {
-                $.ajax({
-                    url: '/warehouse-stock-quantity',
-                    method: 'GET',
-                    data: {
-                        warehouse_id: warehouseId,
-                        product_id: productId
+@section('js')
+    <script>
+        function initProductSelect2(
+            selector = '.product-select',
+            url = '/search-products-sale',
+            searchUrl = '/search_products'
+        ) {
+            $(selector).select2({
+                ajax: {
+                    transport: function (params, success, failure) {
+                        let term = (params.data && (params.data.term || params.data.q)) || '';
+                        let page = (params.data && (params.data.page || 1)) || 1;
+                        let ajaxUrl = term && term.length > 0 ? searchUrl : url;
+                        $.ajax({
+                            url: ajaxUrl,
+                            data: { q: term, page: page },
+                            dataType: 'json',
+                            success: function (data) { success(data); },
+                            error: failure
+                        });
                     },
-                    success: function(response) {
-                        $('#available_stock').val(response.quantity);
-                        $('#transfer_quantity').attr('max', response.quantity);
-                    }
-                });
-            }
+                    delay: 250,
+                    data: function (params) {
+                        return { q: params.term || '', page: params.page || 1 };
+                    },
+                    processResults: function (data, params) {
+                        params.page = params.page || 1;
+                        let results = [];
+                        if (Array.isArray(data)) {
+                            results = data.map(function (p) { return { id: p.id, text: p.item_name }; });
+                            return { results: results, pagination: { more: false } };
+                        }
+
+                        results = (data.products || []).map(function (p) { return { id: p.id, text: p.item_name }; });
+                        return { results: results, pagination: { more: !!data.has_more } };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 0,
+                placeholder: 'Search product...',
+                allowClear: true,
+                width: 'resolve'
+            });
         }
 
-        $('#from_warehouse_id, #product_id').change(fetchStock);
+        $(document).ready(function() {
+            initProductSelect2('.product-select', '/search-products-sale', '/search_products');
 
-        $('#transfer_quantity').on('input', function() {
-            var entered = parseInt($(this).val());
-            var max = parseInt($(this).attr('max'));
-
-            if (entered > max) {
-                alert('Cannot transfer more than available stock!');
-                $(this).val(max);
+            function fetchStock(warehouseId, productId, currentRow) {
+                if (warehouseId && productId) {
+                    $.ajax({
+                        url: '/warehouse-stock-quantity',
+                        method: 'GET',
+                        data: { warehouse_id: warehouseId, product_id: productId },
+                        success: function(response) {
+                            if (currentRow) {
+                                currentRow.find('.stock').val(response.quantity);
+                                currentRow.find('.quantity').attr('max', response.quantity);
+                            }
+                        }
+                    });
+                }
             }
-        });
-    });
-</script>
-<script>
-    $(document).ready(function() {
 
-        // ✅ Add new row automatically when product is selected
-        $(document).on('change', '.product-select', function() {
-            var currentRow = $(this).closest('tr');
-            var selectedProduct = $(this).val();
-            var fromWarehouse = $('#from_warehouse_id').val();
-
-            if (selectedProduct && fromWarehouse) {
-                $.ajax({
-                    url: '/warehouse-stock-quantity',
-                    method: 'GET',
-                    data: {
-                        warehouse_id: fromWarehouse,
-                        product_id: selectedProduct
-                    },
-                    success: function(response) {
-                        currentRow.find('.stock').val(response.quantity);
-                        currentRow.find('.quantity').attr('max', response.quantity);
-                    }
+            $('#from_warehouse_id').on('change', function() {
+                var warehouseId = $(this).val();
+                $('#product_body tr').each(function() {
+                    var row = $(this);
+                    var pid = row.find('.product-select').val();
+                    if (pid) fetchStock(warehouseId, pid, row);
                 });
-            }
+            });
 
-            // ✅ If last row, add new empty row
-            if ($('#product_body tr:last').is(currentRow)) {
-                addNewRow();
+            $(document).on('change', '.product-select', function() {
+                var currentRow = $(this).closest('tr');
+                var selectedProduct = $(this).val();
+                var fromWarehouse = $('#from_warehouse_id').val();
+
+                if (selectedProduct && fromWarehouse) {
+                    fetchStock(fromWarehouse, selectedProduct, currentRow);
+                }
+
+                if ($('#product_body tr:last').is(currentRow)) {
+                    addNewRow();
+                }
+            });
+
+            $(document).on('input', '.quantity', function() {
+                var entered = parseInt($(this).val());
+                var max = parseInt($(this).attr('max'));
+                if (entered > max) { alert('Cannot transfer more than available stock!'); $(this).val(max); }
+            });
+
+            $(document).on('click', '.remove-row', function() { $(this).closest('tr').remove(); });
+
+            function addNewRow() {
+                var row = `
+                    <tr class="product_row">
+                        <td>
+                            <select name="product_id[]" class="form-control product-select" required style="width:100%">
+                                <option value="">Select Product</option>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="available_stock[]" class="form-control stock" readonly>
+                        </td>
+                        <td>
+                            <input type="number" name="quantity[]" class="form-control quantity" required>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger remove-row">Remove</button>
+                        </td>
+                    </tr>
+                `;
+                $('#product_body').append(row);
+                initProductSelect2('#product_body tr:last .product-select', '/search-products-sale', '/search_products');
             }
         });
-
-        // ✅ Auto validate quantity with stock
-        $(document).on('input', '.quantity', function() {
-            var entered = parseInt($(this).val());
-            var max = parseInt($(this).attr('max'));
-
-            if (entered > max) {
-                alert('Cannot transfer more than available stock!');
-                $(this).val(max);
-            }
-        });
-
-        // ✅ Remove Row
-        $(document).on('click', '.remove-row', function() {
-            $(this).closest('tr').remove();
-        });
-
-        // ✅ Add new blank row
-        function addNewRow() {
-            var row = `
-                <tr class="product_row">
-                    <td>
-                        <select name="product_id[]" class="form-control product-select" required>
-                            <option value="">Select Product</option>
-                            @foreach ($products as $product)
-                                <option value="{{ $product->id }}">{{ $product->item_name }}</option>
-                            @endforeach
-                        </select>
-                    </td>
-                    <td>
-                        <input type="number" name="available_stock[]" class="form-control stock" readonly>
-                    </td>
-                    <td>
-                        <input type="number" name="quantity[]" class="form-control quantity" required>
-                    </td>
-                    <td>
-                        <button type="button" class="btn btn-danger remove-row">Remove</button>
-                    </td>
-                </tr>
-            `;
-            $('#product_body').append(row);
-        }
-    });
-</script>
+    </script>
+@endsection

@@ -709,19 +709,40 @@
                 type: 'GET',
                 data: { product_ids: productIds },
                 success: function (res) {
-                    // Build warehouse list
-                    let html = '<table class="table"><thead><tr><th>Name</th><th>Action</th></tr></thead><tbody>';
-                    if (Array.isArray(res) && res.length > 0) {
-                        res.forEach(function (wh) {
-                            html += `<tr>
-                        <td>${wh.name}</td>
-                        <td><button class="btn btn-primary btn-sm select-warehouse" data-id="${wh.id}">Select</button></td>
-                      </tr>`;
-                        });
-                    } else {
-                        html += '<tr><td colspan="2" class="text-center">No warehouses found</td></tr>';
+                    // Build per-product rows with warehouse dropdowns
+                    if (!Array.isArray(res) || res.length === 0) {
+                        $('#warehouseModalBody').html('<div class="text-center">No warehouses available for selected products</div>');
+                        $('#warehouseModal').modal('show');
+                        return;
                     }
+
+                    let html = '<form id="warehouseSelectForm">';
+                    html += '<table class="table table-sm"><thead><tr><th>Product</th><th>Warehouse</th></tr></thead><tbody>';
+                    res.forEach(function (row) {
+                        const pid = row.product_id;
+                        const pname = row.product_name;
+                        const whs = row.warehouses || [];
+
+                        html += `<tr data-product-id="${pid}">`;
+                        html += `<td>${pname}</td>`;
+                        html += `<td>`;
+                        html += `<select class="form-control form-select warehouse-for-product" data-product-id="${pid}">`;
+                        if (whs.length === 0) {
+                            html += `<option value="">No stock in any warehouse</option>`;
+                        } else {
+                            html += `<option value="">Select warehouse</option>`;
+                            whs.forEach(function (w) {
+                                html += `<option value="${w.warehouse_id}" data-qty="${w.quantity}">${w.warehouse_name} (qty: ${w.quantity})</option>`;
+                            });
+                        }
+                        html += `</select>`;
+                        html += `</td>`;
+                        html += `</tr>`;
+                    });
                     html += '</tbody></table>';
+                    html += '<div class="text-end"><button type="button" id="warehouseApplyBtn" class="btn btn-primary">Apply</button></div>';
+                    html += '</form>';
+
                     $('#warehouseModalBody').html(html);
                     $('#warehouseModal').modal('show');
                 },
@@ -732,27 +753,25 @@
             });
         }
 
-        //Handle warehouse select button/
-        $(document).on('click', '.select-warehouse', function () {
-
-            const warehouseId = $(this).data('id');
-            console.log('Selected Warehouse ID:', warehouseId);
-
-            $('#warehouseModal').modal('hide');
-
-            $('#salesTableBody tr').each(function () {
-                const productId = $(this).find('.product-select').val();
-
-                if (productId) {
-                    const $warehouseInput = $(this).find('.warehouse-id');
-                    $warehouseInput
-                        .attr('name', `warehouse_id[${productId}]`)
-                        .val(warehouseId);
-
-                    console.log('Product ID:', productId, 'Warehouse Value:', $warehouseInput.val());
-                }
+        // Apply per-product warehouse selections
+        $(document).on('click', '#warehouseApplyBtn', function () {
+            const mapping = {};
+            $('.warehouse-for-product').each(function () {
+                const pid = $(this).data('product-id');
+                const wid = $(this).val();
+                if (pid && wid) mapping[pid] = wid;
             });
 
+            // write mapping into hidden inputs in table rows
+            $('#salesTableBody tr').each(function () {
+                const pid = $(this).find('.product-select').val();
+                if (!pid) return;
+                const wid = mapping[pid] || '';
+                const $warehouseInput = $(this).find('.warehouse-id');
+                $warehouseInput.attr('name', `warehouse_id[${pid}]`).val(wid);
+            });
+
+            $('#warehouseModal').modal('hide');
             ensureSaved().then(postNow);
         });
 
@@ -2190,7 +2209,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
 
     <script>
         // Product dropdown infinite scroll with Select2
-function initProductSelect2(
+    function initProductSelect2(
     selector = '.product-select',
     url = '/search-products-sale',
     searchUrl = '/search_products'
@@ -2198,58 +2217,42 @@ function initProductSelect2(
     $(selector).select2({
         ajax: {
             transport: function (params, success, failure) {
-                // If search term is present, use search route
-                let q = params.data.q || '';
-                let ajaxUrl = q.length > 0 ? searchUrl : url;
-                let ajaxData = q.length > 0 ? { q: q } : { last_id: params.data.last_id || 0 };
+                // prefer params.data.term which Select2 populates
+                let term = (params.data && (params.data.term || params.data.q)) || '';
+                let page = (params.data && (params.data.page || 1)) || 1;
+                let ajaxUrl = term && term.length > 0 ? searchUrl : url;
                 $.ajax({
                     url: ajaxUrl,
-                    data: ajaxData,
+                    data: { q: term, page: page },
                     dataType: 'json',
-                    success: function (data) {
-                        success(data);
-                        // console.log('Products loaded:', data);
-                    },
+                    success: function (data) { success(data); },
                     error: failure
                 });
             },
             delay: 250,
             data: function (params) {
-                
                 return {
                     q: params.term || '',
-                    last_id: params.last_id || 0
+                    page: params.page || 1
                 };
             },
             processResults: function (data, params) {
-                // console.log('data:',data);
-                // If search, expect array; if stack, expect {products:[], has_more}
-                // console.log('Products loaded:', params);
+                params.page = params.page || 1;
                 let results = [];
-                let more = false;
-                // console.log('data:',data);
                 if (Array.isArray(data)) {
-    // console.log('Products loaded:', data);
-                    // Search route
                     results = data.map(function (p) {
-
-                        return { id: p.id, text: p.item_name,stocks: p.stock,price: p.retail_price  };
+                        return { id: p.id, text: p.item_name, stock: p.stock, price: p.retail_price || p.price };
                     });
-                    more = false;
-                } else if (data.products) {
-                    results = (data.products || []).map(function (p) {
-                                                return { id: p.id, text: p.item_name,stocks: p.stock,price: p.retail_price  };
-                    });
-                    // console.log(data.products);
-                    more = !!data.has_more;
-                    // Save last_id for next fetch
-                    if (results.length > 0) {
-                        params.last_id = data.last_id;
-                    }
+                    return { results: results, pagination: { more: false } };
                 }
+
+                results = (data.products || []).map(function (p) {
+                    return { id: p.id, text: p.item_name, stock: p.stock, price: p.retail_price || p.price };
+                });
+
                 return {
                     results: results,
-                    pagination: { more: more }
+                    pagination: { more: !!data.has_more }
                 };
             },
             cache: true
@@ -2258,22 +2261,6 @@ function initProductSelect2(
         placeholder: 'Search product...',
         allowClear: true,
         width: 'resolve'
-    });
-
-    // Infinite scroll on dropdown scroll
-    $(document).on('select2:open', selector, function () {
-        let results = document.querySelector('.select2-results__options');
-        if (!results) return;
-        results.addEventListener('scroll', function onScroll() {
-            if (results.scrollTop + results.clientHeight >= results.scrollHeight - 5) {
-                // Trigger Select2 to fetch more using last_id
-                let $select = $(selector);
-                let data = $select.data('select2');
-                if (data && data.isOpen() && !$select.data('select2').options.get('ajax').transport.isSearching) {
-                    $select.select2('open');
-                }
-            }
-        }, { once: true });
     });
 }
 

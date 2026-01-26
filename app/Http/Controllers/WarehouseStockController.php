@@ -22,10 +22,7 @@ public function getByWarehouse($warehouseId)
                 'qty'  => $row->quantity,
             ];
         });
-// echo"<pre>";
-// print_r($products);
-// echo"</pre>";
-//         dd();
+
     return response()->json($products);
 }
 

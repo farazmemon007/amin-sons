@@ -213,20 +213,22 @@ public function searchProducts(Request $request)
 
 public function searchProductsForSalebypagination(Request $request)
 {
-    
-            // search text
-    $lastId = $request->last_id ?? 1;    // last loaded product id
+    // Use page-based pagination which integrates cleanly with Select2's
+    // `params.page` value. This avoids fragile last_id state handling.
+    $page = max(1, (int) $request->get('page', 1));
+    $perPage = 10;
 
-  $products = Product::with('stock')->where('id', '>', $lastId)
-    ->orderBy('id', 'asc')
-    ->limit(15)
-    ->get();
-
+    $products = Product::with('stock')
+        ->orderBy('id', 'asc')
+        ->skip(($page - 1) * $perPage)
+        ->take($perPage)
+        ->get();
 
     return response()->json([
         'products' => $products,
-        'last_id'  => $products->last()->id ?? $lastId,
-        'has_more' => $products->count() == 15
+        'last_id'  => $products->last()->id ?? null,
+        'has_more' => $products->count() == $perPage,
+        'page' => $page,
     ]);
 }
 

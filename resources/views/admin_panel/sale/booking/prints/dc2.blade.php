@@ -260,9 +260,19 @@ table thead th{
             $displayPrevious = $latestLedger->previous_balance ?? $booking->previous_balance ?? ($booking->customer->opening_balance ?? ($customer['opening_balance'] ?? 0));
             $displayClosing = $latestLedger->closing_balance ?? $booking->total_balance ?? ($booking->customer->opening_balance ?? ($customer['opening_balance'] ?? 0));
 
-            // Compute total qty from provided items or booking items
+            // Compute total qty and subtotal from provided items or booking items
             $rowsForTotals = $items ?? $booking->items ?? [];
             $totalQty = collect($rowsForTotals)->sum(function($r){ return (float) data_get($r, 'sales_qty', 0); });
+            $subTotal = collect($rowsForTotals)->sum(function($r){
+                // prefer explicit 'amount', fall back to 'per_total' or compute from rate*qty
+                $amt = data_get($r, 'amount', null);
+                if ($amt !== null) return (float) $amt;
+                $amt = data_get($r, 'per_total', null);
+                if ($amt !== null) return (float) $amt;
+                $rate = data_get($r, 'retail_price', data_get($r, 'price', 0));
+                $qty = data_get($r, 'sales_qty', data_get($r, 'qty', 0));
+                return (float) $rate * (float) $qty;
+            });
         @endphp
 
         <table class="totals">
@@ -272,7 +282,7 @@ table thead th{
             </tr>
             <tr>
                 <td class="text-right"><strong>Sub Total:</strong></td>
-                <td class="text-right">{{ number_format($booking->sub_total1,2) }}</td>
+                <td class="text-right">{{ number_format($subTotal,2) }}</td>
             </tr>
             <tr>
                 <td class="text-right"><strong>Discount:</strong></td>
