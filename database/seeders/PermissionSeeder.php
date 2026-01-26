@@ -30,7 +30,7 @@ class PermissionSeeder extends Seeder
         $permissions = [
             // Dashboard
             'view dashboard',
-            
+
             // Product Management
             'product.view',
             'product.create',
@@ -38,14 +38,14 @@ class PermissionSeeder extends Seeder
             'product.delete',
             'product.barcode',
             'product.assembly',
-            
+
             // Product Discount
             'product.discount.view',
             'product.discount.create',
             'product.discount.edit',
             'product.discount.delete',
             'product.discount.barcode',
-            
+
             // Category & SubCategory
             'category.view',
             'category.create',
@@ -55,19 +55,19 @@ class PermissionSeeder extends Seeder
             'subcategory.create',
             'subcategory.edit',
             'subcategory.delete',
-            
+
             // Brand
             'brand.view',
             'brand.create',
             'brand.edit',
             'brand.delete',
-            
+
             // Unit
             'unit.view',
             'unit.create',
             'unit.edit',
             'unit.delete',
-            
+
             // Purchase Management
             'purchase.view',
             'purchase.create',
@@ -78,13 +78,13 @@ class PermissionSeeder extends Seeder
             'purchase.return.create',
             'purchase.return.edit',
             'purchase.return.delete',
-            
+
             // Inward Gatepass
             'inward.gatepass.view',
             'inward.gatepass.create',
             'inward.gatepass.edit',
             'inward.gatepass.delete',
-            
+
             // Warehouse & Stock
             'warehouse.view',
             'warehouse.create',
@@ -99,7 +99,7 @@ class PermissionSeeder extends Seeder
             'stock.transfer.edit',
             'stock.transfer.delete',
             'stock.adjust',
-            
+
             // Vendor
             'vendor.view',
             'vendor.create',
@@ -111,7 +111,7 @@ class PermissionSeeder extends Seeder
             'vendor.bilties.view',
             'vendor.bilties.create',
             'vendor.bilties.delete',
-            
+
             // Sales Management
             'sale.view',
             'sale.create',
@@ -122,7 +122,7 @@ class PermissionSeeder extends Seeder
             'sale.receipt',
             'sale.return.view',
             'sale.return.create',
-            
+
             // Customer
             'customer.view',
             'customer.create',
@@ -133,26 +133,26 @@ class PermissionSeeder extends Seeder
             'customer.payments.create',
             'customer.payments.delete',
             'customer.toggle.status',
-            
+
             // Sales Officer
             'sales.officer.view',
             'sales.officer.create',
             'sales.officer.edit',
             'sales.officer.delete',
-            
+
             // Zone
             'zone.view',
             'zone.create',
             'zone.edit',
             'zone.delete',
-            
+
             // Booking
             'booking.view',
             'booking.create',
             'booking.edit',
             'booking.delete',
             'booking.receipt',
-            
+
             // Vouchers
             'voucher.view',
             'receipts.voucher.view',
@@ -170,18 +170,18 @@ class PermissionSeeder extends Seeder
             'journal.voucher.view',
             'journal.voucher.create',
             'journal.voucher.delete',
-            
+
             // Chart of Accounts
             'chart.of.accounts.view',
             'chart.of.accounts.create',
             'chart.of.accounts.edit',
             'chart.of.accounts.delete',
-            
+
             // Narration
             'narration.view',
             'narration.create',
             'narration.delete',
-            
+
             // Reporting
             'report.item.stock.view',
             'report.purchase.view',
@@ -189,31 +189,31 @@ class PermissionSeeder extends Seeder
             'report.customer.ledger.view',
             'report.assembly.view',
             'report.inventory.onhand.view',
-            
+
             // User Management
             'user.view',
             'user.create',
             'user.edit',
             'user.delete',
-            
+
             // Role Management
             'role.view',
             'role.create',
             'role.edit',
             'role.delete',
             'role.permission.update',
-            
+
             // Permission Management
             'permission.view',
             'permission.create',
             'permission.delete',
-            
+
             // Branch
             'branch.view',
             'branch.create',
             'branch.edit',
             'branch.delete',
-            
+
             // Legacy permissions (keeping for backward compatibility)
             'create product',
             'edit product',

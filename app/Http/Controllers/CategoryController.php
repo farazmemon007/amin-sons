@@ -7,19 +7,15 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 class CategoryController extends Controller
 {
-    
+
     public function index()
     {
-        // $userId = Auth::id();
-      $category = Category::get();
-      return  view("admin_panel.category.index",compact('category'));
-
 
     }
 
     public function store(Request $request)
 {
-    
+
     // Validation
     $validator = Validator::make($request->all(), [
         'name' => 'required|unique:categories,name,' . $request->edit_id . ',id',
@@ -59,7 +55,7 @@ class CategoryController extends Controller
      */
     $obj = Category::all();
     if ($request->page === 'product_page') {
-        
+
        return redirect()->route('store')->with('success', 'Category saved successfully');
     }
 
@@ -87,6 +83,6 @@ class CategoryController extends Controller
         }
         return response()->json($msg);
     }
-   
-     
+
+
 }

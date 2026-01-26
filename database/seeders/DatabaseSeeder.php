@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             \Database\Seeders\PermissionSeeder::class,
             CategorySeeder::class,
             ProductSeeder::class,
-          
+
             WarehouseSeeder::class,
         ]);
 
@@ -50,7 +50,7 @@ class DatabaseSeeder extends Seeder
 
         // Create or get super admin role
         $superAdminRole = Role::firstOrCreate(['name' => 'super admin']);
-        
+
         // Assign super admin role to faraz memon user
         if ($SuperAdmin) {
             $SuperAdmin->assignRole($superAdminRole);

@@ -373,7 +373,7 @@
                             </div>
                         </li>
                         @endcan
-    
+
 
     </ul>
     </div>

@@ -101,7 +101,7 @@
             $('#remarks').val($(this).data('remarks'));
         });
 
-    
+
     $('.datanew').DataTable();
     </script>
     {{-- @endpush --}}
