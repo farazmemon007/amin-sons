@@ -48,59 +48,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Define permissions
-        $permissions = [
-            'create product',
-            'edit product',
-            'delete product',
-            'view product',
-
-            // dotted-style permissions (used in views / @can checks)
-            'product.view',
-            'product.create',
-            'product.edit',
-            'product.delete',
-            'product.barcode',
-            'product.assembly',
-            'product.discount.view',
-            'product.discount.create',
-            'product.discount.barcode',
-
-            // Purchase dotted permissions
-            'purchase.view',
-            'purchase.create',
-            'purchase.edit',
-            'purchase.delete',
-            'purchase.invoice',
-            'purchase.return.view',
-            'purchase.return.create',
-            'purchase.return',
-
-            'create role',
-            'update role',
-
-            'view dashboard',
-            'view discount',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
-        }
-
-        // Create roles if they don't exist
-        $adminRole = Role::firstOrCreate(['name' => 'admin']);
-        $branchRole = Role::firstOrCreate(['name' => 'branch']);
-
-        // Assign permissions to roles
-        $adminRole->syncPermissions($permissions);
-        $branchRole->syncPermissions($permissions);
-
-        // Assign roles to users
-        if ($adminUser) {
-            $adminUser->assignRole($adminRole);
-        }
-        if ($branchUser) {
-            $branchUser->assignRole($branchRole);
+        // Create or get super admin role
+        $superAdminRole = Role::firstOrCreate(['name' => 'super admin']);
+        
+        // Assign super admin role to faraz memon user
+        if ($SuperAdmin) {
+            $SuperAdmin->assignRole($superAdminRole);
         }
     }
 }

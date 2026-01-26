@@ -11,7 +11,9 @@
                     <h6>Manage Warehouses</h6>
                 </div>
                 <div class="page-btn d-flex justify-content-end col-lg-6">
+                    @can('warehouse.create')
                     <button class="btn btn-outline-primary mb-2" data-bs-toggle="modal" data-bs-target="#warehouseModal" onclick="clearWarehouse()">Add Warehouse</button>
+                    @endcan
                 </div>
             </div>
 
@@ -28,7 +30,7 @@
                             <tr>
                                 <td>{{ $key+1 }}</td><td>{{ $w->user->name }}</td><td>{{ $w->warehouse_name }}</td><td>{{ $w->location }}</td><td>{{ $w->remarks }}</td>
                                 <td>
-                                    {{-- <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#warehouseModal" onclick="editWarehouse('{{ $w->id }}','{{ $w->warehouse_name }}','{{ $w->location }}','{{ $w->remarks }}')">Edit</button> --}}
+                                    @can('warehouse.edit')
                                     <button class="btn btn-sm btn-primary edit-warehouse-btn"
                                         data-id="{{ $w->id }}"
                                         data-name="{{ $w->warehouse_name }}"
@@ -38,7 +40,10 @@
                                         data-bs-target="#warehouseModal">
                                         Edit
                                     </button>
+                                    @endcan
+                                    @can('warehouse.delete')
                                     <a href="{{ url('warehouse/delete/'.$w->id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Delete</a>
+                                    @endcan
                                 </td>
                             </tr>
                             @endforeach

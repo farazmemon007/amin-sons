@@ -4,7 +4,9 @@
 <div class="card shadow-sm border-0">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5>📦 Warehouse Stock List</h5>
+        @can('warehouse.stock.create')
         <a href="{{ route('warehouse_stocks.create') }}" class="btn btn-primary btn-sm">Add Stock</a>
+        @endcan
     </div>
     <div class="card-body">
         <table class="table table-bordered table-striped" id="stockTable">
@@ -29,12 +31,16 @@
                     {{--  <td>{{ $stock->price }}</td>  --}}
                     <td>{{ $stock->remarks }}</td>
                     <td>
+                        @can('warehouse.stock.edit')
                         <a href="{{ route('warehouse_stocks.edit', $stock->id) }}" class="btn btn-sm btn-warning">Edit</a>
+                        @endcan
+                        @can('warehouse.stock.delete')
                         <form action="{{ route('warehouse_stocks.destroy', $stock->id) }}" method="POST" style="display:inline-block;">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
                         </form>
+                        @endcan
                     </td>
                 </tr>
                 @endforeach

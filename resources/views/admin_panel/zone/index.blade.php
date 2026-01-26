@@ -8,9 +8,11 @@
                 <div class="col-lg-12">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3>Zone</h3>
+                        @can('zone.create')
                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal" id="reset">
                             Create
                         </button>
+                        @endcan
                     </div>
 
                     <div class="border mt-1 shadow rounded" style="background-color: white;">
@@ -30,14 +32,18 @@
                                             <td class="id">{{ $zone->id }}</td>
                                             <td class="zone">{{ $zone->zone }}</td>
                                             <td>
+                                                @can('zone.edit')
                                                 <button class="btn btn-primary btn-sm edit-btn" data-id="{{ $zone->id }}">
                                                     Edit
                                                 </button>
+                                                @endcan
+                                                @can('zone.delete')
                                                 <button class="btn btn-danger btn-sm delete-btn"
                                                     data-id="{{ $zone->id }}"
                                                     data-url="{{ route('zone.delete', $zone->id) }}">
                                                     Delete
                                                 </button>
+                                                @endcan
                                             </td>
                                         </tr>
                                         @endforeach
@@ -54,6 +60,7 @@
 </div>
 
 <!-- CREATE MODAL -->
+@can('zone.create')
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form class="myform" action="{{ route('zone.store') }}" method="POST">
@@ -76,8 +83,10 @@
         </form>
     </div>
 </div>
+@endcan
 
 <!-- EDIT MODAL -->
+@can('zone.edit')
 <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form class="editform" action="{{ route('zone.store') }}" method="POST">
@@ -101,6 +110,7 @@
         </form>
     </div>
 </div>
+@endcan
 
 <!-- SCRIPTS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">

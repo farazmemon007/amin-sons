@@ -8,7 +8,9 @@
     <div class="container-fluid">
         <div class="card-header mt-2 d-flex justify-content-between align-items-center">
             <h4 class="mb-0">Expense Vouchers</h4>
+            @can('expense.voucher.create')
             <a class="btn btn-primary" href="{{ route('expense-vochers') }}">Add Expense Voucher</a>
+            @endcan
         </div>
         <div class="card shadow">
             <div class="card-body">

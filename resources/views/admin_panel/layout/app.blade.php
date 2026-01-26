@@ -185,8 +185,9 @@
 
                         </li>
                         <!--=========================*
-                              UI Features
+                              Management Menu
                     *===========================-->
+                        @can('product.view')
                         <li class="nav-item mega-menu">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon fas fa-cogs"></i>
@@ -200,14 +201,27 @@
                                     <div class="col-group col-md-3">
                                         <p class="category-heading">Products & Categories</p>
                                         <ul class="submenu-item">
+                                            @can('product.view')
                                             <li><a href="{{route('product')}}"><i class="fas fa-box"></i> Products</a></li>
+                                            @endcan
+                                            @can('product.discount.view')
                                             <li><a href="{{route('discount.index')}}"><i class="fas fa-tags"></i> Discount Products</a></li>
+                                            @endcan
+                                            @can('category.view')
                                             <li><a href="{{route('Category.home')}}"><i class="fas fa-list"></i> Category</a></li>
+                                            @endcan
+                                            @can('subcategory.view')
                                             <li><a href="{{route('subcategory.home')}}"><i class="fas fa-th-list"></i> Sub Category</a></li>
+                                            @endcan
+                                            @can('brand.view')
                                             <li><a href="{{route('Brand.home')}}"><i class="fas fa-trademark"></i> Brands</a></li>
+                                            @endcan
+                                            @can('unit.view')
                                             <li><a href="{{route('Unit.home')}}"><i class="fas fa-balance-scale"></i> Units</a></li>
-                 <li><a href="{{ route('stock.adjust.form') }}"><i class="fas fa-sliders-h"></i> Parts Adjust</a></li>
-
+                                            @endcan
+                                            @can('stock.adjust')
+                                            <li><a href="{{ route('stock.adjust.form') }}"><i class="fas fa-sliders-h"></i> Parts Adjust</a></li>
+                                            @endcan
                                         </ul>
                                     </div>
 
@@ -215,12 +229,16 @@
                                     <div class="col-group col-md-3">
                                         <p class="category-heading">Purchase & Inventory</p>
                                         <ul class="submenu-item">
-
+                                            @can('inward.gatepass.view')
                                             <li><a href="{{route('InwardGatepass.home')}}"><i class="fas fa-shopping-cart"></i> Inward Gatepass </a></li>
                                             <li><a href="{{route('add_inwardgatepass')}}"><i class="fas fa-shopping-cart"></i> Add Inward Gatepass </a></li>
+                                            @endcan
+                                            @can('purchase.view')
                                             <li><a href="{{route('Purchase.home')}}"><i class="fas fa-shopping-cart"></i> Purchase</a></li>
+                                            @endcan
+                                            @can('vendor.view')
                                             <li><a href="{{url('vendor')}}"><i class="fas fa-truck"></i> Vendor</a></li>
-
+                                            @endcan
                                         </ul>
                                     </div>
 
@@ -228,84 +246,133 @@
                                     <div class="col-group col-md-3">
                                         <p class="category-heading">Accounts</p>
                                         <ul class="submenu-item">
-                                            {{-- <li><a href="{{url('narrations')}}"><i class="fas fa-file-alt"></i> Narration</a>
-                        </li> --}}
-                        <li><a href="{{url('warehouse')}}"><i class="fas fa-warehouse"></i> Warehouse</a></li>
-                        <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stock</a></li>
-                        <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfer</a></li>
-                    </ul>
-                </div>
-                <!-- Customers & Sales -->
-                <div class="col-group col-md-3">
-                    <p class="category-heading">Sales & Customers</p>
-                    <ul class="submenu-item">
-                        <li><a href="{{url('sale')}}"><i class="fas fa-receipt"></i> Sales</a></li>
-                        <li><a href="{{url('customers')}}"><i class="fas fa-user"></i> Customer</a></li>
-                        <li><a href="{{url('sales-officers')}}"><i class="fas fa-user-tie"></i> Sales Officer</a></li>
-                        <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zone</a></li>
-                    </ul>
-                </div>
+                                            @can('warehouse.view')
+                                            <li><a href="{{url('warehouse')}}"><i class="fas fa-warehouse"></i> Warehouse</a></li>
+                                            @endcan
+                                            @can('warehouse.stock.view')
+                                            <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stock</a></li>
+                                            @endcan
+                                            @can('stock.transfer.view')
+                                            <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfer</a></li>
+                                            @endcan
+                                        </ul>
+                                    </div>
+                                    <!-- Customers & Sales -->
+                                    <div class="col-group col-md-3">
+                                        <p class="category-heading">Sales & Customers</p>
+                                        <ul class="submenu-item">
+                                            @can('sale.view')
+                                            <li><a href="{{url('sale')}}"><i class="fas fa-receipt"></i> Sales</a></li>
+                                            @endcan
+                                            @can('customer.view')
+                                            <li><a href="{{url('customers')}}"><i class="fas fa-user"></i> Customer</a></li>
+                                            @endcan
+                                            @can('sales.officer.view')
+                                            <li><a href="{{url('sales-officers')}}"><i class="fas fa-user-tie"></i> Sales Officer</a></li>
+                                            @endcan
+                                            @can('zone.view')
+                                            <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zone</a></li>
+                                            @endcan
+                                        </ul>
+                                    </div>
 
-            </div>
-    </div>
-    </li>
+                                </div>
+                            </div>
+                        </li>
+                        @endcan
 
+                        <!-- Vouchers Menu -->
+                        @can('voucher.view')
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="menu_icon feather ft-clipboard"></i>
+                                <span class="menu-title">Vouchers</span>
+                                <i class="menu-arrow"></i>
+                            </a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    @can('chart.of.accounts.view')
+                                    <li><a href="{{ route('view_all') }}"><i class="fa-solid fa-money-bill-wave"></i> Char Of Accounts</a></li>
+                                    @endcan
+                                    @can('narration.view')
+                                    <li><a href="{{ route('narrations.index') }}"><i class="fa-solid fa-money-bill-wave"></i> Narrations</a></li>
+                                    @endcan
+                                    @can('receipts.voucher.view')
+                                    <li><a href="{{ route('all-recepit-vochers') }}"><i class="fa-solid fa-wallet"></i> Receipts Voucher</a></li>
+                                    @endcan
+                                    @can('payment.voucher.view')
+                                    <li><a href="{{ route('all-Payment-vochers') }}"><i class="fa-solid fa-wallet"></i> Payment Voucher</a></li>
+                                    @endcan
+                                    @can('expense.voucher.view')
+                                    <li><a href="{{ route('all-expense-vochers') }}"><i class="fa-solid fa-money-bill-wave"></i> Expense Voucher</a></li>
+                                    @endcan
+                                    @can('journal.voucher.view')
+                                    <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i class="fa-solid fa-wallet"></i> Journal Voucher</a></li>
+                                    @endcan
+                                </ul>
+                            </div>
+                        </li>
+                        @endcan
 
-    <!-- Vouchers Menu -->
-    <li class="nav-item">
-        <a href="#" class="nav-link">
-            <i class="menu_icon feather ft-clipboard"></i>
-            <span class="menu-title">Vouchers</span>
-            <i class="menu-arrow"></i>
-        </a>
-        <div class="submenu">
-            <ul class="submenu-item">
-                <li><a href="{{ route('view_all') }}"><i class="fa-solid fa-money-bill-wave"></i> Char Of Accounts</a></li>
-                <li><a href="{{ route('narrations.index') }}"><i class="fa-solid fa-money-bill-wave"></i> Narrations</a></li>
-                <li><a href="{{ route('all-recepit-vochers') }}"><i class="fa-solid fa-wallet"></i> Receipts Voucher</a></li>
-                <li><a href="{{ route('all-Payment-vochers') }}"><i class="fa-solid fa-wallet"></i> Payment Voucher</a></li>
-                <li><a href="{{ route('all-expense-vochers') }}"><i class="fa-solid fa-money-bill-wave"></i> Expense Voucher</a></li>
-                <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i class="fa-solid fa-wallet"></i> Journal Voucher</a></li>
-                <!-- <li><a href="{{ route('vouchers.index', 'income voucher') }}"><i class="fa-solid fa-wallet"></i> Income Voucher</a></li> -->
-            </ul>
-        </div>
-    </li>
-    <li class="nav-item">
-        <a href="#" class="nav-link">
-            <i class="menu_icon feather ft-clipboard"></i>
-            <span class="menu-title">Reports</span>
-            <i class="menu-arrow"></i>
-        </a>
-        <div class="submenu">
-            <ul class="submenu-item">
-                <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-users"></i> Item Stock Report</a></li>
-                <li><a href="{{ route('report.purchase') }}"><i class="fa-solid fa-users"></i> Purchase Report</a></li>
-                <li><a href="{{ route('report.sale') }}"><i class="fa-solid fa-users"></i> Sale Report</a></li>
-                <li><a href="{{ route('report.customer.ledger') }}"><i class="fa-solid fa-users"></i> Customer Ledger</a></li>
-                 <li><a href="{{route('assembly.report')}}"><i class="fas fa-cogs"></i> Assembly Report</a></li>
-                 <li><a href="{{ route('reports.onhand') }}"><i class="fas fa-warehouse"></i> Inventory On-Hand</a></li>
+                        <!-- Reports Menu -->
+                        @can('report.item.stock.view')
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="menu_icon feather ft-clipboard"></i>
+                                <span class="menu-title">Reports</span>
+                                <i class="menu-arrow"></i>
+                            </a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    @can('report.item.stock.view')
+                                    <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-users"></i> Item Stock Report</a></li>
+                                    @endcan
+                                    @can('report.purchase.view')
+                                    <li><a href="{{ route('report.purchase') }}"><i class="fa-solid fa-users"></i> Purchase Report</a></li>
+                                    @endcan
+                                    @can('report.sale.view')
+                                    <li><a href="{{ route('report.sale') }}"><i class="fa-solid fa-users"></i> Sale Report</a></li>
+                                    @endcan
+                                    @can('report.customer.ledger.view')
+                                    <li><a href="{{ route('report.customer.ledger') }}"><i class="fa-solid fa-users"></i> Customer Ledger</a></li>
+                                    @endcan
+                                    @can('report.assembly.view')
+                                    <li><a href="{{route('assembly.report')}}"><i class="fas fa-cogs"></i> Assembly Report</a></li>
+                                    @endcan
+                                    @can('report.inventory.onhand.view')
+                                    <li><a href="{{ route('reports.onhand') }}"><i class="fas fa-warehouse"></i> Inventory On-Hand</a></li>
+                                    @endcan
+                                </ul>
+                            </div>
+                        </li>
+                        @endcan
 
-
-            </ul>
-        </div>
-    </li>
-    <!-- User Management Menu -->
-   
-    <li class="nav-item">
-        <a href="#" class="nav-link">
-            <i class="menu_icon feather ft-clipboard"></i>
-            <span class="menu-title">User Management</span>
-            <i class="menu-arrow"></i>
-        </a>
-        <div class="submenu">
-            <ul class="submenu-item">
-                <li><a href="{{ route('users.index') }}"><i class="fa-solid fa-users"></i> Users</a></li>
-                <li><a href="{{ route('roles.index') }}"><i class="fa-solid fa-user-lock"></i> Roles</a></li>
-                <li><a href="{{ route('permissions.index') }}"><i class="fa-solid fa-user-lock"></i> Permissions</a></li>
-                <li><a href="{{ route('branch.index') }}"><i class="fa-solid fa-code-branch"></i> Branches</a></li>
-            </ul>
-        </div>
-    </li>
+                        <!-- User Management Menu -->
+                        @can('user.view')
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="menu_icon feather ft-clipboard"></i>
+                                <span class="menu-title">User Management</span>
+                                <i class="menu-arrow"></i>
+                            </a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    @can('user.view')
+                                    <li><a href="{{ route('users.index') }}"><i class="fa-solid fa-users"></i> Users</a></li>
+                                    @endcan
+                                    @can('role.view')
+                                    <li><a href="{{ route('roles.index') }}"><i class="fa-solid fa-user-lock"></i> Roles</a></li>
+                                    @endcan
+                                    @can('permission.view')
+                                    <li><a href="{{ route('permissions.index') }}"><i class="fa-solid fa-user-lock"></i> Permissions</a></li>
+                                    @endcan
+                                    @can('branch.view')
+                                    <li><a href="{{ route('branch.index') }}"><i class="fa-solid fa-code-branch"></i> Branches</a></li>
+                                    @endcan
+                                </ul>
+                            </div>
+                        </li>
+                        @endcan
     
 
     </ul>

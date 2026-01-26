@@ -4,7 +4,9 @@
 <div class="card shadow-sm border-0">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5>🔄 Stock Transfer List</h5>
+        @can('stock.transfer.create')
         <a href="{{ route('stock_transfers.create') }}" class="btn btn-primary btn-sm">New Transfer</a>
+        @endcan
     </div>
     @if(session('error'))
     <div class="alert alert-danger">{{ session('error') }}</div>
