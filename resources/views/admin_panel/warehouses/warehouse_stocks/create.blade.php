@@ -22,7 +22,8 @@
                 <select name="product_id" class="form-control product-select" required style="width:100%">
                     <option value="">Select Product</option>
                     @foreach($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->item_name }}</option>
+                        @php $rem = $remainingByProduct[$product->id] ?? null; @endphp
+                        <option value="{{ $product->id }}">{{ $product->item_name }}{{ $rem !== null ? ' (Remaining: '.$rem.')' : '' }}</option>
                     @endforeach
                 </select>
             </div>

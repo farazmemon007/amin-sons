@@ -3,433 +3,431 @@
 @section('content')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <!-- <style>
-      /* ================= RESPONSIVE SALES UI ================= */
+    <style>
+        /* ================= RESPONSIVE SALES UI ================= */
 
-    /* ITEMS PANEL CONTAINER - NO OVERFLOW */
-    .items-panel {
-      overflow: hidden;
-      width: 100%;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    /* TABLE RESPONSIVE - NO SCROLL */
-    .table-responsive {
-      overflow: visible !important;
-      max-height: none;
-      width: 100%;
-    }
+        /* table container - no scroll on mobile */
+        .table-responsive {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 360px;
+            -webkit-overflow-scrolling: touch;
+        }
 
-    /* base table width - RESPONSIVE */
-    .sales-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+        /* base table width - responsive */
+        .sales-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-    /* 🔹 DISCOUNT COLUMN – THORI SI BARI */
-    .sales-table td.large-col {
-      min-width: 95px;
-      width: 95px;
-      padding: 4px;
-    }
+        /* 🔹 DISCOUNT COLUMN – THORI SI BARI */
+        .sales-table td.large-col {
+            min-width: 95px;
+            padding: 4px;
+        }
 
-    /* 🔹 DISCOUNT LAYOUT */
-    .discount-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      flex-wrap: nowrap;
-    }
+        /* 🔹 DISCOUNT LAYOUT */
+        .discount-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: nowrap;
+        }
 
-    /* 🔹 INPUT – NOT TOO SMALL */
-    .discount-wrapper .discount-value {
-      width: 60px;
-      min-width: 60px;
-      font-size: 0.8rem;
-      padding: 4px 6px;
-    }
+        /* helper text for discount input — absolutely positioned to avoid layout shift */
+        .discount-help {
+            position: absolute;
+            left: 0;
+            bottom: -36px;
+            font-size: 0.85rem;
+            line-height: 1;
+            color: #dc3545; /* Bootstrap danger */
+            background: rgba(255,255,255,0.9);
+            padding: 0 4px;
+            border-radius: 3px;
+        }
 
-    /* 🔹 PLUS ICON – NEAT & SMALL */
-    .discount-wrapper .discount-plus {
-      width: 22px;
-      height: 22px;
-      padding: 0;
-      font-size: 13px;
-      line-height: 1;
-    }
+        /* Further increased row height and cell padding so helper text fits comfortably */
+        .sales-table td {
+            padding-top: 1.2rem;
+            padding-bottom: 1.4rem;
+            vertical-align: middle;
+        }
 
-    /* 🔹 DROPDOWN */
-    .discount-wrapper .discount-type {
-      position: absolute;
-      right: 0;
-      top: 115%;
-      width: 65px;
-      font-size: 0.75rem;
-      z-index: 30;
-    }
+        .sales-table tbody tr {
+            min-height: 86px;
+        }
 
-    /* DESKTOP (1200px+) */
-    @media (min-width: 1200px) {
-      .sales-table {
-        min-width: 1000px;
-        width: 100%;
-      }
-    }
+        /* 🔹 INPUT – NOT TOO SMALL */
+        .discount-wrapper .discount-value {
+            width: 60px;
+            min-width: 60px;
+            font-size: 0.8rem;
+            padding: 4px 6px;
+        }
 
-    /* TABLET (992px - 1199px) */
-    @media (max-width: 1199px) and (min-width: 992px) {
+        /* 🔹 PLUS ICON – NEAT & SMALL */
+        .discount-wrapper .discount-plus {
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            font-size: 13px;
+            line-height: 1;
+        }
 
-      .main-container {
-        max-width: 100%;
-      }
+        /* 🔹 DROPDOWN */
+        .discount-wrapper .discount-type {
+            position: absolute;
+            right: 0;
+            top: 115%;
+            width: 65px;
+            font-size: 0.75rem;
+            z-index: 30;
+        }
 
-      .sales-table {
-        min-width: auto;
-        width: 100%;
-        font-size: 0.85rem;
-      }
+        /* ---------- DESKTOP (>= 1200px) ---------- */
+        @media (min-width: 1200px) {
+            .sales-table {
+                width: 100%;
+            }
+        }
 
-      .sales-table td.product-col {
-        min-width: 130px;
-        width: 130px;
-      }
+        /* ---------- TABLET (992px - 1199px) ---------- */
+        @media (max-width: 1199px) and (min-width: 992px) {
+            .main-container {
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 1rem;
+            }
 
-      .sales-table td.stock-col {
-        min-width: 80px;
-        width: 80px;
-      }
+            .sales-table {
+                width: 100%;
+            }
 
-      .sales-table td.qty-col {
-        /* min-width: 80px; */
-        width: 70px;
-      }
+            .sales-table td.product-col {
+                min-width: 130px;
+            }
 
-      .sales-table td.price-col {
-        min-width: 90px;
-        width: 90px;
-      }
+            .sales-table td.small-col {
+                width: 80px;
+            }
 
-      .sales-table td.discount-col {
-        min-width: 75px;
-        width: 75px;
-      }
+            .sales-table td.medium-col {
+                width: 90px;
+            }
 
-      .sales-table td.amount-col {
-        min-width: 100px;
-        width: 100px;
-      }
+            .minw-350 {
+                min-width: 100%;
+            }
 
-      .minw-350 {
-        min-width: 100%;
-      }
+            .d-flex.gap-3 {
+                flex-direction: column;
+                gap: 1rem !important;
+            }
 
-    }
+            .items-panel {
+                width: 100%;
+                min-width: 0;
+            }
+        }
 
-    /* MOBILE (768px - 991px) */
-    @media (max-width: 991px) {
+        /* ---------- MOBILE (768px - 991px) ---------- */
+        @media (max-width: 991px) {
+            .main-container {
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 1rem;
+            }
 
-      .header-text {
-        font-size: 1rem;
-      }
+            .header-text {
+                font-size: 1rem;
+            }
 
-      .btn {
-        padding: .35rem .5rem;
-      }
+            .btn {
+                padding: .35rem .5rem;
+            }
 
-      /* stack header buttons */
-      .d-flex.justify-content-between.align-items-center {
-        flex-wrap: wrap;
-        gap: 8px;
-      }
+            /* stack header buttons */
+            .d-flex.justify-content-between.align-items-center {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
 
-      /* customer + invoice panel full width */
-      .minw-350 {
-        width: 100%;
-      }
+            /* customer + invoice panel full width */
+            .minw-350 {
+                width: 100%;
+                min-width: 0;
+            }
 
-      /* reduce input font */
-      .form-control,
-      .form-select {
-        font-size: .8rem;
-      }
+            /* reduce input font */
+            .form-control,
+            .form-select {
+                font-size: .8rem;
+            }
 
-      .sales-table {
-        min-width: auto;
-        width: 100%;
-        font-size: 0.75rem;
-      }
+            /* CRITICAL: Make table responsive */
+            .sales-table {
+                width: 100%;
+                font-size: 0.75rem;
+            }
 
-      .sales-table td.product-col {
-        min-width: 100px;
-        width: 100px;
-      }
+            .sales-table td.product-col {
+                min-width: 100px;
+            }
 
-      .sales-table td.stock-col {
-        min-width: 60px;
-        width: 60px;
-      }
+            .sales-table td.small-col {
+                width: 60px;
+            }
 
-      .sales-table td.qty-col {
-        min-width: 60px;
-        width: 60px;
-      }
+            .sales-table td.medium-col {
+                width: 70px;
+            }
 
-      .sales-table td.price-col {
-        min-width: 70px;
-        width: 70px;
-      }
+            .sales-table td.action-col {
+                width: 50px;
+            }
 
-      .sales-table td.discount-col {
-        min-width: 65px;
-        width: 65px;
-      }
+            .d-flex.gap-3 {
+                flex-direction: column;
+                gap: 1rem !important;
+            }
 
-      .sales-table td.amount-col {
-        min-width: 80px;
-        width: 80px;
-      }
+            .items-panel {
+                width: 100%;
+                min-width: 0;
+                flex-grow: 1;
+            }
+        }
 
-    }
+        /* ---------- SMALL PHONES (<= 576px) ---------- */
+        @media (max-width: 576px) {
+            .main-container {
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 0.75rem;
+            }
 
-    /* SMALL PHONES (≤576px) */
-    @media (max-width: 576px) {
+            .sales-table {
+                font-size: 0.65rem;
+                width: 100%;
+            }
 
-      .sales-table {
-        min-width: auto;
-        width: 100%;
-        font-size: 0.65rem;
-      }
+            .table {
+                --bs-table-padding-y: 0.2rem;
+                --bs-table-padding-x: 0.3rem;
+            }
 
-      .sales-table td.product-col {
-        min-width: 90px;
-        width: 90px;
-      }
+            .sales-table td.product-col {
+                min-width: 90px;
+            }
 
-      .sales-table td.stock-col {
-        min-width: 50px;
-        width: 50px;
-      }
+            .sales-table td.small-col {
+                width: 50px;
+            }
 
-      .sales-table td.qty-col {
-        min-width: 50px;
-        width: 50px;
-      }
+            .sales-table td.medium-col {
+                width: 60px;
+            }
 
-      .sales-table td.price-col {
-        min-width: 60px;
-        width: 60px;
-      }
+            .discount-wrapper .discount-value {
+                width: 50px;
+                min-width: 50px;
+            }
 
-      .sales-table td.discount-col {
-        min-width: 55px;
-        width: 55px;
-      }
+            .minw-350 {
+                min-width: 0;
+                width: 100%;
+            }
 
-      .sales-table td.amount-col {
-        min-width: 70px;
-        width: 70px;
-      }
+            .items-panel {
+                width: 100%;
+                min-width: 0;
+            }
 
-      .discount-wrapper .discount-value {
-        min-width: 50px;
-        width: 50px;
-      }
+            .p-3 {
+                padding: 0.75rem !important;
+            }
+        }
+    </style>
+    <style>
+        /* ====== REMOVE SCROLL BAR STYLING ====== */
 
-    }
+        /* Disable ALL scrolling for table */
+        .table-responsive {
+            overflow: auto;
+            max-height: 360px;
+        }
 
-    </style> -->
-    <!-- <style>
+        .items-panel {
+            overflow: visible;
+            width: 100%;
+            min-width: 0;
+        }
+
         .main-container {
-          font-size: .85rem;
-          max-width: 1400px;
+            font-size: .85rem;
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+            width: 100%;
+            max-width: 100%;
         }
 
         .header-text {
-          font-size: 1.1rem;
+            font-size: 1.1rem;
         }
 
         .form-control,
         .form-select,
         .btn {
-          font-size: .85rem;
-          padding: .4rem .6rem;
-          height: auto;
+            font-size: .85rem;
+            padding: .4rem .6rem;
+            height: auto;
         }
 
         .invalid-cell {
-          background-color: #fff5f5 !important;
-          /* soft red */
-          border: 1px solid #e3342f !important;
-          /* red border */
+            background-color: #fff5f5 !important;
+            /* soft red */
+            border: 1px solid #e3342f !important;
+            /* red border */
         }
 
         .invalid-select,
         .invalid-input {
-          border-color: #e3342f !important;
-          box-shadow: none !important;
+            border-color: #e3342f !important;
+            box-shadow: none !important;
         }
 
         .input-readonly {
-          background: #f9fbff;
+            background: #f9fbff;
         }
 
         .section-title {
-          font-weight: 700;
-          color: #6c757d;
-          letter-spacing: .3px;
+            font-weight: 700;
+            color: #6c757d;
+            letter-spacing: .3px;
         }
 
         .table {
-          --bs-table-padding-y: .35rem;
-          --bs-table-padding-x: .5rem;
-          font-size: .85rem;
+            --bs-table-padding-y: .35rem;
+            --bs-table-padding-x: .5rem;
+            font-size: .85rem;
+            width: 100%;
         }
 
         .table thead th {
-          position: sticky;
-          top: 0;
-          z-index: 2;
-          background: #f8f9fa;
-          text-align: center;
-        }
-
-        .table-responsive {
-          max-height: 360px;
-          overflow: auto;
-          border: 1px solid #eee;
-          border-radius: .5rem;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #f8f9fa;
+            text-align: center;
         }
 
         .minw-350 {
-          min-width: 360px;
+            min-width: 360px;
         }
 
         .w-70 {
-          width: 70px
+            width: 70px
         }
 
         .w-90 {
-          width: 90px
+            width: 90px
         }
 
         .w-110 {
-          width: 110px
+            width: 110px
         }
 
         .w-120 {
-          width: 120px
+            width: 120px
         }
 
         .w-150 {
-          width: 150px
+            width: 150px
         }
 
         .totals-card {
-          background: #fcfcfe;
-          border: 1px solid #eee;
-          border-radius: .5rem;
+            background: #fcfcfe;
+            border: 1px solid #eee;
+            border-radius: .5rem;
         }
 
         .totals-card .row+.row {
-          border-top: 1px dashed #e5e7eb;
+            border-top: 1px dashed #e5e7eb;
         }
 
         .badge-soft {
-          background: #eef2ff;
-          color: #3730a3;
+            background: #eef2ff;
+            color: #3730a3;
         }
-
-        /* RESPONSIVE TOTALS & BUTTONS */
-        @media (max-width: 768px) {
-          .row.g-3.mt-3 {
-            flex-direction: column;
-          }
-          .col-lg-7, .col-lg-5 {
-            width: 100%;
-          }
-          .totals-card {
-            padding: 1rem !important;
-          }
-        }
-
-        @media (max-width: 576px) {
-          .d-flex.flex-wrap.gap-2.justify-content-center {
-            flex-direction: column;
-          }
-          .btn-sm {
-            width: 100%;
-            font-size: 0.65rem;
-          }
-          .totals-card .col-7,
-          .totals-card .col-5 {
-            font-size: 0.65rem;
-          }
-          .form-control,
-          .form-select {
-            font-size: 0.65rem;
-          }
-        }
-      </style> -->
+    </style>
     <style>
-        /* ===== Sales Table UI Fix - OPTIMIZED FOR 100% ZOOM ===== */
+        /* ===== Sales Table UI Fix ===== */
         .sales-table td.product-col {
-            min-width: 120px;
+            min-width: 180px;
+        }
+
+        /* .sales-table td.warehouse-col {
+          min-width: 170px;
+      } */
+        .sales-table td.small-col {
+            width: 110px;
+        }
+
+        .sales-table td.medium-col {
             width: 120px;
-            padding: 3px 4px;
-            font-size: 0.8rem;
-        }
-
-        .sales-table td.stock-col {
-            min-width: 60px;
-            width: 60px;
-            text-align: center;
-            padding: 3px 2px;
-            font-size: 0.8rem;
-        }
-
-        .sales-table td.qty-col {
-            min-width: 60px;
-            width: 60px;
-            text-align: center;
-            padding: 3px 2px;
-            font-size: 0.8rem;
-        }
-
-        .sales-table td.price-col {
-            min-width: 70px;
-            width: 70px;
-            text-align: right;
-            padding: 3px 3px;
-            font-size: 0.8rem;
-        }
-
-        .sales-table td.discount-col {
-            min-width: 65px;
-            width: 65px;
-            text-align: right;
-            padding: 3px 3px;
-            font-size: 0.8rem;
-        }
-
-        .sales-table td.amount-col {
-            min-width: 75px;
-            width: 75px;
-            text-align: right;
-            padding: 3px 3px;
-            font-size: 0.8rem;
         }
 
         .sales-table td.action-col {
-            min-width: 35px;
-            width: 35px;
+            width: 100px;
             text-align: center;
-            padding: 3px 2px;
         }
 
         .input-readonly {
             background: #f1f3f5;
             font-weight: 600;
-            color: #495057;
+        }
+
+        /* 🔥 FIX: Items panel overflow + Add Row cut issue */
+        .items-panel {
+            min-width: 0;        /* allow flex shrink */
+            width: 100%;
+            overflow: visible;
+        }
+
+        .items-panel > .d-flex {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            #btnAdd {
+                width: 100%;
+            }
+        }
+
+        /* Select2 dropdown height + scroll */
+        .select2-results__options {
+            max-height: 200px;   /* yahan height set karo */
+            overflow-y: auto;   /* 🔥 scroll enable */
         }
     </style>
 
@@ -438,7 +436,9 @@
     <div class="container-fluid py-4">
         <div class="main-container bg-white border shadow-sm mx-auto p-3 rounded-3">
 
+            {{-- <div id="alertBox" class="alert d-none mb-3" role="alert"></div> --}}
             <div id="alertBox" class="alert d-none mb-3" role="alert"></div>
+
 
             <form id="saleForm" autocomplete="off">
                 @csrf
@@ -466,77 +466,76 @@
                     </div>
                 </div>
 
-                <div class="d-flex gap-3 align-items-start border-bottom py-3" >
+    <div class="d-flex gap-3 align-items-start border-bottom py-3">
                     {{-- LEFT: Invoice & Customer --}}
-                    <div class="p-3 border rounded-3 minw-200">
+                    <div class="p-3 border rounded-3 minw-350">
                         <div class="section-title mb-3">Invoice & Customer</div>
 
                         <div class="mb-2 d-flex align-items-center gap-2">
                             <label class="form-label fw-bold mb-0">Invoice No.</label>
-                            <input type="text" class="form-control" name="Invoice_main"
-                                value="{{ $booking->invoice_no ?? '' }}" readonly>
+                            <input type="text" class="form-control input-readonly" name="Invoice_no" style="width:150px"
+                                value="{{ $booking->invoice_no }}" readonly>
                             <label class="form-label fw-bold mb-0">M. Inv#</label>
                             <input type="text" class="form-control" name="Invoice_main" placeholder="Manual invoice">
                         </div>
 
                         {{-- Type toggle --}}
-                        <div class="mb-2">
-                            <label class="form-label fw-bold mb-1 d-block">Type</label>
-                            <div class="btn-group" role="group" id="partyTypeGroup">
-                                <input type="radio" class="btn-check" name="partyType" id="typeCustomers"
-                                    value="Main Customer" {{ (isset($booking->party_type) && $booking->party_type == 'Main Customer') ? 'checked' : '' }}>
-                                <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Customers</label>
+         <div class="mb-2">
+    <label class="form-label fw-bold mb-1 d-block">Type</label>
+    <div class="btn-group" role="group" id="partyTypeGroup">
 
-                                <input type="radio" class="btn-check" name="partyType" id="typeWalkin"
-                                    value="Walking Customer" {{ (isset($booking->party_type) && $booking->party_type == 'Walking Customer') ? 'checked' : '' }}>
-                                <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Walk-in</label>
+        <input type="radio" class="btn-check" name="partyType" id="typeCustomers"
+            value="Main Customer">
+        <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Customers</label>
 
-                                {{-- <input type="radio" class="btn-check" name="partyType" id="typeVendors" value="vendor">
-                                <label class="btn btn-outline-primary btn-sm" for="typeVendors">Vendors</label> --}}
-                            </div>
-                        </div>
+        <input type="radio" class="btn-check" name="partyType" id="typeWalkin"
+            value="Walking Customer">
+        <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Walk-in</label>
+
+    </div>
+</div>
+
 
                         <!-- CUSTOMER SELECT -->
                         <div class="mb-2">
                             <label class="form-label fw-bold mb-1">Select Customer</label>
-                            <select class="form-select" id="customerSelect" name="customerSelect">
-                                <option value="" selected>-- Select --</option>
+                            <select class="form-select" id="customerSelect">
+                                <option selected disabled>Loading…</option>
                             </select>
                             <small class="text-muted" id="customerCountHint"></small>
                         </div>
                         {{-- ///////////////////// --}}
                         <div class="mb-2">
-                            <label class="form-label fw-bold mb-1">Customer id & name</label>
-                            <input type="hidden" id="customer_id" name="customer_id"
-                                value="{{ $booking->customer_id ?? '' }}">
-                            <input type="text" class="form-control" id="customerDisplay" readonly
-                                value="{{ isset($booking_customer) ? $booking_customer->customer_id . ' -- ' . $booking_customer->customer_name : '' }}">
-
+                            <label class="form-label fw-bold mb-1">Customer</label>
+                            <input type="hidden" id="customer_id" name="customer_id" value="">
+                            <input type="hidden" id="customer" name="customer" value="">
+                            <input type="text" class="form-control" id="customerDisplay" name="customer_display" value="" readonly>
+                            <small class="text-muted" id="customerCountHint"></small>
                         </div>
 
 
                         <div class="mb-2">
                             <label class="form-label fw-bold">Address</label>
-                            <textarea class="form-control" id="address"
-                                name="address">{{ $booking_customer->address ?? '' }}</textarea>
+                            <textarea class="form-control" id="address" name="address"></textarea>
                         </div>
 
                         <div class="mb-2">
                             <label class="form-label fw-bold">Tel</label>
-                            <input type="text" class="form-control" id="tel" name="tel"
-                                value="{{ $booking_customer->mobile ?? '' }}">
+                            <input type="text" class="form-control" id="tel" name="tel">
                         </div>
 
                         <div class="mb-2">
                             <label class="form-label fw-bold">Remarks</label>
-                            <textarea class="form-control" id="remarks"
-                                name="remarks">{{ $booking_customer->status ?? '' }}</textarea>
+                            <textarea class="form-control" id="remarks" name="remarks"></textarea>
                         </div>
 
                         <div class="mb-2 d-flex justify-content-between">
                             <span>Previous Balance</span>
-                            <input type="text" class="form-control w-25 text-end" id="previousBalance"
-                                value="{{ isset($booking_customer->opening_balance) ? number_format($booking_customer->opening_balance, 2) : '0' }}">
+                            <input type="text" class="form-control w-25 text-end" id="previousBalance" value="0">
+                        </div>
+                        <div class="mb-2 d-flex justify-content-between">
+                            <span>Credit Limit</span>
+                            <input type="text" class="form-control w-25 text-end" id="creditLimit" value="0">
                         </div>
 
                         <div class="text-end mt-3">
@@ -545,30 +544,38 @@
                     </div>
 
                     {{-- RIGHT: Items --}}
-                    <div class="flex-grow-1 items-panel">
+                    <div class="flex-grow-1 items-panel" >
+
+                    <!-- <div class="flex-grow-1" style="border:2px solid red;"> -->
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="section-title mb-0">Items</span>
+                            <div class="section-title mb-0">Items</div>
                             <button type="button" class="btn btn-sm btn-primary" id="btnAdd">Add Row</button>
                         </div>
-                        <div class="table-responsive mb-0">
+
+                        <div class="table-responsive">
                             <table class="table table-bordered sales-table mb-0">
+
                                 <thead>
                                     <tr>
-                                        <th class="product-col">Product</th>
-                                        <th class="stock-col">Stock</th>
-                                        <th class="qty-col">Qty</th>
-                                        <th class="price-col">Retail Price</th>
-                                        <th class="discount-col">Disc %</th>
-                                        <th class="discount-col">Disc Amt</th>
-                                        <th class="amount-col">Amount</th>
+                                        <th style="width:10px">Product</th>
+
+                                        <th style="width:10px">Stock</th>
+                                        <th style="width:10px">Qty</th>
+                                        <th style="width:10px">Retail Price</th>
+                                        <th style="width:10px">Disc %</th>
+                                        <th style="width:10px">Disc Amt</th>
+                                        <th style="width:10px">Amount</th>
+
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
+
                                 </tbody>
                                 <tfoot>
                                     <tr>
                                         <td colspan="6" class="text-end fw-bold">Total:</td>
                                         <td class="text-end fw-bold"><span id="totalAmount">0.00</span></td>
+                                        {{-- <td></td> --}}
                                     </tr>
                                 </tfoot>
                             </table>
@@ -619,10 +626,12 @@
                                 <div class="col-5 text-end fw-semibold"><span id="tSub">0.00</span></div>
                             </div>
                             <div class="row py-1">
-                                <div class="col-7">Aditional Discount %</div>
-                                <div class="col-5 text-end">
-                                    <input type="text" class="form-control text-end" name="discountPercent"
-                                        id="discountPercent" value="0" style="max-width:120px; margin-left:auto">
+                                <div class="col-7">Aditional Discount</div>
+                                <div class="col-5 text-end d-flex justify-content-end align-items-center">
+                                    <input type="text" class="form-control text-end me-2" name="discountPercent"
+                                        id="discountPercent" value="0" style="max-width:120px;">
+                                    <button type="button" id="orderDiscountToggle" class="btn btn-outline-secondary btn-sm"
+                                        data-type="pkr">PKR</button>
                                 </div>
                             </div>
                             <div class="row py-1">
@@ -636,6 +645,15 @@
                             <div class="row py-2">
                                 <div class="col-7 fw-bold text-primary">Payable / Total Balance</div>
                                 <div class="col-5 text-end fw-bold text-primary"><span id="tPayable">0.00</span></div>
+                            </div>
+
+                            {{-- Notify Me (optional days) --}}
+                            <div class="row py-2 border-top mt-2">
+                                <div class="col-7 text-muted medium">Notify Me (Days - Optional)</div>
+                                <div class="col-5">
+                                    <input type="number" name="notify_me" id="notify_me"  class="form-control form-control-sm" 
+                                           placeholder="Enter payment Expected days" min="0" max="365" value="">
+                                </div>
                             </div>
 
                             {{-- hidden mirrors for backend --}}
@@ -653,8 +671,8 @@
                     <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button>
 
                     <button type="button" class="btn btn-sm btn-success" id="btnSave">Save</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick=faraz()
-                        id="btnPosted">Posted</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="faraz()" id="btnPosted"
+                        disabled>Posted</button>
 
                     <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">Print</button>
                     <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Print-2</button>
@@ -706,7 +724,6 @@
         </div>
     </div>
 
-
     <!-- Warehouse Selection Modal -->
     <div class="modal fade" id="warehouseModal" tabindex="-1">
         <div class="modal-dialog">
@@ -722,21 +739,60 @@
         </div>
     </div>
 
-
-
-
-
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    {{--faarz memon --}}
+{{-- /////////////////////////////////////// --}}
+<script>
+    let bookingCustomer = @json($booking_customer); // Laravel se JS
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    if (bookingCustomer && bookingCustomer.customer_type) {
+
+        let type = bookingCustomer.customer_type;
+
+        document
+            .querySelector(`input[name="partyType"][value="${type}"]`)
+            ?.setAttribute('checked', true);
+    }
+});
+
+</script>
+{{-- ///////////////////////// --}}
+
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const alertBox = document.getElementById('alertBox');
+        if (!alertBox) return;
+
+        const message = alertBox.innerText.trim();
+        if (message === '') return;
+
+        let icon = 'info';
+        if (alertBox.classList.contains('alert-success')) icon = 'success';
+        if (alertBox.classList.contains('alert-danger')) icon = 'error';
+        if (alertBox.classList.contains('alert-warning')) icon = 'warning';
+
+        Swal.fire({
+            icon: icon,
+            title: 'Message',
+            text: message
+        });
+
+        alertBox.classList.add('d-none');
+    });
+</script>
     <script>
         function faraz() {
             const productIds = [];
             $('#salesTableBody tr').each(function () {
-                const pid = $(this).find('.product').val();
+                const pid = $(this).find('.product-select').val();
                 if (pid) productIds.push(pid);
             });
             if (productIds.length === 0) {
@@ -748,19 +804,40 @@
                 type: 'GET',
                 data: { product_ids: productIds },
                 success: function (res) {
-                    // Build warehouse list
-                    let html = '<table class="table"><thead><tr><th>Name</th><th>Action</th></tr></thead><tbody>';
-                    if (Array.isArray(res) && res.length > 0) {
-                        res.forEach(function (wh) {
-                            html += `<tr>
-                        <td>${wh.name}</td>
-                        <td><button class="btn btn-primary btn-sm select-warehouse" data-id="${wh.id}">Select</button></td>
-                      </tr>`;
-                        });
-                    } else {
-                        html += '<tr><td colspan="2" class="text-center">No warehouses found</td></tr>';
+                    // Build per-product rows with warehouse dropdowns
+                    if (!Array.isArray(res) || res.length === 0) {
+                        $('#warehouseModalBody').html('<div class="text-center">No warehouses available for selected products</div>');
+                        $('#warehouseModal').modal('show');
+                        return;
                     }
+
+                    let html = '<form id="warehouseSelectForm">';
+                    html += '<table class="table table-sm"><thead><tr><th>Product</th><th>Warehouse</th></tr></thead><tbody>';
+                    res.forEach(function (row) {
+                        const pid = row.product_id;
+                        const pname = row.product_name;
+                        const whs = row.warehouses || [];
+
+                        html += `<tr data-product-id="${pid}">`;
+                        html += `<td>${pname}</td>`;
+                        html += `<td>`;
+                        html += `<select class="form-control form-select warehouse-for-product" data-product-id="${pid}">`;
+                        if (whs.length === 0) {
+                            html += `<option value="">No stock in any warehouse</option>`;
+                        } else {
+                            html += `<option value="">Select warehouse</option>`;
+                            whs.forEach(function (w) {
+                                html += `<option value="${w.warehouse_id}" data-qty="${w.quantity}">${w.warehouse_name} (qty: ${w.quantity})</option>`;
+                            });
+                        }
+                        html += `</select>`;
+                        html += `</td>`;
+                        html += `</tr>`;
+                    });
                     html += '</tbody></table>';
+                    html += '<div class="text-end"><button type="button" id="warehouseApplyBtn" class="btn btn-primary">Apply</button></div>';
+                    html += '</form>';
+
                     $('#warehouseModalBody').html(html);
                     $('#warehouseModal').modal('show');
                 },
@@ -771,37 +848,25 @@
             });
         }
 
-        //Handle warehouse select button/
-        $(document).on('click', '.select-warehouse', function () {
-
-            const warehouseId = $(this).data('id');
-            console.log('Selected Warehouse ID:', warehouseId);
-
-            $('#warehouseModal').modal('hide');
-
-            $('#salesTableBody tr').each(function () {
-
-                const productId = $(this).find('.product').val();
-
-                if (productId) {
-
-                    // ✅ pehle variable define karo
-                    const $warehouseInput = $(this).find('.warehouse-id');
-
-                    // ✅ phir value set karo
-                    $warehouseInput
-                        .attr('name', `warehouse_id[${productId}]`)
-                        .val(warehouseId);
-
-                    // ✅ ab console me safely dekh sakte ho
-                    console.log(
-                        'Product ID:', productId,
-                        'Warehouse Value:', $warehouseInput.val()
-                    );
-                }
-
+        // Apply per-product warehouse selections
+        $(document).on('click', '#warehouseApplyBtn', function () {
+            const mapping = {};
+            $('.warehouse-for-product').each(function () {
+                const pid = $(this).data('product-id');
+                const wid = $(this).val();
+                if (pid && wid) mapping[pid] = wid;
             });
 
+            // write mapping into hidden inputs in table rows
+            $('#salesTableBody tr').each(function () {
+                const pid = $(this).find('.product-select').val();
+                if (!pid) return;
+                const wid = mapping[pid] || '';
+                const $warehouseInput = $(this).find('.warehouse-id');
+                $warehouseInput.attr('name', `warehouse_id[${pid}]`).val(wid);
+            });
+
+            $('#warehouseModal').modal('hide');
             ensureSaved().then(postNow);
         });
 
@@ -809,90 +874,31 @@
     </script>
 
 
-    {{-- --}}
-    <script>
-        const BOOKING_ITEMS = @json($bookingItems);
-    </script>
 
+
+
+
+
+
+    {{--faarz memon --}}
     <script>
         let CURRENT_PRODUCT_ROW = null;
 
 
 
-        $(document).on('keydown', function (e) {
-
-            if (e.key === 'F2') {
-                e.preventDefault();
-
-                // jis row me cursor hai wo detect karo
-                CURRENT_PRODUCT_ROW = $(':focus').closest('tr');
-
-                if (!CURRENT_PRODUCT_ROW.length) {
-                    alert('Please focus on a product row first');
-                    return;
-                }
-
-                $('#productSearchInput').val('');
-                $('#productSearchResults').html(
-                    '<tr><td colspan="2" class="text-center">Type to search...</td></tr>'
-                );
-
-                $('#productSearchModal').modal('show');
-
-                setTimeout(() => $('#productSearchInput').focus(), 300);
-            }
-
-        });
+     
 
 
 
 
 
 
+       
 
-        $('#productSearchInput').on('keyup', function () {
-
-            const keyword = $(this).val().trim();
-
-            if (keyword.length < 2) {
-                $('#productSearchResults').html(
-                    '<tr><td colspan="2" class="text-center">Type at least 2 characters</td></tr>'
-                );
-                return;
-            }
-
-            $.get('{{ route("search_products") }}', { q: keyword }, function (products) {
-
-                let html = '';
-
-                if (products.length === 0) {
-                    html = '<tr><td colspan="2" class="text-center">No product found</td></tr>';
-                } else {
-                    products.forEach(p => {
-                        html += `
-                        <tr>
-                            <td>${p.item_name}</td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-primary select-product"
-                                    data-id="${p.id}"
-                                    data-name="${p.item_name}"
-                                    data-stock="${p.stock}"
-                                    data-price="${p.retail_price}">
-                                    Select
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    });
-                }
-
-                $('#productSearchResults').html(html);
-            });
-
-        });
 
 
         $(document).on('click', '.select-product', function () {
+
             if (!CURRENT_PRODUCT_ROW) return;
 
             const id = $(this).data('id');
@@ -901,29 +907,26 @@
             const price = $(this).data('price');
 
             // product dropdown me add + select
-            const $productSelect = CURRENT_PRODUCT_ROW.find('.product');
+            const $productSelect = CURRENT_PRODUCT_ROW.find('.product-select');
 
-            // Remove old options and set new selected product
-            $productSelect.empty().append(`<option value="${id}" selected>${name}</option>`);
+            if ($productSelect.find(`option[value="${id}"]`).length === 0) {
+                $productSelect.append(`<option value="${id}">${name}</option>`);
+            }
+
+            $productSelect.val(id).trigger('change');
 
             // stock & price set
             CURRENT_PRODUCT_ROW.find('.stock').val(stock);
             CURRENT_PRODUCT_ROW.find('.retail-price').val(price);
 
-            // qty focus
-            setTimeout(() => CURRENT_PRODUCT_ROW.find('.sales-qty').focus(), 200);
-
-            // compute row totals
-            computeRow(CURRENT_PRODUCT_ROW);
-            updateGrandTotals();
-            refreshPostedState();
-
             // modal close
             $('#productSearchModal').modal('hide');
+
+            // qty par focus
+            setTimeout(() => {
+                CURRENT_PRODUCT_ROW.find('.sales-qty').focus();
+            }, 200);
         });
-
-
-
     </script>
 
 
@@ -981,54 +984,143 @@
 
     </script>
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     <!--fgdffhjkjkhgkhkh  -->
 
     <script>
+        // 🔥 Store booking data for initialization
+        window.BOOKING_DATA = {
+            booking: @json($booking ?? null),
+            booking_customer: @json($booking_customer ?? null),
+            bookingItems: @json($bookingItems ?? [])
+        };
+
+        /**
+         * 🔥 Populate form with existing booking data
+         */
+        function populateBookingData() {
+            const booking = window.BOOKING_DATA.booking;
+            const customer = window.BOOKING_DATA.booking_customer;
+            const items = window.BOOKING_DATA.bookingItems || [];
+
+            if (!booking) return;
+
+            // 🔹 SET BOOKING ID (hidden field)
+            $('#booking_id').val(booking.id);
+
+            // 🔹 SET PARTY TYPE & CUSTOMER
+            if (booking.party_type) {
+                $(`input[name="partyType"][value="${booking.party_type}"]`).prop('checked', true);
+            }
+
+            if (customer && customer.id) {
+                // Set customer select and trigger change event to load customer details
+                $('#customer_id').val(customer.id);
+                $('#customer').val(customer.id);
+                $('#customerSelect').val(customer.id);
+                
+                // Set customer display
+                $('#customerDisplay').val((customer.customer_name || '') + ' — ' + (customer.customer_id || ''));
+                
+                // 🔥 Manually populate customer details since we already have them
+                $('#address').val(customer.address || '');
+                $('#tel').val(customer.mobile || '');
+                $('#remarks').val(customer.remarks || customer.status || '');
+                // Use closing_balance if available, otherwise fall back to opening_balance
+                const prevBalance = parseFloat(customer.closing_balance || customer.opening_balance || 0);
+                $('#previousBalance').val(prevBalance.toFixed(2));
+                $('#creditLimit').val(parseFloat(customer.credit_limit || 0).toFixed(2));
+            }
+
+            // 🔹 SET INVOICE & OTHER FIELDS
+            $('#Invoice_main').val(booking.manual_invoice || '');
+
+            // 🔹 SET DISCOUNT & TOTALS
+            $('#discountPercent').val(parseFloat(booking.discount_percent || 0).toFixed(2));
+            $('#notify_me').val(booking.notify_me || 0);
+
+            // 🔹 POPULATE ITEMS TABLE
+            if (items && items.length > 0) {
+                // Clear existing rows first
+                $('#salesTableBody').html('');
+                
+                items.forEach((item, idx) => {
+                    // Create row
+                    const $row = $(`
+                        <tr>
+                            <input type="hidden" class="warehouse-id" value="">
+                            <td class="product-col">
+                                <div class="input-group">
+                                    <select class="form-select product-select" name="product_id[]" style="width:100%">
+                                        <option value="${item.product_id}">${item.item_name}</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td class="small-col">
+                                <input type="text" class="form-control stock text-center input-readonly" readonly value="${item.onhand_qty || 0}">
+                            </td>
+                            <td class="small-col">
+                                <input type="text" class="form-control sales-qty text-end" name="sales_qty[]" value="${item.qty || 0}">
+                            </td>
+                            <td class="medium-col">
+                                <input type="text" class="form-control retail-price text-end input-readonly" readonly name="retail_price[]" value="${parseFloat(item.price || 0).toFixed(2)}">
+                            </td>
+                            <td class="large-col">
+                                <div class="discount-wrapper">
+                                    <input type="text" class="form-control discount-value text-end" name="discount_percentage[]" value="${parseFloat(item.discount || 0).toFixed(2)}">
+                                    <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="percent">%</button>
+                                </div>
+                            </td>
+                            <td class="medium-col">
+                                <input type="text" class="form-control discount-amount text-end" name="discount_amount[]" value="${(parseFloat(item.price || 0) * parseFloat(item.qty || 0) * parseFloat(item.discount || 0) / 100).toFixed(2)}">
+                            </td>
+                            <td class="medium-col">
+                                <input type="text" class="form-control sales-amount text-end input-readonly" name="sales_amount[]" readonly value="${parseFloat(item.total || 0).toFixed(2)}">
+                            </td>
+                            <td class="action-col">
+                                <button type="button" class="btn btn-sm btn-outline-danger del-row">&times;</button>
+                            </td>
+                        </tr>
+                    `);
+
+                    $('#salesTableBody').append($row);
+
+                    // Initialize Select2 for this row's product
+                    initProductSelect2($row.find('.product-select'), '/search-products-sale', '/search_products');
+
+                    // Set warehouse if available
+                    if (item.warehouses && item.warehouses.length > 0) {
+                        $row.find('.warehouse-id').val(item.warehouses[0].warehouse_id);
+                    }
+
+                    // Compute row
+                    computeRow($row);
+                });
+
+                // Add one blank row for adding more items
+                addNewRow();
+            }
+
+            // 🔹 RECALCULATE ALL TOTALS
+            updateGrandTotals();
+            refreshPostedState();
+
+            console.log('✅ Booking data populated successfully');
+        }
+
         $(document).ready(function () {
             function init() {
-                if (BOOKING_ITEMS.length > 0) {
-                    $('#salesTableBody').empty();
-                    BOOKING_ITEMS.forEach(item => {
-                        addNewRow(item);
-                    });
-                } else {
-                    addNewRow();
-                }
-                // Load customers with correct type and preselect if editing
-                let partyType = 'Main Customer';
-                let selectedCustomerId = '';
-                @if(isset($booking->party_type))
-                    partyType = @json($booking->party_type);
-                @endif
-                @if(isset($booking->customer_id))
-                    selectedCustomerId = @json($booking->customer_id);
-                @endif
-                loadCustomersByType(partyType, selectedCustomerId);
+                addNewRow();
+                loadCustomersByType('Main Customer', function() {
+                    // After customers are loaded, populate booking data if it exists
+                    if (window.BOOKING_DATA && window.BOOKING_DATA.booking && window.BOOKING_DATA.booking.id) {
+                        populateBookingData();
+                    }
+                });
+                // loadAccountsInto($('.rv-account').first());
                 updateGrandTotals();
                 refreshPostedState();
-                // Prefill customer id & name field if editing
-                @if(isset($booking_customer))
-                    $('#customer_id').val(@json($booking_customer->customer_id . ' -- ' . $booking_customer->customer_name));
-                    $('#address').val(@json($booking_customer->address));
-                    $('#tel').val(@json($booking_customer->mobile));
-                    $('#remarks').val(@json($booking_customer->status));
-                    $('#previousBalance').val((@json(isset($booking_customer->opening_balance) ? number_format($booking_customer->opening_balance, 2) : '0')));
-                @endif
-        }
+            }
+
             init();
             // 🔹 Load customers on page load
             // loadCustomersByType('customer');
@@ -1039,84 +1131,79 @@
 
                 $('#address,#tel,#remarks').val('');
                 $('#previousBalance').val('0');
+                $('#creditLimit').val('0');
                 loadCustomersByType(this.value);
             });
 
             // 🔹 Load customers list
-            // 🔹 Load customers on page load based on selected type
-            function loadCustomersByType(type, selectedId = '') {
+            function loadCustomersByType(type, callback) {
+                //alert('loadCustomersByType CALLED → ' + type);
                 $('#customerSelect')
                     .prop('disabled', true)
                     .html('<option selected disabled>Loading…</option>');
 
                 $.get('{{ route("salecustomers.index") }}', { type: type }, function (data) {
+
                     let html = '<option value="">-- Select --</option>';
-                    let found = false;
+
                     if (data.length > 0) {
                         data.forEach(row => {
-                            let selected = '';
-                            if (selectedId && String(row.id) === String(selectedId)) {
-                                selected = 'selected';
-                                found = true;
-                            }
-                            html += `<option value="${row.id}" ${selected}>${row.customer_id} -- ${row.customer_name}</option>`;
+                            // show customer name first for clarity
+                            const label = (row.customer_name || '(No name)') + ' — ' + (row.customer_id || '');
+                            html += `<option value="${row.id}">` + label + `</option>`;
                         });
                         $('#customerCountHint').text(data.length + ' record(s) found');
                     } else {
                         html += '<option disabled>No record found</option>';
                         $('#customerCountHint').text('No record found');
                     }
+
                     $('#customerSelect').html(html).prop('disabled', false);
-                    // If preselected, trigger change to fill details
-                    if (found && selectedId) {
-                        $('#customerSelect').val(selectedId).trigger('change');
+                    
+                    // 🔥 Call callback after loading is complete
+                    if (callback && typeof callback === 'function') {
+                        callback();
                     }
                 });
             }
 
             // 🔹 When customer selected → load detail
+        $(document).on('change', '#customerSelect', function () {
+    const id = $(this).val();
+    $('#customer_id').val(id);
+    $('#customer').val(id);
+    if (!id) return;
 
+    $.get(
+        '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
+        function (d) {
 
+            // basic customer info
+            $('#address').val(d.address || '');
+            $('#tel').val(d.mobile || '');
+            $('#remarks').val(d.remarks || d.status || '');
+            $('#creditLimit').val(d.credit_limit || '0');
 
-            // 🔹 Clear customer data button
+            // Display selected customer's id + name in the visible field
+            $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
+
+            // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
+            // Fallback to opening_balance if no closing_balance exists
+            let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
+            
+            // show balance (positive / negative as-it-is)
+            $('#previousBalance').val(previousBalance.toFixed(2));
+        }
+    );
+});
+
+            // 🔹 Clear button
             $('#clearCustomerData').on('click', function () {
                 $('#customerSelect').val('');
-                $('#customer_id,#customerDisplay').val('');
+                $('#customer_id, #customer, #customerDisplay').val('');
                 $('#address,#tel,#remarks').val('');
-                $('#previousBalance').val('0.00');
+                $('#previousBalance').val('0');
             });
-
-
-            // 🔹 When customer selected → load detail
-            $(document).on('change', '#customerSelect', function () {
-
-                const id = $(this).val();
-                const text = $(this).find('option:selected').text();
-
-                if (!id) {
-                    $('#customer_id,#customerDisplay').val('');
-                    $('#address,#tel,#remarks').val('');
-                    $('#previousBalance').val('0.00');
-                    return;
-                }
-
-                // ✅ DB ke liye
-                $('#customer_id').val(id);
-
-                // ✅ UI ke liye
-                $('#customerDisplay').val(text);
-
-                $.get(
-                    '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
-                    function (d) {
-                        $('#address').val(d.address || '');
-                        $('#tel').val(d.mobile || '');
-                        $('#remarks').val(d.status || '');
-                        $('#previousBalance').val((+d.opening_balance || 0).toFixed(2));
-                    }
-                );
-            });
-
 
         });
     </script>
@@ -1155,84 +1242,243 @@
 
         function showAlert(type, msg) {
             const el = $('#alertBox');
-            el.removeClass('d-none alert-success alert-danger').addClass('alert-' + type).text(msg);
+            el.removeClass('d-none alert-success alert-danger alert-warning alert-info').addClass('alert-' + type).text(msg);
+            console.log('Showing alert:', msg);
+
+            // Map our types to SweetAlert icons
+            let icon = 'info';
+            if (type === 'success') icon = 'success';
+            else if (type === 'danger' || type === 'error') icon = 'error';
+            else if (type === 'warning') icon = 'warning';
+
+            // Show SweetAlert2 popup with the message
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: icon,
+                    title: icon === 'success' ? 'Success' : (icon === 'error' ? 'Error' : 'Notice'),
+                    text: msg,
+                    timer: 3000,
+                    showConfirmButton: false
+                });
+            }
+
+            // keep the inline alert as a short-lived mirror
             setTimeout(() => el.addClass('d-none'), 2500);
         }
 
-
-
-
-
-        function addNewRow(item = null) {
+        function addNewRow() {
             $('#salesTableBody').append(`
-        <tr class="sale-row align-middle">
-          <!-- PRODUCT -->
-          <!-- hidden warehouse -->
-        <input type="hidden" class="warehouse-id" ">
-          <td class="product-col">
-            <select class="form-select product" name="product_id[]">
-              ${item ? `<option value="${item.product_id}" selected>${item.item_name}</option>` : '<option value="">Select product</option>'}
-            </select>
-          </td>
+      <tr>
+        <!-- hidden warehouse -->
+    <input type="hidden"  class="warehouse-id" >
 
-          <!-- STOCK -->
-          <td class="product-col text-center">
-            <input type="text" class="form-control stock" name="stock[]" readonly
-                   value="${item && typeof item.onhand_qty !== 'undefined' ? item.onhand_qty : ''}" placeholder="Stock">
-            ${item && typeof item.onhand_qty !== 'undefined' && typeof item.qty !== 'undefined' && item.onhand_qty < item.qty ? '<span class="text-danger">Insufficient stock</span>' : ''}
-          </td>
+        <!-- PRODUCT -->
+    <td class="product-col">
+      <div class="input-group">
 
-          <!-- QTY -->
-          <td class="text-center qty-col">
-            <input type="number" class="form-control sales-qty" name="sales_qty[]" min="1" placeholder="Qty" value="${item && typeof item.qty !== 'undefined' ? item.qty : ''}">
-          </td>
 
-          <!-- PRICE -->
-          <td class="text-end product-col">
-            <input type="text" class="form-control retail-price" name="retail_price[]" readonly placeholder="Price" value="${item && typeof item.price !== 'undefined' ? item.price : ''}">
-          </td>
+       <select class="form-select product-select" name="product_id[]" style="width:100%">
+    <option value="">Search product...</option>
+</select>
 
-          <!-- DISCOUNT -->
-          <td class="text-end product-col">
-            <input type="text" class="form-control discount-amount" name="discount_amount[]" placeholder="Discount" value="${item && typeof item.discount !== 'undefined' ? item.discount : ''}">
-          </td>
+      </div>
+    </td>
 
-          <!-- TOTAL -->
-          <td class="text-end product-col">
-            <input type="text" class="form-control sales-amount" name="sales_amount[]" readonly placeholder="Total" value="${item && typeof item.total !== 'undefined' ? item.total : ''}">
-          </td>
+ 
 
-          <!-- DELETE BUTTON -->
-          <td class="text-center">
-            <button type="button" class="btn btn-sm btn-danger del-row" title="Delete Row">
-              <i class="bi bi-trash">X</i>
-            </button>
-          </td>
-        </tr>
-        `);
 
-            const $row = $('#salesTableBody tr:last');
-            // ✅ EDIT MODE PREFILL
-            console.log(item);
-            if (item) {
-                const $productSelect = $row.find('.product');
 
-                // Remove old options if any, add current product
-                $productSelect.empty().append(`<option value="${item.product_id}">${item.item_name}</option>`);
 
-                // ⚡ Force the select to hold the correct value
-                $productSelect.val(item.product_id);
 
-                // Set other fields
-                $row.find('.sales-qty').val(item.qty);
-                $row.find('.retail-price').val(item.price);
-                $row.find('.discount-amount').val(item.discount);
-                $row.find('.sales-amount').val(item.total);
-            }
+        <!-- STOCK -->
+        <td class="small-col">
+          <input type="text"  class="form-control stock text-center input-readonly" readonly>
+        </td>
+
+
+
+        <!-- QTY -->
+        <td class="small-col">
+          <input type="text" class="form-control sales-qty text-end" id="sales-qty" name="sales_qty[]">
+        </td>
+
+        <!-- RETAIL PRICE -->
+        <td class="medium-col">
+          <input type="text" id="retail-price" class="form-control retail-price text-end input-readonly" value="0" readonly name="retail_price[]">
+        </td>
+
+    <!-- DISCOUNT -->
+    <!-- DISCOUNT % / PKR -->
+    <td class="large-col">
+      <div class="discount-wrapper">
+        <input type="text"
+               class="form-control discount-value text-end"
+               placeholder="" name="discount_percentage[]" >
+
+        <button type="button"
+                class="btn btn-outline-secondary discount-toggle"
+                data-type="percent">%</button>
+      </div>
+    </td>
+
+
+
+        <!-- DISCOUNT AMOUNT -->
+        <td class="medium-col">
+          <input type="text" class="form-control discount-amount text-end" name="discount_amount[]">
+        </td>
+
+        <!-- NET AMOUNT -->
+        <td class="medium-col">
+          <input type="text" class="form-control sales-amount text-end input-readonly" name="sales_amount[]" value="0" readonly>
+        </td>
+
+        <!-- ACTION -->
+        <td class="action-col">
+          <button type="button" class="btn btn-sm btn-outline-danger del-row">&times;</button>
+        </td>
+      </tr>
+      `);
+
+                        // initialize select2 on the newly appended product-select
+                        initProductSelect2('#salesTableBody tr:last-child .product-select', '/search-products-sale', '/search_products');
+
         }
 
 
+// $(document).ready(function () {
 
+//     let last_id = 1;
+
+//     $('.product-select').select2();
+
+//     // Infinite scroll and product load
+//     $('.product-select').on('select2:open', function () {
+//         let selectEl = this;   // 🔥 VERY IMPORTANT
+//         $.get('/search-products-sale', {
+//             last_id: last_id
+//         }, function (res) {
+//             // console.log('Products loaded:', res);
+//             res.products.forEach(p => {
+
+//  $(document).on('select2:select', '.product-select', function (e) {
+
+//         const $row = $(this).closest('tr');
+//         // Use the actual <option> element for data attributes
+            
+//             const $option = $(e.params.data.element);
+//             // console.log("option",$option);
+//            // console.log("row",$row);
+//             const stock = $option.data('stock') || '';
+//            // console.log("stock",stock);
+//         const price = $option.data('price') || '';
+//         $row.find('.stock').val(stock);
+//         $row.find('.retail-price').val(price);
+//     });
+
+
+
+
+//                 // If option not already present, add it with data attributes
+//                 if (!$(selectEl).find('option[value="' + p.id + '"]').length) {
+
+//                     let option = new Option(p.item_name, p.id, false, false);
+//                     // Attach data attributes for later use
+                    
+//                     $(option).attr({
+//                         'data-id': p.id,
+//                         'data-name': p.item_name,
+//                         'data-stock': p.stock,
+//                         'data-price': p.retail_price
+//                     });
+//                     selectEl.appendChild(option);
+//                 }
+//             });
+//             // 🔥 Select2 refresh
+//             $(selectEl).trigger('change');
+//             // next request ke liye
+//             last_id = res.last_id;
+//         });
+//     });
+// });
+    // When a product is selected, fill related fields in the same row
+    // $(document).on('select2:select', '.product-select', function (e) {
+
+    //     const $row = $(this).closest('tr');
+    //     // Use the actual <option> element for data attributes
+            
+    //         const $option = $(e.params.data.element);
+    //         console.log("option",$option);
+    //         console.log("row",$row);
+    //         const stock = $option.data('stock') || '';
+    //         console.log("stock",stock);
+    //     const price = $option.data('price') || '';
+    //     $row.find('.stock').val(stock);
+    //     $row.find('.retail-price').val(price);
+    // });
+
+
+
+
+
+       
+
+        // let test = document.querySelectorAll('.product_field');
+        // console.log(test);
+
+// let last_id = 0;
+// function stackproduct(selectEl) {
+//     // alert(selectEl);
+//     // agar already loaded hai to dobara call na ho
+//     if (selectEl.dataset.loaded === "1") {
+//         return;
+//     }
+//     fetchProducts(selectEl, 0);
+// }
+
+// function fetchProducts(selectEl, startId) {
+//     fetch(`/search-products-sale?last_id=${startId}`)
+//         .then(response => response.json())
+//         .then(res => {
+//             if (startId === 0) {
+//                 // Remove all except first option
+//                 selectEl.options.length = 1;
+//             }
+//             res.products.forEach(p => {
+//                 let option = document.createElement('option');
+//                 option.value = p.id;
+//                 option.text  = p.item_name;
+//                 option.classList.add('product_field')
+//                 selectEl.appendChild(option);
+//             });
+//             // Save last_id for next fetch
+//             selectEl.dataset.lastId = res.last_id;
+            
+//             // Mark as loaded if no more
+//             if (!res.has_more) {
+//                 selectEl.dataset.loaded = "1";
+//             } else {
+//                 selectEl.dataset.loaded = "0";
+//             }
+//         })
+//         .catch(err => console.error(err));
+// }
+
+// // Infinite scroll for select
+// document.addEventListener('DOMContentLoaded', function() {
+//     document.addEventListener('scroll', function(e) {
+//         const el = e.target;
+//         if (el.classList && el.classList.contains('product')) {
+//             // Check if near bottom
+//             if (el.scrollTop + el.clientHeight >= el.scrollHeight - 5) {
+//                 if (el.dataset.loaded !== "1") {
+//                     const nextId = el.dataset.lastId || 0;
+//                     fetchProducts(el, nextId);
+//                 }
+//             }
+//         }
+//     }, true);
+// });
 
         // discunt % field
         $(document).on('click', '.discount-toggle', function () {
@@ -1262,7 +1508,7 @@
         function canPost() {
             let ok = false;
             $('#salesTableBody tr').each(function () {
-                const pid = $(this).find('.product').val();
+                const pid = $(this).find('.product-select').val();
                 const qty = parseFloat($(this).find('.sales-qty').val() || '0');
                 if (pid && qty > 0) {
                     ok = true;
@@ -1274,7 +1520,7 @@
 
         function refreshPostedState() {
             const state = canPost();
-            $(' #btnHeaderPosted').prop('disabled', !state);
+            $('#btnPosted, #btnHeaderPosted').prop('disabled', !state);
         }
 
         /* ---------- SAVE/POST ---------- */
@@ -1282,18 +1528,29 @@
             return $('#saleForm').serialize();
         }
 
-
         function ensureSaved() {
+            console.log('ensureSaved called');
             return new Promise(function (resolve, reject) {
 
                 const existing = $('#booking_id').val();
                 if (existing) return resolve(existing);
 
+                // Recompute every row so discount % and discount amount fields are populated
+                $('#salesTableBody tr').each(function () {
+                    try {
+                        computeRow($(this));
+                    } catch (e) {
+                        // continue if computeRow fails for a row
+                        console.warn('computeRow error', e);
+                    }
+                });
+                updateGrandTotals();
+
                 // 🔴 TESTING: form ka data console me print
                 const formData = serializeForm();
                 console.log('🚀 DATA GOING TO sale.ajax.save:', formData);
-                // abbasmemon
-                $('#btnSave, #btnHeaderPosted, #btnPosted ').prop('disabled', true);
+
+                $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', true);
 
                 $.post('{{ route("sale.ajax.save") }}', formData)
 
@@ -1316,7 +1573,27 @@
                         console.error('❌ AJAX ERROR RESPONSE:', xhr.responseText);
 
                         $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
-                        showAlert('danger', 'Save error');
+
+                        // Attempt to extract a useful message from the server response
+                        let msg = 'Save error';
+                        try {
+                            // Prefer parsed JSON if available
+                            const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+                            if (json && (json.message || json.msg)) {
+                                msg = json.message || json.msg;
+                            } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                                // fallback: take first non-empty line
+                                msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                            }
+                        } catch (err) {
+                            if (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) {
+                                msg = xhr.responseJSON.message || xhr.responseJSON.msg;
+                            } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                                msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                            }
+                        }
+
+                        showAlert('danger', msg);
                         reject(xhr);
                     });
             });
@@ -1329,9 +1606,20 @@
 
             let data = $('#saleForm').serializeArray();
 
+            // Validate receipts before posting — if invalid, show message and abort
+            const receiptValidation = validateReceipts();
+            // If there are any receipt amounts > 0 but receipts are invalid, prevent post
+            let hasReceiptAmount = false;
+            $('.rv-amount').each(function() { if (toNum($(this).val()) > 0) hasReceiptAmount = true; });
+            if (hasReceiptAmount && !receiptValidation.ok) {
+                showAlert('danger', receiptValidation.firstMessage || 'Please fix receipt rows before posting');
+                if (receiptValidation.firstEl) receiptValidation.firstEl.focus();
+                return;
+            }
+
             // warehouse_id[product_id] build karo
             $('#salesTableBody tr').each(function () {
-                let productId = $(this).find('.product').val();
+                let productId = $(this).find('.product-select').val();
                 let warehouseId = $(this).find('.warehouse-id').val();
 
                 if (productId && warehouseId) {
@@ -1346,6 +1634,14 @@
             data.push({
                 name: 'booking_id',
                 value: bookingId
+            });
+
+            // Include receipt rows (if any) so ajaxPost can create/process them
+            $('.rv-account').each(function (i) {
+                const acc = $(this).val();
+                const amt = $('.rv-amount').eq(i).val() || '';
+                data.push({ name: 'receipt_account_id[]', value: acc });
+                data.push({ name: 'receipt_amount[]', value: amt });
             });
 
             // 🔹 GET request ke liye data query string me convert karo
@@ -1375,59 +1671,27 @@
                 .fail(function (xhr) {
                     console.error('Server Error:', xhr.responseText);
                     $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
-                    showAlert('danger', 'Server error while posting');
+
+                    // Try to extract a useful message from server JSON or responseText
+                    let msg = 'Server error while posting';
+                    try {
+                        const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+                        if (json && (json.message || json.msg)) {
+                            msg = json.message || json.msg;
+                        } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                            msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                        }
+                    } catch (err) {
+                        if (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) {
+                            msg = xhr.responseJSON.message || xhr.responseJSON.msg;
+                        } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
+                            msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
+                        }
+                    }
+
+                    showAlert('danger', msg);
                 });
         }
-
-
-        // function postNow(warehouseId) {
-        //   // alert(warehouseId);
-        //   let bookingId = $('#booking_id').val();
-
-        //   if (!warehouseId) {
-        //     showAlert('danger', 'Please select warehouse');
-        //     return;
-        //   }
-
-        //   function doPost(id) {
-        //     // 🔒 disable buttons while posting
-        //     $('#btnPosted, #btnHeaderPosted').prop('disabled', true);
-        // $.post('', {
-        //         _token: $('input[name="_token"]').val(),
-        //         booking_id: id,
-        //         warehouse_id: warehouseId
-        //     })
-        //     .done(function(res) {
-        //         console.log(res)
-        //         if (res && res.ok) {
-        //             showAlert('success', 'Posted successfully');
-        //             $('#btnPosted, #btnHeaderPosted, #btnSave').prop('disabled', true);
-        //             if (res.invoice_url) {
-        //                 window.open(res.invoice_url, '_blank');
-        //             }
-        //         } else {
-        //             $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
-        //             showAlert('danger', res.msg || 'Post failed');
-        //         }
-        //     })
-        //     .fail(function(xhr) {
-        //         console.error(xhr.responseText);
-        //         $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
-        //         showAlert('danger', 'Server error while posting');
-        //     });
-        //   }
-
-        //   if (!bookingId) {
-        //     // Save first, then post
-        //     ensureSaved().then(function(id) {
-        //       doPost(id);
-        //     }).catch(function() {
-        //       showAlert('danger', 'Please fix errors before posting.');
-        //     });
-        //   } else {
-        //     doPost(bookingId);
-        //   }
-        // }
 
 
         /* ---------- Events top buttons ---------- */
@@ -1475,57 +1739,124 @@
             });
         });
 
+        //     $('#btnPosted, #btnHeaderPosted').on('click', function () {
+        //     ensureSaved().faraz().then(postNow);
+        // });
 
 
 
         /* ---------- Row compute ---------- */
-        function toNum(v) {
-            return parseFloat(v || 0) || 0;
-        }
-        function computeRow($row) {
+  function toNum(v) {
+    return parseFloat(v || 0) || 0;
+}
 
-            const rp = toNum($row.find('.retail-price').val());
-            const qty = toNum($row.find('.sales-qty').val());
+function computeRow($row, manualAmount = false, formatDiscount = true) {
 
-            const discValue = toNum($row.find('.discount-value').val());
-            const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
+    const rp = toNum($row.find('.retail-price').val());
+    // console.log("retail price",rp);
+    const qty = toNum($row.find('.sales-qty').val());
+// console.log("qty:",qty);
 
-            let dam = toNum($row.find('.discount-amount').val());
+    // 🔹 Safe discount value (never negative)
+    const $discInput = $row.find('.discount-value');
+    const rawDisc = Math.max(0, $discInput.val());
+    let discValue = rawDisc;
 
-            // 🔹 GROSS
-            const gross = rp * qty;
+    const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
+     console.log("percent discount:",discType) ;
+    let dam = toNum($row.find('.discount-amount').val());
 
-            /* ===== AUTO DISCOUNT ===== */
-            if (discValue > 0) {
+    // 🔹 GROSS
+    const gross = rp * qty;
 
-                if (discType === 'percent') {
-                    dam = (gross * discValue) / 100;   // % from retail
+    /* ===== AUTO DISCOUNT ===== */
+    if (discValue > 0) {
+
+        if (discType === 'percent') {
+           
+            // If user entered >100%, mark invalid and show helper text
+            const $help = $row.find('.discount-help');
+                if (rawDisc > 101) {
+                markInvalid($discInput);
+                const $wrapper = $row.find('.discount-wrapper');
+                if ($wrapper.find('.discount-help').length === 0) {
+                    $wrapper.append('<div class="discount-help">Discount never be <= 100%</div>');
                 } else {
-                    dam = discValue * qty;            // PKR × qty
+                    $wrapper.find('.discount-help').text('Discount must be <= 100%');
                 }
-
-                $row.find('.discount-amount').val(dam.toFixed(2));
-
+                // use 100 for calculation but keep visual warning
+                discValue = 100;
             } else {
-                // ✅ NEW FEATURE → jab disc% / PKR empty ya 0 ho
-                dam = 0;
-                $row.find('.discount-amount').val('0.00');
+                
+                clearInvalid($discInput);
+                $row.find('.discount-help').remove();
+                discValue = Math.min(discValue, 100);
             }
 
-            /* ===== NET ===== */
-            const net = Math.max(0, gross - dam);
-            $row.find('.sales-amount').val(net.toFixed(2));
+            dam = (gross * discValue) / 100;   // % from retail
+
+        } else {
+            // PKR discount should not exceed gross per row
+            const totalPKR = discValue * qty;
+            if (totalPKR > gross) {
+                markInvalid($discInput);
+                const $wrapper = $row.find('.discount-wrapper');
+                if ($wrapper.find('.discount-help').length === 0) {
+                    $wrapper.append('<div class="discount-help">Discount cannot exceed row gross</div>');
+                } else {
+                    $wrapper.find('.discount-help').text('Discount cannot exceed row gross');
+                }
+                // cap discount amount to gross but keep user's per-unit input unchanged
+                dam = gross;
+            } else {
+                clearInvalid($discInput);
+                $row.find('.discount-help').remove();
+                dam = totalPKR;
+            }
         }
 
+        if (formatDiscount) {
+            $discInput.val(discValue.toFixed(2));
+        }
+        $row.find('.discount-amount').val(dam.toFixed(2));
+
+    } else {
+        // 🔹 Discount empty or 0
+        dam = 0;
+        $row.find('.discount-amount').val('0.00');
+        // clear any helper/invalid state when input is empty
+        clearInvalid($discInput);
+        $row.find('.discount-help').remove();
+        $row.find('.discount-value').val('');
+    }
+
+    /* ===== NET ===== */
+    const net = Math.max(0, gross - dam);
+    $row.find('.sales-amount').val(net.toFixed(2));
+}
 
 
 
 
 
 
-        $(document).on('input', '.sales-qty, .discount-value', function () {
+
+        $(document).on('input', '.sales-qty, .discount-value', function (e) {
             const $row = $(this).closest('tr');
-            computeRow($row);
+            // If typing in discount input, do not reformat it while typing
+            if ($(this).hasClass('discount-value')) {
+                computeRow($row, false, false); // manualAmount=false, formatDiscount=false
+            } else {
+                computeRow($row);
+            }
+            updateGrandTotals();
+            refreshPostedState();
+        });
+
+        // On blur of discount input, format and validate
+        $(document).on('blur', '.discount-value', function () {
+            const $row = $(this).closest('tr');
+            computeRow($row, false, true); // now format the discount input
             updateGrandTotals();
             refreshPostedState();
         });
@@ -1574,8 +1905,15 @@
             });
 
             // ===== ORDER LEVEL =====
-            const orderPct = toNum($('#discountPercent').val());
-            const orderDisc = (tNet * orderPct) / 100;
+            const orderRaw = toNum($('#discountPercent').val());
+            const orderType = $('#orderDiscountToggle').data('type') || 'percent'; // percent | pkr
+            let orderDisc = 0;
+            if (orderType === 'percent') {
+                orderDisc = (tNet * orderRaw) / 100;
+            } else {
+                // treat input as absolute PKR amount
+                orderDisc = orderRaw;
+            }
 
             const prev = toNum($('#previousBalance').val());
             const receipts = toNum($('#receiptsTotal').text());
@@ -1601,7 +1939,18 @@
             $('#totalBalance').val(payable.toFixed(2));
         }
 
+        // recalc when discount/toggle/previous balance change
         $(document).on('input', '#previousBalance, #discountPercent', updateGrandTotals);
+        $(document).on('click', '#orderDiscountToggle', function () {
+            const $btn = $(this);
+            const current = $btn.data('type');
+            if (current === 'percent') {
+                $btn.data('type', 'pkr').text('PKR');
+            } else {
+                $btn.data('type', 'percent').text('%');
+            }
+            updateGrandTotals();
+        });
 
         /* ---------- Row auto-add ---------- */
         $('#salesTableBody').on('input', '.sales-qty', function () {
@@ -1666,6 +2015,9 @@
             });
             $('#receiptsTotal').text(sum.toFixed(2)); // Display total in the respective element
             updateGrandTotals(); // Update other totals if needed
+            updatePostButtonState();
+            // Live-validate receipt rows and highlight invalid fields
+            validateReceipts();
         }
 
         $('#btnAddRV').on('click', function () {
@@ -1681,6 +2033,8 @@
             $('#rvWrapper').append($row);
 
             loadAccountsInto($row.find('.rv-account'));
+            // keep post button state updated when a new row is added
+            updatePostButtonState();
         });
 
 
@@ -1695,10 +2049,20 @@
             $('.rv-account').each(function () {
                 loadAccountsInto($(this));
             });
+            updatePostButtonState();
         });
 
         // Recompute total receipt amounts when input changes
         $(document).on('input', '.rv-amount', recomputeReceipts);
+
+        // Update post button and validate when account selection changes
+        // Also refresh other account dropdowns so the selected account is
+        // removed from the other rows (prevents selecting same account twice).
+        $(document).on('change', '.rv-account', function() {
+            updatePostButtonState();
+            validateReceipts();
+            $('.rv-account').each(function () { loadAccountsInto($(this)); });
+        });
 
         /* ---------- init ---------- */
         // function init() {
@@ -1740,8 +2104,10 @@
             $('#salesTableBody tr').each(function (rowIndex) {
                 const $row = $(this);
                 // const $wh = $row.find('.warehouse');
-                const $prod = $row.find('.product');
+                const $prod = $row.find('.product-select');
                 const $qty = $row.find('.sales-qty');
+                // console.log("$prod",$prod);
+                // console.log("$qty",$qty);
 
                 // Warehouse
                 // if (!$wh.val()) {
@@ -1810,6 +2176,23 @@
                 firstMessage,
                 firstEl
             };
+        }
+
+        // Enable/disable Post button depending on receipts validity and row validation
+        function updatePostButtonState() {
+            const postBtn = $('#btnPosted');
+            const headerPostBtn = $('#btnHeaderPosted');
+
+            const rowsValid = validateRows().ok;
+            const receiptsValid = validateReceipts().ok;
+
+            // If there are any receipt amount inputs with value > 0, require receiptsValid
+            let hasReceiptAmount = false;
+            $('.rv-amount').each(function() { if (toNum($(this).val()) > 0) hasReceiptAmount = true; });
+
+            const enable = rowsValid && (!hasReceiptAmount || receiptsValid);
+            postBtn.prop('disabled', !enable);
+            headerPostBtn.prop('disabled', !enable);
         }
 
         /**
@@ -1894,7 +2277,7 @@
 
         /* ---------- Hook validation into Save / Post ---------- */
 
-        // override Save button to validate first
+        // override Save button to validate first and check credit limit
         $('#btnSave').off('click').on('click', function () {
             cleanupEmptyRows(); // remove empty rows
             updateGrandTotals(); // recompute totals after cleanup
@@ -1911,22 +2294,48 @@
                 return;
             }
 
-            // proceed to save
-            ensureSaved();
+            // CHECK CREDIT LIMIT BEFORE SAVING
+            const cust = $('#customerSelect').val();
+            const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+            if (cust) {
+                $.get('/get-customer/' + cust)
+                    .done(function (res) {
+                        const credit = parseFloat(res.credit_limit || 0) || 0;
+                        if (credit > 0 && payable > credit) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit limit exceeded',
+                                html: `Customer credit limit is <b>${credit.toFixed(2)}</b>.<br>Payable amount is <b>${payable.toFixed(2)}</b>.`,
+                            });
+                            return;
+                        }
+                        // proceed to save
+                        ensureSaved();
+                    })
+                    .fail(function () {
+                        // If customer lookup fails, proceed with save but log
+                        ensureSaved();
+                    });
+            } else {
+                ensureSaved();
+            }
         });
 
 
         // override Post buttons to validate first
         $('#btnHeaderPosted, #btnPosted').off('click').on('click', function () {
-
             cleanupEmptyRows();
             updateGrandTotals();
             refreshPostedState();
-
+            // console.log('👉 Post button clicked');
             const v = validateFormAll();
             if (!v.ok) {
                 showAlert('danger', v.message);
-                if (v.el) v.el.focus();
+                if (v.el && v.el.length) {
+                    v.el.focus();
+                    if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+                }
                 return;
             }
 
@@ -1935,15 +2344,16 @@
                 return;
             }
 
-            // 🔥 OPEN CONFIRMATION MODAL
-            $('#postConfirmModal').modal('show');
+            ensureSaved().then(function () {
+                console.log('✅ ensureSaved resolved');
+                //postNow();
+            });
         });
 
 
-
         function isRowMeaningful($row) {
-            const prod = $row.find('.product').val();
-            // const wh = $row.find('.warehouse').val();
+            const prod = $row.find('.product-select').val();
+            const wh = $row.find('.warehouse-id').val();
             const qty = parseFloat($row.find('.sales-qty').val() || '0') || 0;
             const discPct = parseFloat($row.find('.discount-value.discount-percent').val() || '0') || 0;
             const discAmt = parseFloat($row.find('.discount-amount').val() || '0') || 0;
@@ -1955,15 +2365,12 @@
         function cleanupEmptyRows() {
             $('#salesTableBody tr').each(function () {
                 const $r = $(this);
-                const prod = $r.find('.product').val();
+                const prod = $r.find('.product-select').val();
                 // const wh = $r.find('.warehouse').val();
                 const qty = parseFloat($r.find('.sales-qty').val() || '0') || 0;
 
-                // Remove row when qty is zero or (product empty AND warehouse empty)
-                // We want to remove:
-                //  - rows where qty <= 0 (user didn't enter qty) because they are meaningless,
-                //  - or rows that are fully empty.
-                if ((qty <= 0) || ((!prod || prod === '') && (!wh || wh === ''))) {
+                // Remove row when qty is zero or product is empty
+                if ((qty <= 0) || (!prod || prod === '')) {
                     // ensure we keep at least one row in UI
                     if ($('#salesTableBody tr').length > 1) {
                         $r.remove();
@@ -1980,5 +2387,91 @@
             // ensure at least one blank row exists
             if ($('#salesTableBody tr').length === 0) addNewRow();
         }
+    </script>
+
+    <script>
+        // Product dropdown infinite scroll with Select2
+    function initProductSelect2(
+    selector = '.product-select',
+    url = '/search-products-sale',
+    searchUrl = '/search_products'
+) {
+    $(selector).select2({
+        ajax: {
+            transport: function (params, success, failure) {
+                // prefer params.data.term which Select2 populates
+                let term = (params.data && (params.data.term || params.data.q)) || '';
+                let page = (params.data && (params.data.page || 1)) || 1;
+                let ajaxUrl = term && term.length > 0 ? searchUrl : url;
+                $.ajax({
+                    url: ajaxUrl,
+                    data: { q: term, page: page },
+                    dataType: 'json',
+                    success: function (data) { success(data); },
+                    error: failure
+                });
+            },
+            delay: 250,
+            data: function (params) {
+                return {
+                    q: params.term || '',
+                    page: params.page || 1
+                };
+            },
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                let results = [];
+                if (Array.isArray(data)) {
+                    results = data.map(function (p) {
+                        return { id: p.id, text: p.item_name, stock: p.stock, price: p.retail_price || p.price };
+                    });
+                    return { results: results, pagination: { more: false } };
+                }
+
+                results = (data.products || []).map(function (p) {
+                    return { id: p.id, text: p.item_name, stock: p.stock, price: p.retail_price || p.price };
+                });
+
+                return {
+                    results: results,
+                    pagination: { more: !!data.has_more }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 0,
+        placeholder: 'Search product...',
+        allowClear: true,
+        width: 'resolve'
+    });
+}
+
+
+
+$(document).ready(function () {
+    initProductSelect2('.product-select', '/search-products-sale', '/search_products');
+    // Log selected product id on selection
+    $(document).on('select2:select', '.product-select', function (e) {
+        if (e && e.params && e.params.data && e.params.data.id) {
+            $.get('/get-product-details/' + e.params.data.id, function (data) {
+                const $row = $(e.target).closest('tr');
+                // console.log('Product details loaded:', data);
+                if (data && data.product) {
+                    // price field may be `price` or `retail_price` depending on model
+                    const price = parseFloat(data.product.retail_price ?? data.product.price ?? 0).toFixed(2);
+                    const stockQty = (data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0;
+                    $row.find('.retail-price').val(price);
+                    $row.find('.stock').val(stockQty);
+                    // set the underlying select value (product-select) so validation/serialize picks it up
+                    $row.find('.product-select').val(data.product.id).trigger('change');
+                    // Recompute row and totals
+                    computeRow($row);
+                    updateGrandTotals();
+                    refreshPostedState();
+                }
+            });
+        }
+    });
+});
     </script>
 @endsection

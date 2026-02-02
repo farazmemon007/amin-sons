@@ -143,6 +143,9 @@
                *===========================-->
                     <div class="nav_wrapper_main d-flex align-items-center justify-content-between flex-grow-1">
                         <ul class="navbar-nav navbar-nav-right mr-0 ml-auto">
+                            <!-- Notification Icon -->
+                            @include('components.notification-icon')
+                            
                             <li class="nav-item nav-profile dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
                                     <span class="profile_name">{{ Auth::user()->name }} <i class="feather ft-chevron-down"></i></span>
@@ -273,6 +276,14 @@
                                             @can('zone.view')
                                             <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zone</a></li>
                                             @endcan
+                                        </ul>
+                                    </div>
+
+                                    <!-- Notifications & Alerts -->
+                                    <div class="col-group col-md-3">
+                                        <p class="category-heading">Notifications & Alerts</p>
+                                        <ul class="submenu-item">
+                                            <li><a href="{{route('notifications.index')}}"><i class="fas fa-bell"></i> All Notifications</a></li>
                                         </ul>
                                     </div>
 

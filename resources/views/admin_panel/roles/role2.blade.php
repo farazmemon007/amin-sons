@@ -771,12 +771,12 @@
                         <h1 class="page-title"><i class="fa fa-user-shield"></i> Role Management</h1>
                         <p class="page-subtitle">Manage user roles and their permissions</p>
                     </div>
-                    {{-- @can('roles.create') --}}
+                    @can('roles.create')
                         <button type="button" class="btn btn-create-role" data-bs-toggle="modal" data-bs-target="#roleModal"
                             id="createRoleBtn">
                             <i class="fa fa-plus"></i> Create Role
                         </button>
-                    {{-- @endcan --}}
+                    @endcan
                 </div>
 
                 <!-- Stats Row -->
@@ -837,20 +837,20 @@
                                         </div>
                                     </div>
                                     <div class="role-actions">
-                                        {{-- @can('roles.edit') --}}
+                                        @can('roles.edit')
                                             <button class="btn btn-edit-perm edit-permission-btn" title="Edit Permissions">
                                                 <i class="fa fa-key"></i>
                                             </button>
                                             <button class="btn btn-edit edit-role-btn" title="Edit Role">
                                                 <i class="fa fa-pen"></i>
                                             </button>
-                                        {{-- @endcan --}}
-                                        {{-- @can('roles.delete') --}}
+                                        @endcan
+                                        @can('roles.delete')
                                             <button class="btn btn-delete delete-role-btn" data-id="{{ $role->id }}"
                                                 title="Delete Role">
                                                 <i class="fa fa-trash"></i>
                                             </button>
-                                        {{-- @endcan --}}
+                                        @endcan
                                     </div>
                                 </div>
                                 <div class="permissions-section">

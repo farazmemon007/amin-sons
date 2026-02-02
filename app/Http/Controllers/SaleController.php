@@ -23,6 +23,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\StockMovement;
+use App\Models\Notification;
+use App\Services\StockAlertService;
 
 
 class SaleController extends Controller
@@ -75,8 +77,12 @@ class SaleController extends Controller
                     })
                     ->exists();
 
+                // If no receipt rows provided and no existing unprocessed receipts,
+                // allow the booking to be posted anyway. Previously this aborted
+                // the request; we now permit posting without an upfront receipt
+                // and treat the sale as credit to the customer (ledger increases).
                 if (! $hasValidReceipt && ! $existsDbReceipts) {
-                    abort(422, 'At least one receipt row with account and amount is required to post the sale.');
+                    Log::info('No receipt rows provided; proceeding to post sale as credit', ['booking' => $booking->id]);
                 }
 
                 if ($booking->is_posted) {
@@ -112,6 +118,7 @@ class SaleController extends Controller
                     'previous_balance'  => $booking->previous_balance,
                     'total_balance'     => $booking->total_balance,
                     'total_net'         => $booking->sub_total2 ?? 0,
+                    
                 ]);
 
                 /* ================= CUSTOMER LEDGER (ONCE) ================= */
@@ -130,12 +137,29 @@ class SaleController extends Controller
                     $message = "Insufficient customer balance.";
                 }
 
+                // For booking-posted sales we treat the sale amount as additional
+                // credit owed by the customer: new closing = previous + sale total.
+                // If the request includes receipt rows (or they will be processed),
+                // subtract their total so the ledger reflects net outstanding.
+                $receiptTotal = 0;
+                if (!empty($request->receipt_amount) && is_array($request->receipt_amount)) {
+                    foreach ($request->receipt_amount as $amt) {
+                        $amt = (float) $amt;
+                        if ($amt > 0) $receiptTotal += $amt;
+                    }
+                }
+
+                // Create ledger for the sale (previous + sale). Any receipts
+                // provided in the request will be created and applied below,
+                // which will deduct from the customer's ledger exactly once.
+                $newClosing = $previousBalance + $sale->total_net;
+
                 CustomerLedger::create([
                     'customer_id'        => $booking->customer_id,
                     'admin_or_user_id'   => auth()->id(),
                     'previous_balance'   => $previousBalance,
                     'opening_balance'    => $previousBalance,
-                    'closing_balance'    => $previousBalance - $sale->total_net,
+                    'closing_balance'    => $newClosing,
                 ]);
 
                 /* ================= SALE ITEMS & STOCK ================= */
@@ -143,7 +167,7 @@ class SaleController extends Controller
 
                     $wid = $it->warehouse_id;
 
-                    // Main Stock
+                    // Main Stock (allow negative balances)
                     $stock = Stock::lockForUpdate()
                         ->where('product_id', $it->product_id)
                         ->first();
@@ -153,29 +177,35 @@ class SaleController extends Controller
                         ->where('warehouse_id', $wid)
                         ->first();
 
+                    $currentStockQty = $stock->qty ?? 0;
+                    $currentWhQty = $warehousestock->quantity ?? 0;
 
-                    if (!$stock || $stock->qty < $it->sales_qty || $warehousestock->quantity < 0) {
-                        abort(422, 'Insufficient stock for product ID ' . $it->product_id);
+                    $newWhQty = $currentWhQty - $it->sales_qty;
+                    $newStockQty = $currentStockQty - $it->sales_qty;
+
+                    if ($warehousestock) {
+                        $warehousestock->quantity = $newWhQty;
+                        $warehousestock->save();
+                    } else {
+                        WarehouseStock::create([
+                            'warehouse_id' => $wid,
+                            'product_id' => $it->product_id,
+                            'quantity' => $newWhQty,
+                        ]);
                     }
 
-                    $warehousestock->quantity -= $it->sales_qty;
-                    $warehousestock->save();
-
-                    $stock->qty -= $it->sales_qty;
-                    $stock->save();
-
-                    // Warehouse Stock
-                    $wStock = WarehouseStock::lockForUpdate()
-                        ->where('product_id', $it->product_id)
-                        ->where('warehouse_id', $wid)
-                        ->first();
-
-                    if (!$wStock || $wStock->quantity < $it->sales_qty) {
-                        abort(422, 'Insufficient warehouse stock for product ID ' . $it->product_id);
+                    if ($stock) {
+                        $stock->qty = $newStockQty;
+                        $stock->save();
+                    } else {
+                        Stock::create([
+                            'branch_id' => 1,
+                            'warehouse_id' => $wid,
+                            'product_id' => $it->product_id,
+                            'qty' => $newStockQty,
+                            'reserved_qty' => 0,
+                        ]);
                     }
-
-                    $wStock->quantity -= $it->sales_qty;
-                    $wStock->save();
 
                     // Sale Item
                     SaleItem::create([
@@ -198,6 +228,9 @@ class SaleController extends Controller
                         'is_auto_pluck' => 1,
                         'note'          => 'Sale Invoice ' . $booking->invoice_no,
                     ]);
+
+                    /* ================= CHECK STOCK ALERT ================= */
+                    StockAlertService::checkAndCreateAlert($it->product_id, $wid);
                 }
 
                 /* ================= ACCOUNT UPDATE ================= */
@@ -289,9 +322,35 @@ class SaleController extends Controller
                                         'row_account_id' => is_array($acctId) ? json_encode($acctId) : $acctId,
                                         'amount' => is_array($amt) ? json_encode($amt) : $amt,
                                         'total_amount' => $amt,
-                                        'processed' => false,
+                                        'processed' => true,
                                     ]);
-                                    Log::info('Created per-account SALE_RECEIPT', ['rv_id' => $rv->id, 'rvid' => $rv->rvid, 'account' => $acctId, 'amount' => $amt, 'reference' => $booking->invoice_no]);
+
+                                    Log::info('Created and applied per-account SALE_RECEIPT', ['rv_id' => $rv->id, 'rvid' => $rv->rvid, 'account' => $acctId, 'amount' => $amt, 'reference' => $booking->invoice_no]);
+
+                                    // Immediately apply to account and customer ledger
+                                    try {
+                                        $rowAccount = Account::lockForUpdate()->find($acctId);
+                                        if ($rowAccount) {
+                                            if (strtolower($rowAccount->type) === 'debit') {
+                                                $rowAccount->opening_balance += $amt;
+                                            } else {
+                                                $rowAccount->opening_balance -= $amt;
+                                            }
+                                            $rowAccount->save();
+                                        }
+
+                                        $custPrev = CustomerLedger::where('customer_id', $booking->customer_id)->latest('id')->lockForUpdate()->value('closing_balance') ?? 0;
+                                        $custNew = $custPrev - $amt;
+                                        CustomerLedger::create([
+                                            'customer_id' => $booking->customer_id,
+                                            'admin_or_user_id' => auth()->id(),
+                                            'previous_balance' => $custPrev,
+                                            'opening_balance' => 0,
+                                            'closing_balance' => $custNew,
+                                        ]);
+                                    } catch (\Exception $e) {
+                                        Log::error('Failed to apply booking receipt', ['error' => $e->getMessage(), 'rv' => $rv->id ?? null]);
+                                    }
                                 }
                             }
                         }
@@ -412,9 +471,26 @@ class SaleController extends Controller
                     }
 
                     // NOTE: receipts are payments applied to bank/cash accounts above.
-                    // We DO NOT adjust the customer's closing_balance here because
-                    // the sale ledger entry already reduced customer balance by the
-                    // sale total. Adjusting here would double-decrease the customer.
+                    // Adjust the customer's ledger by deducting the receipt total
+                    // because the booking-posted sale increased the customer's
+                    // outstanding balance earlier.
+                    try {
+                        $custLedger = CustomerLedger::where('customer_id', $booking->customer_id)
+                            ->latest('id')
+                            ->lockForUpdate()
+                            ->first();
+                        $custPrev = $custLedger ? $custLedger->closing_balance : 0;
+                        $custNew = $custPrev - $totalAmount;
+                        CustomerLedger::create([
+                            'customer_id' => $booking->customer_id,
+                            'admin_or_user_id' => auth()->id(),
+                            'previous_balance' => $custPrev,
+                            'opening_balance' => 0,
+                            'closing_balance' => $custNew,
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('Failed to adjust customer ledger for receipt', ['error' => $e->getMessage(), 'rv' => $rv->id ?? null]);
+                    }
 
                     // mark this receipt as processed so we don't apply it again
                     $rv->processed = true;
@@ -428,6 +504,30 @@ class SaleController extends Controller
                     'posted_at' => now(),
                     'status'    => 'sale',
                 ]);
+
+                /* ================= CREATE NOTIFICATION IF NOTIFY_ME IS SET ================= */
+                if ($booking->notify_me !== null && $booking->notify_me !== '') {
+                    $notificationDate = Carbon::today()->addDays($booking->notify_me);
+                    
+                    Notification::create([
+                        'booking_id' => $booking->id,
+                        'sale_id' => $sale->id,
+                        'customer_id' => $booking->customer_id,
+                        'type' => 'booking_payment',
+                        'title' => 'Payment Reminder - ' . $booking->invoice_no,
+                        'description' => 'Payment reminder for booking ' . $booking->invoice_no . ' (Amount: ' . $sale->total_net . ')',
+                        'notification_date' => $notificationDate,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    Log::info('Created payment notification', [
+                        'booking_id' => $booking->id,
+                        'notification_date' => $notificationDate,
+                        'days' => $booking->notify_me,
+                        'customer_id' => $booking->customer_id,
+                    ]);
+                }
 
                 /* ================= RESPONSE ================= */
                 return response()->json([
@@ -490,6 +590,7 @@ class SaleController extends Controller
             $booking->previous_balance = $request->previousBalance ?? 0;
             $booking->total_balance    = $request->totalBalance ?? 0;
             $booking->status    = 'pending';
+            $booking->notify_me         = $request->notify_me ?? 0;
 
             $booking->quantity = 0;
             $booking->save();
@@ -608,6 +709,9 @@ class SaleController extends Controller
             'mobile' => $c->mobile,
             'remarks' => $c->remarks ?? '',
             'previous_balance' => $previous_balance, // Use the latest closing_balance
+            'credit_upto' => $c->credit_upto,  // ✅ نیا
+            'credit_limit' => $c->credit_limit,  // ✅ نیا
+            'opening_balance' => $c->opening_balance,  // ✅ نیا
         ]);
     }
 
@@ -784,6 +888,36 @@ class SaleController extends Controller
                     if ($cust) $customerId = $cust->id;
                 }
             }
+
+            // ✅ CREDIT LIMIT CHECK
+            if ($customerId) {
+                $customer = Customer::find($customerId);
+                $saleAmount = (float)($request->subTotal1 ?? 0) - (float)($request->discountAmount ?? 0);
+                $latestLedger = CustomerLedger::where('customer_id', $customerId)->latest()->first();
+                $currentBalance = $latestLedger ? $latestLedger->closing_balance : $customer->opening_balance;
+
+                // Total credit = current balance + new sale
+                $totalCredit = $currentBalance + $saleAmount;
+
+                // Check if exceeds credit limit
+                if ($customer->credit_limit && $totalCredit > $customer->credit_limit) {
+                    return back()->withError(
+                        "❌ کریڈٹ حد سے زیادہ ہے! \n" .
+                        "موجودہ بقایا: " . number_format($currentBalance, 2) . "\n" .
+                        "نیا سیل رقم: " . number_format($saleAmount, 2) . "\n" .
+                        "کل کریڈٹ: " . number_format($totalCredit, 2) . "\n" .
+                        "کریڈٹ حد: " . number_format($customer->credit_limit, 2)
+                    )->withInput();
+                }
+
+                // Check credit expiry date
+                if ($customer->credit_upto && Carbon::now() > Carbon::parse($customer->credit_upto)) {
+                    return back()->withError(
+                        "❌ کریڈٹ کی تاریخ ختم ہو گئی ہے! (" . $customer->credit_upto . ")"
+                    )->withInput();
+                }
+            }
+
             $sale = Sale::create([
                 'invoice_no' => $invoiceNo,
                 'manual_invoice' => $request->Invoice_main ?? null,
@@ -807,6 +941,26 @@ class SaleController extends Controller
                 'weight' => $request->weight ?? null,
             ]);
 
+            // Persist optional notify_me value on sale (days integer)
+            $notifyDays = (int) ($request->input('notify_me') ?? $request->input('notify_days') ?? 0);
+            if ($notifyDays > 0) {
+                try {
+                    $sale->notify_me = $notifyDays;
+                    $sale->save();
+
+                    $notifyAt = now()->addDays($notifyDays);
+                    Notification::create([
+                        'user_id' => auth()->id(),
+                        'customer_id' => $customerId,
+                        'message' => 'Sale #' . $sale->invoice_no . ' notification scheduled for ' . $notifyAt->toDateString(),
+                        'notify_at' => $notifyAt,
+                        'is_read' => false,
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to create sale notification', ['err' => $e->getMessage()]);
+                }
+            }
+
             foreach ($request->warehouse_name ?? [] as $i => $warehouse_id) {
                 $productId = $request->input("product_name.$i");
                 if (empty($warehouse_id) || empty($productId)) {
@@ -815,16 +969,38 @@ class SaleController extends Controller
 
                 $saleQty = (float) $request->input("sales-qty.$i", 0);
 
-                // Per-warehouse stock
-                if ($ws = WarehouseStock::where('warehouse_id', $warehouse_id)->where('product_id', $productId)->first()) {
-                    $ws->quantity = max(0, $ws->quantity - $saleQty);
+                // Per-warehouse stock (allow negative)
+                $ws = WarehouseStock::where('warehouse_id', $warehouse_id)
+                    ->where('product_id', $productId)
+                    ->first();
+
+                if ($ws) {
+                    $ws->quantity = ($ws->quantity ?? 0) - $saleQty;
                     $ws->save();
+                } else {
+                    WarehouseStock::create([
+                        'warehouse_id' => $warehouse_id,
+                        'product_id' => $productId,
+                        'quantity' => -1 * $saleQty,
+                    ]);
                 }
 
-                // Global stock
-                if ($p = Product::find($productId)) {
-                    $p->stock = max(0, ($p->stock ?? 0) - $saleQty);
-                    $p->save();
+                // Global stock via Stock model (allow negative)
+                $stockRow = Stock::where('product_id', $productId)
+                    ->where('warehouse_id', $warehouse_id)
+                    ->first();
+
+                if ($stockRow) {
+                    $stockRow->qty = ($stockRow->qty ?? 0) - $saleQty;
+                    $stockRow->save();
+                } else {
+                    Stock::create([
+                        'branch_id' => 1,
+                        'warehouse_id' => $warehouse_id,
+                        'product_id' => $productId,
+                        'qty' => -1 * $saleQty,
+                        'reserved_qty' => 0,
+                    ]);
                 }
 
                 SaleItem::create([
@@ -839,6 +1015,104 @@ class SaleController extends Controller
                     'discount_percent' => (float) $request->input("discount-percent.$i", 0),
                     'discount_amount' => (float) $request->input("discount-amount.$i", 0),
                     'amount' => (float) $request->input("sales-amount.$i", 0),
+                ]);
+            }
+
+            // If receipts provided for direct sale, create per-account receipt vouchers
+            if (!empty($request->receipt_account_id) && is_array($request->receipt_account_id)) {
+                $rowAccountIds = [];
+                $rowAmounts = [];
+                foreach ($request->receipt_account_id as $i => $accId) {
+                    $acc = $accId;
+                    $amt = (float) ($request->receipt_amount[$i] ?? 0);
+                    if ($amt <= 0 || empty($acc) || !is_numeric($acc)) continue;
+                    $rowAccountIds[] = (int) $acc;
+                    $rowAmounts[] = $amt;
+                }
+
+                if (!empty($rowAccountIds)) {
+                    // Deduplicate
+                    $unique = [];
+                    $uniqueAccountIds = [];
+                    $uniqueAmounts = [];
+                    foreach ($rowAccountIds as $i => $acctId) {
+                        $amt = $rowAmounts[$i] ?? ($rowAmounts[0] ?? 0);
+                        if ($amt <= 0) continue;
+                        $sig = $acctId . '|' . number_format((float)$amt, 2, '.', '');
+                        if (isset($unique[$sig])) continue;
+                        $unique[$sig] = true;
+                        $uniqueAccountIds[] = $acctId;
+                        $uniqueAmounts[] = $amt;
+                    }
+
+                    foreach ($uniqueAccountIds as $i => $acctId) {
+                        $amt = $uniqueAmounts[$i];
+                        $rv = ReceiptsVoucher::create([
+                            'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
+                            'receipt_date' => Carbon::today(),
+                            'entry_date' => Carbon::now(),
+                            'type' => 'SALE_RECEIPT',
+                            'party_id' => $customerId,
+                            'booking_id' => null,
+                            'tel' => $request->tel ?? null,
+                            'remarks' => $request->remarks ?? null,
+                            'reference_no' => $invoiceNo,
+                            'row_account_head' => 'Cash/Bank',
+                            'row_account_id' => is_array($acctId) ? json_encode($acctId) : $acctId,
+                            'amount' => is_array($amt) ? json_encode($amt) : $amt,
+                            'total_amount' => $amt,
+                            'processed' => false,
+                        ]);
+
+                        // Immediately apply this receipt to account and customer ledger
+                        try {
+                            $rowAccount = Account::lockForUpdate()->find($acctId);
+                            if ($rowAccount) {
+                                if (strtolower($rowAccount->type) === 'debit') {
+                                    $rowAccount->opening_balance += $amt;
+                                } else {
+                                    $rowAccount->opening_balance -= $amt;
+                                }
+                                $rowAccount->save();
+                            }
+
+                            $custPrev = CustomerLedger::where('customer_id', $customerId)->latest('id')->lockForUpdate()->value('closing_balance') ?? 0;
+                            $custNew = $custPrev - $amt;
+                            CustomerLedger::create([
+                                'customer_id' => $customerId,
+                                'admin_or_user_id' => auth()->id(),
+                                'previous_balance' => $custPrev,
+                                'opening_balance' => 0,
+                                'closing_balance' => $custNew,
+                            ]);
+
+                            $rv->processed = true;
+                            $rv->save();
+                        } catch (\Exception $e) {
+                            Log::error('Failed to apply direct-sale receipt', ['error' => $e->getMessage(), 'rv' => $rv->id ?? null]);
+                        }
+                    }
+                }
+            }
+
+            // ✅ UPDATE CUSTOMER LEDGER WITH SALE AMOUNT
+            if ($customerId) {
+                $saleAmount = (float)($request->subTotal1 ?? 0) - (float)($request->discountAmount ?? 0);
+                $latestLedger = CustomerLedger::where('customer_id', $customerId)->latest()->first();
+
+                $previousBalance = $latestLedger ? $latestLedger->closing_balance : 0;
+
+                // Ledger already adjusted by any direct-sale receipts applied above.
+                $newClosingBalance = $previousBalance + $saleAmount;
+
+                CustomerLedger::create([
+                    'customer_id' => $customerId,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance' => 0,  // یہ sale transaction ہے
+                    'closing_balance' => $newClosingBalance,
+                    'reference_type' => 'Sale',
+                    'reference_id' => $sale->id,
                 ]);
             }
 
@@ -960,6 +1234,14 @@ class SaleController extends Controller
                 ];
             }
         }
+        // return response()->json([
+        //      'Customer'         => $customers,
+        //     'booking_customer' => $booking_customer,
+        //     'booking'          => $booking,
+        //     'bookingItems'     => $items,
+        //     'accounts'         => $accounts,
+        // ]);
+        
 
         // ================= VIEW =================
         return view('admin_panel.sale.booking_edit222', [
@@ -1527,7 +1809,7 @@ class SaleController extends Controller
                 'warehouses.location',
             ])
             ->get();
-          
+
 
         return view(
             'admin_panel.sale.booking.prints.dc2',

@@ -29,7 +29,7 @@ class CustomerController extends Controller
     // 🔹 Single customer detail
     public function show($id)
     {
-        return Customer::with('ledgers')->findOrFail($id);
+        return Customer::with('latestLedger')->findOrFail($id);
     }
 
 
@@ -41,12 +41,7 @@ class CustomerController extends Controller
 
     public function index()
     {
-        $customers = Customer::latest()->get(); // no status filter
-
-            // echo "<pre>";
-            // print_r($customers);
-            // echo "</pre>";
-            // dd();
+        $customers = Customer::with('latestLedger')->latest()->get();
         return view('admin_panel.customers.index', compact('customers'));
     }
 
@@ -106,6 +101,8 @@ class CustomerController extends Controller
             'mobile_2'           => 'nullable',
             'email_address_2'    => 'nullable|email',
             'opening_balance'    => 'nullable|numeric',
+            'credit_upto'        => 'nullable|date',
+            'credit_limit'       => 'nullable|numeric|min:0',
             'address'            => 'nullable',
             'customer_type'      => 'nullable',
         ]);
@@ -139,9 +136,25 @@ class CustomerController extends Controller
     public function update(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
-        $data = $request->except('_token');
+        
+        // Validate the input
+        $data = $request->validate([
+            'customer_name'      => 'nullable|string',
+            'customer_name_ur'   => 'nullable|string',
+            'customer_type'      => 'nullable|string',
+            'cnic'               => 'nullable|string',
+            'filer_type'         => 'nullable|string',
+            'mobile'             => 'nullable|string',
+            'address'            => 'nullable|string',
+            'address_details'    => 'nullable|string',
+            'opening_balance'    => 'nullable|numeric|min:0',
+            'credit_limit'       => 'nullable|numeric|min:0',
+            'closing_balance'    => 'nullable|numeric',
+        ]);
 
+        // Update customer
         $customer->update($data);
+        
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
     }
 
@@ -207,22 +220,26 @@ class CustomerController extends Controller
             'note'             => $request->note,
         ]);
 
-        // Get latest ledger record
+        // Append a new ledger record for this payment (append-only ledger)
         $ledger = CustomerLedger::where('customer_id', $request->customer_id)->latest()->first();
+        $previousBalance = $ledger ? $ledger->closing_balance : ($this->getCustomerOpeningBalance($request->customer_id));
 
-        if ($ledger) {
-            // Calculate new balance
-            $newBalance = $request->adjustment_type === 'plus'
-                ? $ledger->closing_balance + $request->amount
-                : $ledger->closing_balance - $request->amount;
+        // For payments: 'plus' means add to balance, 'minus' means subtract (customer paid)
+        $amount = (float)$request->amount;
+        $newClosing = $request->adjustment_type === 'plus'
+            ? $previousBalance + $amount
+            : $previousBalance - $amount;
 
-            // Update existing ledger record only
-            $ledger->update([
-                'closing_balance' => $newBalance,
-            ]);
-        }
+        CustomerLedger::create([
+            'customer_id'      => $request->customer_id,
+            'admin_or_user_id' => $userId,
+            'previous_balance' => $previousBalance,
+            'opening_balance'  => 0,
+            'closing_balance'  => $newClosing,
+            'description'      => ($request->note ?: 'Customer payment') . ' - ' . $request->payment_date,
+        ]);
 
-        return back()->with('success', 'Payment adjusted and ledger updated.');
+        return back()->with('success', 'Payment recorded and ledger updated.');
     }
 
     public function destroy_payment($id)
@@ -232,19 +249,31 @@ class CustomerController extends Controller
         $customerId = $payment->customer_id;
         $amount     = $payment->amount;
 
-        // Latest ledger record for that customer
-        $ledger = CustomerLedger::where('customer_id', $customerId)
-            ->orderBy('id', 'desc')
-            ->first();
-        if ($ledger) {
-            $ledger->closing_balance += $amount;
-            $ledger->save();
-        }
+        // Reverse payment by appending a ledger entry that increases customer's balance
+        $latest = CustomerLedger::where('customer_id', $customerId)->latest()->first();
+        $previousBalance = $latest ? $latest->closing_balance : $this->getCustomerOpeningBalance($customerId);
+        $newClosing = $previousBalance + $amount;
+
+        CustomerLedger::create([
+            'customer_id'      => $customerId,
+            'admin_or_user_id' => auth()->id(),
+            'previous_balance' => $previousBalance,
+            'opening_balance'  => 0,
+            'closing_balance'  => $newClosing,
+            'description'      => 'Reversed payment id: ' . $payment->id,
+        ]);
 
         // Delete the payment entry
         $payment->delete();
 
         return redirect()->back()->with('success', 'Payment deleted and customer ledger updated successfully.');
+    }
+
+    // Helper: get opening balance from customer record (fallback)
+    protected function getCustomerOpeningBalance($customerId)
+    {
+        $c = Customer::find($customerId);
+        return $c ? (float)($c->opening_balance ?? 0) : 0;
     }
 
 

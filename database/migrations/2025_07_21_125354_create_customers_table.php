@@ -27,7 +27,7 @@ return new class extends Migration
         $table->string('email_address_2')->nullable();
         $table->string('customer_type')->nullable();
         $table->decimal('opening_balance', 15, 2)->nullable(0);
-      
+        $table->decimal('credit_limit', 15, 2)->nullable();
         $table->text('address')->nullable();
         $table->timestamps();
     });

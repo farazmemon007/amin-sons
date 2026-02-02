@@ -31,6 +31,7 @@ use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\WarehouseStockController;
 use App\Http\Controllers\ZoneController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -227,6 +228,7 @@ Route::get('/search_products', [ProductController::class, 'searchProducts'])
 
     // Permissions
     Route::resource('permissions', PermissionController::class)->names('permissions')->only(['index', 'store']);
+    Route::get('/permissions/modules', [PermissionController::class, 'modulesList'])->name('modules.list');
     Route::get('/permissions/delete/{id}', [PermissionController::class, 'delete'])->name('permission.delete')->middleware('permission:delete role');;
 
     // Users
@@ -392,6 +394,19 @@ Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expensepri
         Route::get('/', [AccountsHeadController::class, 'index'])->name('coa.index');
         Route::post('/head', [AccountsHeadController::class, 'storeHead'])->middleware('permission:chart.of.accounts.create')->name('coa.head.store');
         Route::post('/account', [AccountsHeadController::class, 'storeAccount'])->middleware('permission:chart.of.accounts.create')->name('coa.account.store');
+    });
+
+    // Notification Routes
+    Route::prefix('notifications')->group(function () {
+        Route::get('/', function() {
+            return view('notifications.index');
+        })->name('notifications.index');
+        Route::get('/pending', [NotificationController::class, 'getPendingNotifications'])->name('notifications.pending');
+        Route::get('/all', [NotificationController::class, 'getAllNotifications'])->name('notifications.all');
+        Route::get('/count', [NotificationController::class, 'getCount'])->name('notifications.count');
+        Route::post('/{id}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('notifications.mark-read');
+        Route::post('/{id}/mark-as-sent', [NotificationController::class, 'markAsSent'])->name('notifications.mark-sent');
+        Route::post('/{id}/dismiss', [NotificationController::class, 'dismiss'])->name('notifications.dismiss');
     });
 });
 require __DIR__ . '/auth.php';

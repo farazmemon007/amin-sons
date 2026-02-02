@@ -272,7 +272,9 @@ class PermissionSeeder extends Seeder
             'guard_name' => $guard,
         ]);
 
-        // Sync by names (array of names is supported)
-        $superAdmin->syncPermissions($permissions);
+        // Sync all permissions that exist in DB for the specified guard to super admin.
+        // This is more robust than relying solely on the local $permissions array.
+        $allPermissionNames = Permission::where('guard_name', $guard)->pluck('name')->toArray();
+        $superAdmin->syncPermissions($allPermissionNames);
     }
 }

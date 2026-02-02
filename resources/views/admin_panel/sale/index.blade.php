@@ -8,6 +8,77 @@
 
 @section('content')
 <style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+
+    .container-fluid {
+        padding-left: 0;
+        padding-right: 0;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .card {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+    }
+
+    .card-body {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        width: 100%;
+        margin-bottom: 0;
+    }
+
+    .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: #f8f9fa;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .table td {
+        vertical-align: middle;
+        white-space: nowrap;
+        padding: 0.5rem;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.5rem;
+    }
+
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.4rem;
+    }
+
+    .card-header {
+        padding: 1rem;
+    }
+
+    .card-header h5 {
+        font-size: 1.1rem;
+    }
+
     /* Button CSS for dropdown */
     .action-dropdown {
         border-radius: 12px;
@@ -26,6 +97,92 @@
         background: linear-gradient(90deg, #f8f9fa, #eef1f5);
         transform: translateX(4px);
     }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .card {
+            margin-top: 0.5rem;
+        }
+
+        .card-header {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .card-header h5 {
+            font-size: 1rem;
+        }
+
+        .card-header > div {
+            width: 100%;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .card-header .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .table {
+            font-size: 0.75rem;
+        }
+
+        .table thead th {
+            font-size: 0.7rem;
+            padding: 0.3rem;
+        }
+
+        .table td {
+            font-size: 0.7rem;
+            padding: 0.3rem;
+        }
+
+        .btn {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.3rem;
+        }
+
+        .btn-sm {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.25rem;
+        }
+
+        .action-dropdown {
+            min-width: 180px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .table {
+            font-size: 0.65rem;
+        }
+
+        .table thead th {
+            font-size: 0.6rem;
+            padding: 0.25rem;
+        }
+
+        .table td {
+            font-size: 0.6rem;
+            padding: 0.25rem;
+        }
+
+        .btn {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.25rem;
+        }
+
+        .action-dropdown {
+            min-width: 160px;
+        }
+
+        .action-dropdown .dropdown-item {
+            padding: 6px 10px;
+            font-size: 0.7rem;
+        }
+    }
 </style>
 
 <div class="container-fluid">
@@ -39,7 +196,8 @@
         </div>
 
         <div class="card-body">
-            <table class="table table-bordered table-striped">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
                         <th>#ID</th>
@@ -111,6 +269,7 @@
 
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

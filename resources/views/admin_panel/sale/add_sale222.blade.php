@@ -6,22 +6,27 @@
     <style>
         /* ================= RESPONSIVE SALES UI ================= */
 
+        * {
+            box-sizing: border-box;
+        }
+
         /* table container - no scroll on mobile */
         .table-responsive {
-            overflow-x: visible;
-            max-height: 360px;
+            overflow-x: auto;
             overflow-y: auto;
+            max-height: 360px;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* base table width - responsive */
         .sales-table {
             width: 100%;
+            border-collapse: collapse;
         }
 
         /* 🔹 DISCOUNT COLUMN – THORI SI BARI */
         .sales-table td.large-col {
             min-width: 95px;
-            width: 95px;
             padding: 4px;
         }
 
@@ -85,15 +90,9 @@
             z-index: 30;
         }
 
-        /* Ensure table fits without scroll bars */
-        .sales-table {
-            width: 100%;
-        }
-
         /* ---------- DESKTOP (>= 1200px) ---------- */
         @media (min-width: 1200px) {
             .sales-table {
-                min-width: 1000px;
                 width: 100%;
             }
         }
@@ -102,10 +101,11 @@
         @media (max-width: 1199px) and (min-width: 992px) {
             .main-container {
                 max-width: 100%;
+                margin: 0 auto;
+                padding: 1rem;
             }
 
             .sales-table {
-                min-width: auto;
                 width: 100%;
             }
 
@@ -124,10 +124,26 @@
             .minw-350 {
                 min-width: 100%;
             }
+
+            .d-flex.gap-3 {
+                flex-direction: column;
+                gap: 1rem !important;
+            }
+
+            .items-panel {
+                width: 100%;
+                min-width: 0;
+            }
         }
 
         /* ---------- MOBILE (768px - 991px) ---------- */
         @media (max-width: 991px) {
+            .main-container {
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 1rem;
+            }
+
             .header-text {
                 font-size: 1rem;
             }
@@ -145,6 +161,7 @@
             /* customer + invoice panel full width */
             .minw-350 {
                 width: 100%;
+                min-width: 0;
             }
 
             /* reduce input font */
@@ -155,7 +172,6 @@
 
             /* CRITICAL: Make table responsive */
             .sales-table {
-                min-width: auto;
                 width: 100%;
                 font-size: 0.75rem;
             }
@@ -175,13 +191,29 @@
             .sales-table td.action-col {
                 width: 50px;
             }
+
+            .d-flex.gap-3 {
+                flex-direction: column;
+                gap: 1rem !important;
+            }
+
+            .items-panel {
+                width: 100%;
+                min-width: 0;
+                flex-grow: 1;
+            }
         }
 
         /* ---------- SMALL PHONES (<= 576px) ---------- */
         @media (max-width: 576px) {
+            .main-container {
+                max-width: 100%;
+                margin: 0 auto;
+                padding: 0.75rem;
+            }
+
             .sales-table {
                 font-size: 0.65rem;
-                min-width: auto;
                 width: 100%;
             }
 
@@ -206,6 +238,20 @@
                 width: 50px;
                 min-width: 50px;
             }
+
+            .minw-350 {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .items-panel {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .p-3 {
+                padding: 0.75rem !important;
+            }
         }
     </style>
     <style>
@@ -213,18 +259,35 @@
 
         /* Disable ALL scrolling for table */
         .table-responsive {
-            overflow: visible !important;
-            max-height: none;
+            overflow: auto;
+            max-height: 360px;
         }
 
         .items-panel {
-            overflow: hidden;
+            overflow: visible;
             width: 100%;
+            min-width: 0;
         }
 
         .main-container {
             font-size: .85rem;
-            max-width: 1400px;
+            max-width: 100%;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .container-fluid {
+            padding-left: 0;
+            padding-right: 0;
+            width: 100%;
+            max-width: 100%;
         }
 
         .header-text {
@@ -266,6 +329,7 @@
             --bs-table-padding-y: .35rem;
             --bs-table-padding-x: .5rem;
             font-size: .85rem;
+            width: 100%;
         }
 
         .table thead th {
@@ -274,13 +338,6 @@
             z-index: 2;
             background: #f8f9fa;
             text-align: center;
-        }
-
-        .table-responsive {
-            max-height: 360px;
-            overflow: auto;
-            border: 1px solid #eee;
-            border-radius: .5rem;
         }
 
         .minw-350 {
@@ -348,26 +405,30 @@
             background: #f1f3f5;
             font-weight: 600;
         }
-        /* 🔥 FIX: Items panel overflow + Add Row cut issue */
-.items-panel {
-    min-width: 0;        /* allow flex shrink */
-    width: 100%;
-}
-.items-panel > .d-flex {
-    flex-wrap: wrap;
-    gap: 8px;
-}
-@media (max-width: 768px) {
-    #btnAdd {
-        width: 100%;
-    }
-}
-/* Select2 dropdown height + scroll */
-.select2-results__options {
-    max-height: 200px;   /* yahan height set karo */
-    overflow-y: auto;   /* 🔥 scroll enable */
-}
 
+        /* 🔥 FIX: Items panel overflow + Add Row cut issue */
+        .items-panel {
+            min-width: 0;        /* allow flex shrink */
+            width: 100%;
+            overflow: visible;
+        }
+
+        .items-panel > .d-flex {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            #btnAdd {
+                width: 100%;
+            }
+        }
+
+        /* Select2 dropdown height + scroll */
+        .select2-results__options {
+            max-height: 200px;   /* yahan height set karo */
+            overflow-y: auto;   /* 🔥 scroll enable */
+        }
     </style>
 
 
@@ -472,6 +533,10 @@
                             <span>Previous Balance</span>
                             <input type="text" class="form-control w-25 text-end" id="previousBalance" value="0">
                         </div>
+                        <div class="mb-2 d-flex justify-content-between">
+                            <span>Credit Limit</span>
+                            <input type="text" class="form-control w-25 text-end" id="creditLimit" value="0">
+                        </div>
 
                         <div class="text-end mt-3">
                             <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary">Clear</button>
@@ -510,7 +575,7 @@
                                     <tr>
                                         <td colspan="6" class="text-end fw-bold">Total:</td>
                                         <td class="text-end fw-bold"><span id="totalAmount">0.00</span></td>
-                                        <td></td>
+                                        {{-- <td></td> --}}
                                     </tr>
                                 </tfoot>
                             </table>
@@ -580,6 +645,15 @@
                             <div class="row py-2">
                                 <div class="col-7 fw-bold text-primary">Payable / Total Balance</div>
                                 <div class="col-5 text-end fw-bold text-primary"><span id="tPayable">0.00</span></div>
+                            </div>
+
+                            {{-- Notify Me (optional days) --}}
+                            <div class="row py-2 border-top mt-2">
+                                <div class="col-7 text-muted medium">Notify Me (Days - Optional)</div>
+                                <div class="col-5">
+                                    <input type="number" name="notify_me" id="notify_me"  class="form-control form-control-sm" 
+                                           placeholder="Enter payment Expected days" min="0" max="365" value="">
+                                </div>
                             </div>
 
                             {{-- hidden mirrors for backend --}}
@@ -789,80 +863,6 @@
     <script>
         let CURRENT_PRODUCT_ROW = null;
 
-
-
-        // $(document).on('keydown', function (e) {
-
-        //     if (e.key === 'F2') {
-        //         e.preventDefault();
-
-        //         // jis row me cursor hai wo detect karo
-        //         CURRENT_PRODUCT_ROW = $(':focus').closest('tr');
-
-        //         if (!CURRENT_PRODUCT_ROW.length) {
-        //             alert('Please focus on a product row first');
-        //             return;
-        //         }
-
-        //         $('#productSearchInput').val('');
-        //         $('#productSearchResults').html(
-        //             '<tr><td colspan="2" class="text-center">Type to search...</td></tr>'
-        //         );
-
-        //         $('#productSearchModal').modal('show');
-
-        //         setTimeout(() => $('#productSearchInput').focus(), 300);
-        //     }
-
-        // });
-
-
-
-
-
-
-
-        // $('#productSearchInput').on('keyup', function () {
-
-        //     const keyword = $(this).val().trim();
-
-        //     if (keyword.length < 2) {
-        //         $('#productSearchResults').html(
-        //             '<tr><td colspan="2" class="text-center">Type at least 2 characters</td></tr>'
-        //         );
-        //         return;
-        //     }
-
-        //     $.get('{{ route("search_products") }}', { q: keyword }, function (products) {
-
-        //         let html = '';
-
-        //         if (products.length === 0) {
-        //             html = '<tr><td colspan="2" class="text-center">No product found</td></tr>';
-        //         } else {
-        //             products.forEach(p => {
-        //                 html += `
-        //                 <tr>
-        //                     <td>${p.item_name}</td>
-        //                     <td class="text-center">
-        //                         <button class="btn btn-sm btn-primary select-product"
-        //                             data-id="${p.id}"
-        //                             data-name="${p.item_name}"
-        //                             data-stock="${p.stock}"
-        //                             data-price="${p.retail_price}">
-        //                             Select
-        //                         </button>
-        //                     </td>
-        //                 </tr>
-        //             `;
-        //             });
-        //         }
-
-        //         $('#productSearchResults').html(html);
-        //     });
-
-        // });
-
         // faraz memon
 
 
@@ -976,6 +976,7 @@
 
                 $('#address,#tel,#remarks').val('');
                 $('#previousBalance').val('0');
+                $('#creditLimit').val('0');
                 loadCustomersByType(this.value);
             });
 
@@ -1021,20 +1022,19 @@
             $('#address').val(d.address || '');
             $('#tel').val(d.mobile || '');
             $('#remarks').val(d.remarks || d.status || '');
+            $('#creditLimit').val(d.credit_limit || '0');
+
 
                     // Display selected customer's id + name in the visible field
                     $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
 
-            // 🔹 default previous balance — prefer latest ledger closing_balance,
-            // fallback to opening_balance stored on the customer record.
-            let previousBalance = parseFloat(d.opening_balance || 0);
-            if (d.ledgers && d.ledgers.length > 0) {
-                let latestLedger = d.ledgers.reduce((a, b) => parseInt(a.id) > parseInt(b.id) ? a : b);
-                previousBalance = parseFloat(latestLedger.closing_balance || latestLedger.previous_balance || previousBalance);
-            }
-
+            // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
+            // Fallback to opening_balance if no closing_balance exists
+            let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
+            
             // show balance (positive / negative as-it-is)
             $('#previousBalance').val(previousBalance.toFixed(2));
+
         }
     );
 });
@@ -1187,140 +1187,6 @@
 
         }
 
-
-// $(document).ready(function () {
-
-//     let last_id = 1;
-
-//     $('.product-select').select2();
-
-//     // Infinite scroll and product load
-//     $('.product-select').on('select2:open', function () {
-//         let selectEl = this;   // 🔥 VERY IMPORTANT
-//         $.get('/search-products-sale', {
-//             last_id: last_id
-//         }, function (res) {
-//             // console.log('Products loaded:', res);
-//             res.products.forEach(p => {
-
-//  $(document).on('select2:select', '.product-select', function (e) {
-
-//         const $row = $(this).closest('tr');
-//         // Use the actual <option> element for data attributes
-            
-//             const $option = $(e.params.data.element);
-//             // console.log("option",$option);
-//            // console.log("row",$row);
-//             const stock = $option.data('stock') || '';
-//            // console.log("stock",stock);
-//         const price = $option.data('price') || '';
-//         $row.find('.stock').val(stock);
-//         $row.find('.retail-price').val(price);
-//     });
-
-
-
-
-//                 // If option not already present, add it with data attributes
-//                 if (!$(selectEl).find('option[value="' + p.id + '"]').length) {
-
-//                     let option = new Option(p.item_name, p.id, false, false);
-//                     // Attach data attributes for later use
-                    
-//                     $(option).attr({
-//                         'data-id': p.id,
-//                         'data-name': p.item_name,
-//                         'data-stock': p.stock,
-//                         'data-price': p.retail_price
-//                     });
-//                     selectEl.appendChild(option);
-//                 }
-//             });
-//             // 🔥 Select2 refresh
-//             $(selectEl).trigger('change');
-//             // next request ke liye
-//             last_id = res.last_id;
-//         });
-//     });
-// });
-    // When a product is selected, fill related fields in the same row
-    // $(document).on('select2:select', '.product-select', function (e) {
-
-    //     const $row = $(this).closest('tr');
-    //     // Use the actual <option> element for data attributes
-            
-    //         const $option = $(e.params.data.element);
-    //         console.log("option",$option);
-    //         console.log("row",$row);
-    //         const stock = $option.data('stock') || '';
-    //         console.log("stock",stock);
-    //     const price = $option.data('price') || '';
-    //     $row.find('.stock').val(stock);
-    //     $row.find('.retail-price').val(price);
-    // });
-
-
-
-
-
-       
-
-        // let test = document.querySelectorAll('.product_field');
-        // console.log(test);
-
-// let last_id = 0;
-// function stackproduct(selectEl) {
-//     // alert(selectEl);
-//     // agar already loaded hai to dobara call na ho
-//     if (selectEl.dataset.loaded === "1") {
-//         return;
-//     }
-//     fetchProducts(selectEl, 0);
-// }
-
-// function fetchProducts(selectEl, startId) {
-//     fetch(`/search-products-sale?last_id=${startId}`)
-//         .then(response => response.json())
-//         .then(res => {
-//             if (startId === 0) {
-//                 // Remove all except first option
-//                 selectEl.options.length = 1;
-//             }
-//             res.products.forEach(p => {
-//                 let option = document.createElement('option');
-//                 option.value = p.id;
-//                 option.text  = p.item_name;
-//                 option.classList.add('product_field')
-//                 selectEl.appendChild(option);
-//             });
-//             // Save last_id for next fetch
-//             selectEl.dataset.lastId = res.last_id;
-            
-//             // Mark as loaded if no more
-//             if (!res.has_more) {
-//                 selectEl.dataset.loaded = "1";
-//             } else {
-//                 selectEl.dataset.loaded = "0";
-//             }
-//         })
-//         .catch(err => console.error(err));
-// }
-
-// // Infinite scroll for select
-// document.addEventListener('DOMContentLoaded', function() {
-//     document.addEventListener('scroll', function(e) {
-//         const el = e.target;
-//         if (el.classList && el.classList.contains('product')) {
-//             // Check if near bottom
-//             if (el.scrollTop + el.clientHeight >= el.scrollHeight - 5) {
-//                 if (el.dataset.loaded !== "1") {
-//                     const nextId = el.dataset.lastId || 0;
-//                     fetchProducts(el, nextId);
-//                 }
-//             }
-//         }
-//     }, true);
-// });
 
         // discunt % field
         $(document).on('click', '.discount-toggle', function () {
@@ -1830,24 +1696,6 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
 
-        /* ---------- Receipts (accounts) ---------- */
-        // function loadAccountsInto($select) {
-        //   $select.prop('disabled', true).empty().append('<option value="">Loading...</option>');
-
-        //   // Get the list of accounts
-        // //   $.get(, {
-        // //     scope: 'cashbank'
-        // //   }, function(rows) {
-        // //     $select.empty().append('<option value="">Select account</option>');
-        // //     (rows || []).forEach(function(a) {
-        // //       $select.append('<option value="' + a.id + '">' + a.title + '</option>'); // Add account options
-        // //     });
-        // //     $select.prop('disabled', false); // Enable the select input after loading
-        // //   }).fail(function() {
-        // //     // If there's an error, display an error message
-        // //     $select.empty().append('<option value="">Error loading</option>').prop('disabled', false);
-        // //   });
-        // }
 
         function recomputeReceipts() {
             let sum = 0;
@@ -1880,10 +1728,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
 
-        // $(document).on('click', '.btnRemRV', function() {
-        //  $(this).closest('.rv-row').remove();
-        //  recomputeReceipts(); // Recompute total receipts after removal
-        //});
+      
         $(document).on('click', '.btnRemRV', function () {
             $(this).closest('.rv-row').remove();
             recomputeReceipts();
@@ -1906,16 +1751,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             $('.rv-account').each(function () { loadAccountsInto($(this)); });
         });
 
-        /* ---------- init ---------- */
-        // function init() {
-        //   addNewRow();
-        //   loadCustomersByType('customer');
-        //   // loadAccountsInto($('.rv-account').first());
-        //   updateGrandTotals();
-        //   refreshPostedState();
-        // }
-
-        // init();
+     
 
         function markInvalid($el) {
             // add visuals; $el can be input/select/td
@@ -1948,19 +1784,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 // const $wh = $row.find('.warehouse');
                 const $prod = $row.find('.product-select');
                 const $qty = $row.find('.sales-qty');
-                // console.log("$prod",$prod);
-                // console.log("$qty",$qty);
-
-                // Warehouse
-                // if (!$wh.val()) {
-                //   ok = false;
-                //   if (!firstMessage) {
-                //     firstMessage = 'Please select Warehouse for row ' + (rowIndex + 1);
-                //     firstEl = $wh;
-                //   }
-                //   markInvalid($wh);
-                // }
-
+            
                 // Product / Item
                 if (!$prod.val()) {
                     ok = false;
@@ -1990,10 +1814,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             };
         }
 
-        /**
-        * validateReceipts() -> if any receipt amount > 0 then account must be selected
-        * returns { ok, firstMessage, firstEl }
-        */
+      
         function validateReceipts() {
             let ok = true,
                 firstMessage = null,
@@ -2119,7 +1940,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
 
         /* ---------- Hook validation into Save / Post ---------- */
 
-        // override Save button to validate first
+        // override Save button to validate first and check credit limit
         $('#btnSave').off('click').on('click', function () {
             cleanupEmptyRows(); // remove empty rows
             updateGrandTotals(); // recompute totals after cleanup
@@ -2136,8 +1957,32 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 return;
             }
 
-            // proceed to save
-            ensureSaved();
+            // CHECK CREDIT LIMIT BEFORE SAVING
+            const cust = $('#customerSelect').val();
+            const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+            if (cust) {
+                $.get('/get-customer/' + cust)
+                    .done(function (res) {
+                        const credit = parseFloat(res.credit_limit || 0) || 0;
+                        if (credit > 0 && payable > credit) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit limit exceeded',
+                                html: `Customer credit limit is <b>${credit.toFixed(2)}</b>.<br>Payable amount is <b>${payable.toFixed(2)}</b>.`,
+                            });
+                            return;
+                        }
+                        // proceed to save
+                        ensureSaved();
+                    })
+                    .fail(function () {
+                        // If customer lookup fails, proceed with save but log
+                        ensureSaved();
+                    });
+            } else {
+                ensureSaved();
+            }
         });
 
 

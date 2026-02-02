@@ -17,7 +17,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn(['is_part', 'is_assembled', 'bom_json']);
+            $table->dropColumn(['is_part', 'is_assembled']);
         });
     }
 };

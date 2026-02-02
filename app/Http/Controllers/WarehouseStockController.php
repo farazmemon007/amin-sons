@@ -5,6 +5,8 @@ use Illuminate\Http\Request;
 use App\Models\WarehouseStock;
 use App\Models\Warehouse;
 use App\Models\Product;
+use App\Models\StockOnhand;
+use Illuminate\Support\Facades\DB;
 
 class WarehouseStockController extends Controller
 {
@@ -39,7 +41,23 @@ public function getByWarehouse($warehouseId)
     public function create() {
         $warehouses = Warehouse::all();
         $products = Product::all();
-        return view('admin_panel.warehouses.warehouse_stocks.create', compact('warehouses', 'products'));
+        // Total on-hand quantities per product (from view) if available
+        $onhand = StockOnhand::pluck('onhand_qty', 'product_id')->toArray();
+
+        // Already allocated quantities across warehouses
+        $allocated = WarehouseStock::groupBy('product_id')
+            ->selectRaw('product_id, SUM(quantity) as total_alloc')
+            ->pluck('total_alloc', 'product_id')
+            ->toArray();
+
+        $remainingByProduct = [];
+        foreach ($products as $p) {
+            $total = $onhand[$p->id] ?? ($p->stock->qty ?? 0);
+            $used = $allocated[$p->id] ?? 0;
+            $remainingByProduct[$p->id] = max(0, $total - $used);
+        }
+
+        return view('admin_panel.warehouses.warehouse_stocks.create', compact('warehouses', 'products', 'remainingByProduct'));
     }
 
     public function store(Request $request) {

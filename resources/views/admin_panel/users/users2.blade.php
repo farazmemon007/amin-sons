@@ -524,11 +524,11 @@
                         <h1 class="page-title"><i class="fa fa-users"></i> User Management</h1>
                         <p class="page-subtitle">Manage system users and their roles</p>
                     </div>
-                    {{-- @can('Users.create') --}}
+                    @can('users.create')
                         <button type="button" class="btn btn-create" id="addUserBtn">
                             <i class="fa fa-user-plus"></i> Add User
                         </button>
-                    {{-- @endcan --}}
+                    @endcan
                 </div>
 
                 <!-- Stats Row -->
@@ -906,4 +906,4 @@
         });
     </script>
 
-    @endsection
+@endsection
