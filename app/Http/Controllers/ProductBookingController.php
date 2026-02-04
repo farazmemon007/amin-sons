@@ -12,7 +12,8 @@ class ProductBookingController extends Controller
 {
     public function index()
     {
-        $bookings = ProductBooking::with('customer')->latest()->get();
+        $bookings = ProductBooking::with('customer','items')->latest()->get();
+        // return response()->json(['bookings'=>$bookings]);
         return view('admin_panel.booking.index', compact('bookings'));
     }
     public function receipt($id)

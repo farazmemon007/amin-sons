@@ -178,8 +178,8 @@
                                     <td>{{ $booking->party_type }}</td>
                                     <td>{{ $booking->quantity ?? 0 }}</td>
                                     <td>{{ number_format($booking->sub_total1, 2) }}</td>
-                                    <td>{{ number_format($booking->discount_percent, 2) }}</td>
-                                    <td>{{ number_format($booking->discount_amount, 2) }}</td>
+                                    <td>{{ number_format($booking->items->sum('discount_percent'), 2) }}</td>
+                                    <td>{{ number_format($booking->items->sum('discount_amount'), 2) }}</td>
                                     <td>{{ number_format($booking->total_balance, 2) }}</td>
                                     <td>{{ \Carbon\Carbon::parse($booking->created_at)->format('d-m-Y') }}</td>
                                     <td>

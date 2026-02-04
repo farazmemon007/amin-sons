@@ -45,4 +45,5 @@ class Productbooking extends Model
     {
         return $this->belongsTo(Customer::class);
     }
+   
 }

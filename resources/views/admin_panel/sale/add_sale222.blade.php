@@ -1254,7 +1254,21 @@
                 });
                 updateGrandTotals();
 
-                // 🔴 TESTING: form ka data console me print
+                // � Ensure discount fields have values (not empty strings)
+                $('#salesTableBody tr').each(function () {
+                    const $discValue = $(this).find('.discount-value');
+                    const $discAmount = $(this).find('.discount-amount');
+                    
+                    // Set default 0.00 if empty
+                    if (!$discValue.val()) {
+                        $discValue.val('0.00');
+                    }
+                    if (!$discAmount.val()) {
+                        $discAmount.val('0.00');
+                    }
+                });
+
+                // �🔴 TESTING: form ka data console me print
                 const formData = serializeForm();
                 console.log('🚀 DATA GOING TO sale.ajax.save:', formData);
 
@@ -1311,6 +1325,14 @@
         function postNow() {
 
             let bookingId = $('#booking_id').val();
+
+            // 🔹 Ensure all discount fields have values before posting
+            $('#salesTableBody tr').each(function () {
+                const $discValue = $(this).find('.discount-value');
+                const $discAmount = $(this).find('.discount-amount');
+                if (!$discValue.val()) $discValue.val('0.00');
+                if (!$discAmount.val()) $discAmount.val('0.00');
+            });
 
             let data = $('#saleForm').serializeArray();
 
@@ -1535,7 +1557,10 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         // clear any helper/invalid state when input is empty
         clearInvalid($discInput);
         $row.find('.discount-help').remove();
-        $row.find('.discount-value').val('');
+        // Don't clear discount-value, keep it empty or with user's last input
+        if (!$discInput.val()) {
+            $discInput.val('');
+        }
     }
 
     /* ===== NET ===== */
@@ -2018,7 +2043,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             const prod = $row.find('.product-select').val();
             const wh = $row.find('.warehouse-id').val();
             const qty = parseFloat($row.find('.sales-qty').val() || '0') || 0;
-            const discPct = parseFloat($row.find('.discount-value.discount-percent').val() || '0') || 0;
+            const discPct = parseFloat($row.find('.discount-value').val() || '0') || 0;
             const discAmt = parseFloat($row.find('.discount-amount').val() || '0') || 0;
 
             // consider row meaningful if product selected OR qty > 0 OR discount entered OR warehouse selected
@@ -2043,8 +2068,19 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                         $r.find('input').val('');
                         $r.find('.stock').val('');
                         $r.find('.sales-amount').val('0');
+                        // Set discount fields to 0
+                        $r.find('.discount-value').val('0.00');
+                        $r.find('.discount-amount').val('0.00');
                     }
                 }
+            });
+
+            // Ensure all remaining rows have discount fields populated
+            $('#salesTableBody tr').each(function () {
+                const $discValue = $(this).find('.discount-value');
+                const $discAmount = $(this).find('.discount-amount');
+                if (!$discValue.val()) $discValue.val('0.00');
+                if (!$discAmount.val()) $discAmount.val('0.00');
             });
 
             // ensure at least one blank row exists

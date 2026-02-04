@@ -204,12 +204,12 @@
                         <th>Invoice No</th>
                         <th>Customer Type</th>
                         <th>Customer name</th>
-                        <th>Quantity</th>
+                        {{-- <th>Quantity</th> --}}
                         <th>Subtotal</th>
                         <th>Discount %</th>
                         <th>Discount Amount</th>
                         <th>Total Balance</th>
-                        <th>Receipt</th>
+                        {{-- <th>Receipt</th> --}}
                         <th>Date</th>
                         <th>Action</th>
                     </tr>
@@ -221,12 +221,30 @@
     <td>{{ $sale->party_type }}</td>
     <!-- Customer Name from relation -->
     <td>{{ $sale->customer->customer_name ?? 'N/A' }}</td>
-    <td>{{ $sale->quantity ?? 0 }}</td>
+    {{-- <td>{{ $sale->quantity ?? 0 }}</td> --}}
     <td>{{ number_format($sale->sub_total1, 2) }}</td>
-    <td>{{ number_format($sale->discount_percent, 2) }}</td>
-    <td>{{ number_format($sale->discount_amount, 2) }}</td>
+    <td>
+        @if($sale->saleItems && $sale->saleItems->count() > 0)
+            @php
+                $avgDiscountPercent = $sale->saleItems->avg('discount_percent');
+            @endphp
+            {{ number_format($avgDiscountPercent, 2) }}%
+        @else
+            {{ number_format($sale->discount_percent, 2) }}%
+        @endif
+    </td>
+    <td>
+        @if($sale->saleItems && $sale->saleItems->count() > 0)
+            @php
+                $totalDiscountAmount = $sale->saleItems->sum('discount_amount');
+            @endphp
+            {{ number_format($totalDiscountAmount, 2) }}
+        @else
+            {{ number_format($sale->discount_amount, 2) }}
+        @endif
+    </td>
     <td>{{ number_format($sale->total_balance, 2) }}</td>
-    <td>{{ number_format($sale->receipt1 + $sale->receipt2, 2) }}</td>
+    {{-- <td>{{ number_format($sale->receipt1 + $sale->receipt2, 2) }}</td> --}}
     <td>{{ \Carbon\Carbon::parse($sale->created_at)->format('d-m-Y') }}</td>
     <td class="text-center">
         <!-- PRIMARY ACTION -->
