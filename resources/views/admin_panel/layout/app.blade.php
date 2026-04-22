@@ -494,6 +494,9 @@
                             </a>
                             <div class="submenu">
                                 <ul class="submenu-item">
+                                    @can('report.customer.ledger.view')
+                                    <li><a href="{{ route('report.customer.ledger.new') }}"><i class="fa-solid fa-users"></i> Customer ledger Report</a></li>
+                                    @endcan
                                     @can('report.item.stock.view')
                                     <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-users"></i> Item Stock Report</a></li>
                                     @endcan
