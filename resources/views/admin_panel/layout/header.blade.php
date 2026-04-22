@@ -175,7 +175,7 @@
                                           Icons
                                 *===========================-->
                                     <div class="col-group col-md-4">
-                                        <p class="category-heading">Products</p>
+                                        <p class="category-heading">Products & Purchasing</p>
                                         <ul class="submenu-item">
                                             {{-- <li class="nav-item"><a class="nav-link" href="font-awesome.html"><i class="menu_icon ti-flag-alt"></i> <span>Font Awesome</span></a></li> --}}
                                             {{-- <li class="nav-item"><a class="nav-link" href="themify.html"><i class="menu_icon ti-themify-favicon"></i><span>Themify</span></a></li> --}}
@@ -183,7 +183,8 @@
                                             @if(auth()->user()->can('View Product') || auth()->user()->email === 'admin@admin.com')
                                             <li class="nav-item"><a class="nav-link" href="{{route('product')}}"><i class="menu_icon icon-basket"></i><span>Products</span></a></li>
                                             @endif
-                                            <li class="nav-item"><a class="nav-link" href="{{route('Purchase.home')}}"><i class="menu_icon icon-basket"></i><span>Purchase</span></a></li>
+                                            <li class="nav-item"><a class="nav-link" href="{{route('Purchase.home')}}"><i class="menu_icon icon-basket"></i><span>Purchase Orders</span></a></li>
+                                            <li class="nav-item"><a class="nav-link" href="{{route('InwardGatepass.home')}}"><i class="menu_icon ti-arrow-down"></i><span>Inward Gatepasses</span></a></li>
                                         </ul>
                                     </div>
                                 </div>

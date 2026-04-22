@@ -240,15 +240,18 @@
                                         </div>
                                     @endif
 
-                                    <form action="{{ route('store-product') }}" method="POST"
-                                        enctype="multipart/form-data">
+                                    <form id="productForm" action="{{ route('product.update', $product->id) }}"
+                                        method="POST" enctype="multipart/form-data">
                                         @csrf
+                                        @method('PUT')
                                         <div class="row g-4">
                                             <!-- Image -->
                                             <div class="col-md-4">
                                                 <div class="card shadow-sm border-0 p-3">
                                                     <div class="image-preview-wrapper w-100">
-                                                        <img id="preview" src="" alt="No Image Selected">
+                                                        <img id="preview"
+                                                            src="{{ $product->image ? asset('uploads/products/' . $product->image) : '' }}"
+                                                            alt="No Image Selected">
                                                         <button type="button" class="clear-image-btn"
                                                             id="clearImageBtn">&times;</button>
                                                     </div>
@@ -264,11 +267,7 @@
                                             <!-- Product Info -->
                                             <div class="col-md-8">
                                                 <div class="row g-3">
-                                                    <div class="col-sm-4">
-                                                        <label class="form-label">Item Description</label>
-                                                        <input type="text" value="{{ old('product_name') }}"
-                                                            name="product_name" class="form-control" required>
-                                                    </div>
+
 
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Category</label>
@@ -277,7 +276,9 @@
                                                                 class="form-select">
                                                                 <option value="">Select Category</option>
                                                                 @foreach ($categories as $cat)
-                                                                    <option value="{{ $cat->id }}">{{ $cat->name }}
+                                                                    <option value="{{ $cat->id }}"
+                                                                        {{ $product->category_id == $cat->id ? 'selected' : '' }}>
+                                                                        {{ $cat->name }}
                                                                     </option>
                                                                 @endforeach
                                                             </select>
@@ -300,6 +301,12 @@
                                                             <select id="subcategory-dropdown" name="sub_category_id"
                                                                 class="form-select">
                                                                 <option value="">Select Sub category</option>
+                                                                 @foreach ($subcategories as $cat)
+                                                                    <option value="{{ $cat->id }}"
+                                                                        {{ $product->sub_category_id == $cat->id ? 'selected' : '' }}>
+                                                                        {{ $cat->name }}
+                                                                    </option>
+                                                                @endforeach
                                                             </select>
                                                             <button type="button" class="btn btn-primary add-btn"
                                                                 data-bs-toggle="modal" data-bs-target="#subcategoryModal"
@@ -310,14 +317,23 @@
                                                     </div>
 
                                                     <div class="col-sm-4">
+                                                        <label class="form-label">Item Description</label>
+                                                        <input type="text" id="product_name"
+                                                            value="{{ $product->item_name }}" name="product_name"
+                                                            class="form-control" required>
+                                                    </div>
+
+                                                    <div class="col-sm-4">
                                                         <label class="form-label">Brand</label>
                                                         <div class="input-group">
 
 
                                                             <select name="brand_id" class="form-select" required>
-                                                                <option value="" disabled selected>Select One</option>
+                                                                <option value="" disabled>Select One</option>
                                                                 @foreach ($brands as $brand)
-                                                                    <option value="{{ $brand->id }}">{{ $brand->name }}
+                                                                    <option value="{{ $brand->id }}"
+                                                                        {{ $product->brand_id == $brand->id ? 'selected' : '' }}>
+                                                                        {{ $brand->name }}
                                                                     </option>
                                                                 @endforeach
                                                             </select>
@@ -332,8 +348,8 @@
                                                         <label for="barcodeInput" class="form-label">Barcode</label>
                                                         <div class="input-group">
                                                             <input type="text" id="barcodeInput" name="barcode_path"
-                                                                class="form-control"
-                                                                placeholder="Enter or Generate Barcode">
+                                                                class="form-control" placeholder="Enter or Generate Barcode"
+                                                                value="{{ $product->barcode_path }}">
 
                                                             <button type="button" id="generateBarcodeBtn"
                                                                 class="btn btn-primary px-1"
@@ -346,19 +362,21 @@
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Model</label>
                                                         <div class="input-group">
-                                                         <input type="text" id="model" value="{{ old('model') }}"
-                                                            name="model" class="form-control" required>
+                                                            <input type="text" id="model"
+                                                                value="{{ $product->model }}" name="model"
+                                                                class="form-control" required>
 
-                                                         
+
                                                         </div>
                                                     </div>
                                                     <div class="col-sm-4">
                                                         <label class="form-label">HS Code</label>
                                                         <div class="input-group">
-                                                         <input type="text" id="model" value="{{ old('hs_code') }}"
-                                                            name="hs_code" class="form-control" required>
+                                                            <input type="text" id="hs_code"
+                                                                value="{{ $product->hs_code }}" name="hs_code"
+                                                                class="form-control" required>
 
-                                                         
+
                                                         </div>
                                                     </div>
 
@@ -373,53 +391,77 @@
                                                             <option value="Blue">Blue</option>
                                                         </select>
                                                     </div>
-{{-- //////////////////// --}}
 
-{{-- Packaging Type< --}}
+                                                    {{-- Packaging Type --}}
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Packaging Type</label>
                                                         <div class="input-group">
-                                                         <input type="text" id="packing_type" value="{{ old('packing_type') }}"
-                                                            name="packing_type" class="form-control" required>
-
-                                                         
+                                                            <select id="packing_type" name="packing_type"
+                                                                class="form-select" required>
+                                                                <option value="">Select Packaging Type</option>
+                                                                <option value="Standard"
+                                                                    {{ $product->pack_type == 'Standard' ? 'selected' : '' }}>
+                                                                    Standard</option>
+                                                                <option value="Customize"
+                                                                    {{ $product->pack_type == 'Customize' ? 'selected' : '' }}>
+                                                                    Customize</option>
+                                                            </select>
                                                         </div>
                                                     </div>
-                                                    {{-- quentity of packing --}}
-                                                    <div class="col-sm-4">
+
+                                                    {{-- Unit field (shown for Standard) --}}
+                                                    <div class="col-sm-4" id="unitSection" style="display: none;">
+                                                        <label class="form-label">Unit</label>
+                                                        <div class="input-group">
+                                                            <select id="unit_select" name="unit" class="form-select" value="">
+                                                                <option value="">Select Unit</option>
+                                                                @foreach ($units as $u)
+                                                                    <option value="{{ $u->id }}"
+                                                                        {{ $product->unit_id == $u->id ? 'selected' : '' }}>
+                                                                        {{ $u->name }}</option>
+                                                                @endforeach
+                                                            </select>
+                                                            {{-- <button type="button" class="btn btn-primary add-btn"
+                                                                data-bs-toggle="modal" data-bs-target="#unitModal"
+                                                                title="Add New Unit">
+                                                                <i class="fa-solid fa-plus"></i>
+                                                            </button> --}}
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Packaging Quantity (shown for Customize) --}}
+                                                    <div class="col-sm-4" id="packingQtySection" style="display: none;">
                                                         <label class="form-label">Packaging Quantity</label>
                                                         <div class="input-group">
-                                                         <input type="text" id="packing_qty" value="{{ old('packing_qty') }}"
-                                                            name="packing_qty" class="form-control" required>
-
-                                                         
+                                                            <input type="text" id="packing_qty"
+                                                                value="{{ $product->pack_qty ?? 0 }}" name="packing_qty"
+                                                                class="form-control">
                                                         </div>
                                                     </div>
-{{--  --}}
 
-                                                    <div class="col-sm-4">
+                                                    {{-- Unit per Packing (shown for Customize) --}}
+                                                    <div class="col-sm-4" id="unitPerPackingSection"
+                                                        style="display: none;">
                                                         <label class="form-label">Unit per Packing</label>
-                                                         <input id="piece_per_pack" type="text" value="{{ old('piece_per_package') }}"
-                                                            name="piece_per_pack" class="form-control" required>
-                                                        {{-- <select name="unit" class="form-select" required>
-                                                            <option value="" disabled selected>Select One</option>
-                                                            @foreach ($units as $u)
-                                                                <option value="{{ $u->id }}">{{ $u->name }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select> --}}
+                                                        <input id="piece_per_pack" type="text"
+                                                            value="{{ $product->piece_per_pack ?? 0 }}" name="piece_per_pack"
+                                                            class="form-control">
                                                     </div>
-                                                    <div class="col-sm-4">
-                                                        <label class="form-label">loose piece</label>
-                                                         <input id="loose_piece" type="text" value="{{ old('unit_per_package') }}"
-                                                            name="loose_piece" class="form-control" required>
-                                                       
+
+                                                    {{-- Loose Pieces (shown for Customize) --}}
+                                                    <div class="col-sm-4" id="loosepiece_section" style="display: none;">
+                                                        <label class="form-label">Loose Pieces</label>
+                                                        <input id="loose_piece" type="text"
+                                                            value="{{ $product->loose_piece ?? 0 }}" name="loose_piece"
+                                                            class="form-control">
                                                     </div>
+
 
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Opening Stock (pcs)</label>
-                                                        <input type="number" id="opening_stock" name="Stock" class="form-control"
-                                                            value="0" min="0">
+                                                        <input type="number" id="opening_stock" name="Stock"
+                                                            class="form-control" value="{{ optional($product->stock)->qty ?? 0 }}"
+                                                            min="0">
                                                         <div class="small-help">This will create an opening entry in stock
                                                             ledger.</div>
                                                     </div>
@@ -427,19 +469,21 @@
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Alert Quantity</label>
                                                         <input type="number" name="alert_quantity" class="form-control"
-                                                            value="0" min="0">
+                                                            value="{{ $product->alert_quantity }}" min="0">
                                                     </div>
 
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Wholesale Price</label>
                                                         <input type="number" name="wholesale_price" class="form-control"
-                                                            value="0" step="0.01" min="0">
+                                                            value="{{ $product->wholesale_price ?? 0 }}" step="0.01"
+                                                            min="0">
                                                     </div>
 
                                                     <div class="col-sm-4">
                                                         <label class="form-label">Retail Price</label>
                                                         <input type="number" name="retail_price" class="form-control"
-                                                            value="0" step="0.01" min="0">
+                                                            value="{{ $product->price ?? 0 }}" step="0.01"
+                                                            min="0">
                                                     </div>
                                                 </div>
 
@@ -481,7 +525,7 @@
 
                                         <div class="mt-4">
                                             <button type="submit" class="btn btn-primary w-100 py-2">
-                                                <i class="las la-save"></i> Submit Product
+                                                <i class="las la-save"></i> Update Product
                                             </button>
                                         </div>
                                     </form>
@@ -498,6 +542,8 @@
         <div id="categoryModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
+                   
+
                     <div class="modal-header">
                         <h5 class="modal-title"><span class="type"></span> <span>Add Category</span></h5>
                         <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
@@ -508,7 +554,8 @@
                         @csrf
                         <div class="modal-body">
                             <div class="form-group">
-                                <input type="hidden" name="page" value="product_page" class="form-control" required>
+                                 <input type="hidden" name="page" value="product_edit">
+                                 <input type="hidden" name="product_id" value="{{ $product->id }}">
                                 <label>Name</label>
                                 <input type="text" name="name" class="form-control" required>
                             </div>
@@ -534,8 +581,9 @@
                     <form action="{{ route('store.subcategory') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <input type="hidden" id="" name="page"value="product_page" class="form-control"
-                                required>
+                            <input type="hidden" name="page" value="product_edit">
+                            <input type="hidden" name="product_id" value="{{ $product->id }}">
+
                             <div class="form-group">
                                 <label>Category Name</label>
                                 <select name="category_id" class="form-select">
@@ -558,7 +606,7 @@
         </div>
 
         {{-- model modal --}}
-        <div id="modelModal" class="modal fade" tabindex="-1" role="dialog">
+        {{-- <div id="modelModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -570,6 +618,9 @@
                     <form action="{{ route('store.Unit') }}" method="POST">
                         @csrf
                         <div class="modal-body">
+                            <input type="hidden" name="page" value="product_edit">
+                            <input type="hidden" name="product_id" value="{{ $product->id }}">
+
                             <div class="form-group">
                                 <label>Name</label>
                                 <input type="text" name="unit" class="form-control" required>
@@ -581,12 +632,13 @@
                     </form>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
         {{-- brand modal --}}
         <div id="brandcategoryModal" class="modal fade" tabindex="-1" role="dialog">
             <div class="modal-dialog" role="document">
                 <div class="modal-content">
+                   
                     <div class="modal-header">
                         <h5 class="modal-title"><span class="type"></span> <span>Add Brand</span></h5>
                         <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
@@ -596,7 +648,9 @@
                     <form action="{{ route('store.Brand') }}" method="POST">
                         @csrf
                         <div class="modal-body">
-                            <input type="hidden" name="page" value="product_page" class="form-control" required>
+                             <input type="hidden" name="page" value="product_edit">
+                          <input type="hidden" name="product_id" value="{{ $product->id }}">
+
                             <div class="form-group">
                                 <label>Name</label>
                                 <input type="text" name="name" class="form-control" required>
@@ -604,6 +658,37 @@
                         </div>
                         <div class="modal-footer">
                             <button type="submit" class="btn btn--primary h-45 w-100">Submit</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        {{-- unit modal --}}
+        <div id="unitModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <input type="hidden" name="page" value="product_edit">
+                        <input type="hidden" name="product_id" value="{{ $product->id }}">
+
+                        <h5 class="modal-title">Add Unit</h5>
+                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                            <i class="las la-times"></i>
+                        </button>
+                    </div>
+                    <form id="unitForm" action="{{ route('store.Unit') }}" method="POST">
+                        @csrf
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Unit Name</label>
+                                <input type="text" name="name" id="unitName" class="form-control" required>
+                                
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn--primary h-45">Submit</button>
                         </div>
                     </form>
                 </div>
@@ -640,6 +725,9 @@
         <div class="modal fade" id="partsModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-scrollable modal-xl modal-wide">
                 <div class="modal-content">
+                    <input type="hidden" name="page" value="product_edit">
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+
                     <div class="modal-header">
                         <h6 class="modal-title"><i class="las la-cubes me-1"></i> Define Parts (BOM)</h6>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -696,67 +784,66 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script>
-    function calculateOpeningStock() {
+    <script>
+        function calculateOpeningStock() {
 
-        let packingQty = parseFloat(document.getElementById('packing_qty').value) || 0;
-        let unitPerPackage = parseFloat(document.getElementById('piece_per_pack').value) || 0;
-        let loosePiece = parseFloat(document.getElementById('loose_piece').value) || 0;
+            let packingQty = parseFloat(document.getElementById('packing_qty').value) || 0;
+            let unitPerPackage = parseFloat(document.getElementById('piece_per_pack').value) || 0;
+            let loosePiece = parseFloat(document.getElementById('loose_piece').value) || 0;
 
-        let packedStock = 0;
+            let packedStock = 0;
 
-        // Multiply only if both are entered
-        if (packingQty > 0 && unitPerPackage > 0) {
-            packedStock = packingQty * unitPerPackage;
-        } 
-        // If only one is entered
-        else {
-            packedStock = packingQty + unitPerPackage;
+            // Multiply only if both are entered
+            if (packingQty > 0 && unitPerPackage > 0) {
+                packedStock = packingQty * unitPerPackage;
+            }
+            // If only one is entered
+            else {
+                packedStock = packingQty + unitPerPackage;
+            }
+
+            let totalStock = packedStock + loosePiece;
+
+            document.getElementById('opening_stock').value = totalStock;
         }
 
-        let totalStock = packedStock + loosePiece;
-
-        document.getElementById('opening_stock').value = totalStock;
-    }
-
-    document.getElementById('packing_qty').addEventListener('input', calculateOpeningStock);
-    document.getElementById('piece_per_pack').addEventListener('input', calculateOpeningStock);
-    document.getElementById('loose_piece').addEventListener('input', calculateOpeningStock);
-</script>
+        document.getElementById('packing_qty').addEventListener('input', calculateOpeningStock);
+        document.getElementById('piece_per_pack').addEventListener('input', calculateOpeningStock);
+        document.getElementById('loose_piece').addEventListener('input', calculateOpeningStock);
+    </script>
 
 
 
     <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const input = document.getElementById('barcodeInput');
-    const btn = document.getElementById('generateBarcodeBtn');
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('barcodeInput');
+            const btn = document.getElementById('generateBarcodeBtn');
 
-    let manualMode = false; // 👈 flag
+            let manualMode = false; // 👈 flag
 
-    // 1️⃣ Auto-generate ONLY on page load
-    if (input.value.trim() === '') {
-        fetch('{{ route('generate-barcode-image') }}')
-            .then(res => res.json())
-            .then(data => {
-                if (!manualMode) {
-                    input.value = data.barcode_number;
-                }
+            // 1️⃣ Auto-generate ONLY on page load
+            if (input.value.trim() === '') {
+                fetch('{{ route('generate-barcode-image') }}')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!manualMode) {
+                            input.value = data.barcode_number;
+                        }
+                    });
+            }
+
+            // 2️⃣ Button click → clear field & allow manual typing
+            btn.addEventListener('click', function() {
+                manualMode = true; // ❌ stop auto
+                input.value = ''; // clear
+                input.focus(); // cursor ready
             });
-    }
-
-    // 2️⃣ Button click → clear field & allow manual typing
-    btn.addEventListener('click', function () {
-        manualMode = true;   // ❌ stop auto
-        input.value = '';   // clear
-        input.focus();      // cursor ready
-    });
-});
-</script>
+        });
+    </script>
 
 
 
     <script>
-
         // Barcode generate
         document.getElementById('generateBarcodeBtn').addEventListener('click', function() {
             let currentValue = document.getElementById('barcodeInput').value.trim();
@@ -790,6 +877,63 @@ document.addEventListener('DOMContentLoaded', function () {
             imageInput.value = "";
         });
 
+        // Packing Type conditional visibility - Reusable function
+        function updatePackingTypeDisplay() {
+            var packingType = $('#packing_type').val();
+
+            if (packingType === 'Standard') {
+                // Show Unit field, hide Customize fields
+                $('#unitSection').show();
+                $('#packingQtySection').hide();
+                $('#unitPerPackingSection').hide();
+                $('#loosepiece_section').hide();
+
+                // Set customize fields to 0 (not empty)
+                $('#packing_qty').val('0');
+                $('#piece_per_pack').val('0');
+                $('#loose_piece').val('0');
+
+            } else if (packingType === 'Customize') {
+                // Show Customize fields, hide Unit field
+                $('#unitSection').hide();
+                $('#packingQtySection').show();
+                $('#unitPerPackingSection').show();
+                $('#loosepiece_section').show();
+
+                // Clear unit field
+                $('#unit_select').val('');
+
+            } else {
+                // Hide all conditional fields
+                $('#unitSection').hide();
+                $('#packingQtySection').hide();
+                $('#unitPerPackingSection').hide();
+                $('#loosepiece_section').hide();
+                
+                // Set all to 0
+                $('#packing_qty').val('0');
+                $('#piece_per_pack').val('0');
+                $('#loose_piece').val('0');
+            }
+        }
+
+        // Call on change event
+        $('#packing_type').on('change', updatePackingTypeDisplay);
+
+        // Form submission: Ensure all empty numeric fields are set to 0
+        $('#productForm').on('submit', function(e) {
+            // Set empty packing fields to 0
+            if ($('#packing_qty').val().trim() === '') {
+                $('#packing_qty').val('0');
+            }
+            if ($('#piece_per_pack').val().trim() === '') {
+                $('#piece_per_pack').val('0');
+            }
+            if ($('#loose_piece').val().trim() === '') {
+                $('#loose_piece').val('0');
+            }
+        });
+
         // Dependent Subcategory
         $('#category-dropdown').on('change', function() {
             var categoryId = $(this).val();
@@ -812,6 +956,46 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
+        // Initialize on page load
+        $(document).ready(function() {
+            // Prefill subcategories for edit
+            var categoryId = $('#category-dropdown').val();
+            if (categoryId) {
+                $.ajax({
+                    url: '/get-subcategories/' + categoryId,
+                    type: "GET",
+                    dataType: "json",
+                    success: function(data) {
+                        $('#subcategory-dropdown').empty();
+                        $.each(data, function(_, v) {
+                            var selected = {{ $product->sub_category_id }} == v.id ?
+                                'selected' : '';
+                            $('#subcategory-dropdown').append('<option value="' + v.id + '" ' +
+                                selected + '>' +
+                                v.name + '</option>');
+                        });
+                    }
+                });
+            }
+
+            // Initialize packing type display on page load
+            updatePackingTypeDisplay();
+
+            // Prefill colors if they exist
+            var colors = {!! json_encode($product->color ? json_decode($product->color) : []) !!};
+            if (colors.length > 0) {
+                $('#color-select').val(colors).trigger('change');
+            }
+
+            // Prefill checkbox states
+            if ({{ $product->is_part ?? 0 }}) {
+                $('#isPart').prop('checked', true);
+            }
+            if ({{ $product->is_assembled ?? 0 }}) {
+                $('#isAssembled').prop('checked', true).trigger('change');
+            }
+        });
+
         // Color select2
         $(document).ready(function() {
             $('#color-select').select2({
@@ -819,6 +1003,82 @@ document.addEventListener('DOMContentLoaded', function () {
                 placeholder: "Select or type color(s)",
                 allowClear: true,
                 width: 'resolve'
+            });
+        });
+
+        // ===== Unit Form Submission (AJAX) =====
+        $('#unitForm').on('submit', function(e) {
+            e.preventDefault();
+
+            const unitName = $('#unitName').val().trim();
+            if (!unitName) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Required Field',
+                    text: 'Please enter unit name'
+                });
+                return false;
+            }
+
+            $.ajax({
+                url: $(this).attr('action'),
+                type: 'POST',
+                data: $(this).serialize(),
+                dataType: 'json',
+                success: function(response) {
+                    console.log('Unit created:', response);
+
+                    // Close modal and reset form immediately
+                    const unitModal = document.getElementById('unitModal');
+                    const modal = bootstrap.Modal.getInstance(unitModal);
+                    if (modal) {
+                        modal.hide();
+                    }
+
+                    // Remove backdrop
+                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                    document.body.classList.remove('modal-open');
+
+                    $('#unitForm')[0].reset();
+
+                    // Fetch and update units dropdown
+                    $.ajax({
+                        url: "{{ route('get-units') }}",
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(units) {
+                            console.log('Units fetched:', units);
+                            let unitOptions = '<option value="">Select Unit</option>';
+                            if (units && units.length > 0) {
+                                units.forEach(function(unit) {
+                                    unitOptions += '<option value="' + unit.id +
+                                        '">' + unit.name + '</option>';
+                                });
+                            }
+                            $('#unit_select').html(unitOptions);
+                        },
+                        error: function(error) {
+                            console.error('Error fetching units:', error);
+                        }
+                    });
+
+                    // Show success message
+                    setTimeout(function() {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success',
+                            text: 'Unit created successfully!'
+                        });
+                    }, 100);
+                },
+                error: function(error) {
+                    console.error('Error creating unit:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to create unit'
+                    });
+                }
             });
         });
 
@@ -1011,6 +1271,58 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             partsModal.hide();
         });
+    </script>
+    <script>
+        // Duplicate product name and model validation
+        // $('#productForm').on('submit', function (e) {
+        //     e.preventDefault();
+
+        //     const productName = $('#product_name').val().trim();
+        //     const productModel = $('#model').val().trim();
+
+        //     if (!productName) {
+        //         Swal.fire({
+        //             icon: 'warning',
+        //             title: 'Required Field',
+        //             text: 'Please enter product name',
+        //         });
+        //         return false;
+        //     }
+
+        //     if (!productModel) {
+        //         Swal.fire({
+        //             icon: 'warning',
+        //             title: 'Required Field',
+        //             text: 'Please enter product model',
+        //         });
+        //         return false;
+        //     }
+
+        //     // Check if product with this name or model already exists
+        //     $.ajax({
+        //         url: "{{ route('check-product-name') }}",
+        //         type: 'GET',
+        //         data: { name: productName, model: productModel },
+        //         success: function (response) {
+        //             if (response.exists) {
+        //                 Swal.fire({
+        //                     icon: 'warning',
+        //                     title: 'Duplicate Product',
+        //                     text: 'A product with this name or model already exists!',
+        //                     confirmButtonText: 'OK'
+        //                 });
+        //                 return false;
+        //             } else {
+        //                 // Product name and model are unique, submit form
+        //                 document.getElementById('productForm').submit();
+        //             }
+        //         },
+        //         error: function () {
+        //             // If check fails, allow submission to proceed
+        //             document.getElementById('productForm').submit();
+        //         }
+        //     });
+        // });
     </script>
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {

@@ -1,1602 +1,710 @@
 @extends('admin_panel.layout.app')
 
-  @section('content')
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+@section('content')
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
-  /* ================= RESPONSIVE SALES UI ================= */
-
-/* allow smooth horizontal scroll on small devices */
-.table-responsive {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* base table width */
-.sales-table {
-  min-width: 1000px;
-}
-
-/* 🔹 DISCOUNT COLUMN – THORI SI BARI */
-.sales-table td.large-col {
-  min-width: 95px;
-  width: 95px;
-  padding: 4px;
-}
-
-/* 🔹 DISCOUNT LAYOUT */
-.discount-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: nowrap;
-}
-
-/* 🔹 INPUT – NOT TOO SMALL */
-.discount-wrapper .discount-value {
-  width: 60px;
-  min-width: 60px;
-  font-size: 0.8rem;
-  padding: 4px 6px;
-}
-
-/* 🔹 PLUS ICON – NEAT & SMALL */
-.discount-wrapper .discount-plus {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 13px;
-  line-height: 1;
-}
-
-/* 🔹 DROPDOWN */
-.discount-wrapper .discount-type {
-  position: absolute;
-  right: 0;
-  top: 115%;
-  width: 65px;
-  font-size: 0.75rem;
-  z-index: 30;
-}
-
-
-
-/* ---------- TABLET (<= 992px) ---------- */
-@media (max-width: 992px) {
-
   .main-container {
-    max-width: 100%;
+    font-size: .85rem;
+    max-width: 1200px;
   }
-
-  .sales-table {
-    min-width: 1000px;
-  }
-
-  .minw-350 {
-    min-width: 100%;
-  }
-
-}
-
-/* ---------- MOBILE (<= 768px) ---------- */
-@media (max-width: 768px) {
-
   .header-text {
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
-
-  .btn {
-    padding: .35rem .5rem;
-  }
-
-  /* stack header buttons */
-  .d-flex.justify-content-between.align-items-center {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  /* customer + invoice panel full width */
-  .minw-350 {
-    width: 100%;
-  }
-
-  /* reduce input font */
-  .form-control,
-  .form-select {
-    font-size: .8rem;
-  }
-
-}
-
-/* ---------- VERY SMALL DEVICES ---------- */
-@media (max-width: 576px) {
-
-  .sales-table {
-    min-width: 950px;
-  }
-
-  .discount-wrapper .discount-value {
-    min-width: 90px;
-  }
-
-}
-
-</style>
-  <style>
-    .main-container {
-      font-size: .85rem;
-      max-width: 1400px;
-    }
-
-    .header-text {
-      font-size: 1.1rem;
-    }
-
-    .form-control,
-    .form-select,
-    .btn {
-      font-size: .85rem;
-      padding: .4rem .6rem;
-      height: auto;
-    }
-
-    .invalid-cell {
-      background-color: #fff5f5 !important;
-      /* soft red */
-      border: 1px solid #e3342f !important;
-      /* red border */
-    }
-
-    .invalid-select,
-    .invalid-input {
-      border-color: #e3342f !important;
-      box-shadow: none !important;
-    }
-
-    .input-readonly {
-      background: #f9fbff;
-    }
-
-    .section-title {
-      font-weight: 700;
-      color: #6c757d;
-      letter-spacing: .3px;
-    }
-
-    .table {
-      --bs-table-padding-y: .35rem;
-      --bs-table-padding-x: .5rem;
-      font-size: .85rem;
-    }
-
-    .table thead th {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: #f8f9fa;
-      text-align: center;
-    }
-
-    .table-responsive {
-      max-height: 360px;
-      overflow: auto;
-      border: 1px solid #eee;
-      border-radius: .5rem;
-    }
-
-    .minw-350 {
-      min-width: 360px;
-    }
-
-    .w-70 {
-      width: 70px
-    }
-
-    .w-90 {
-      width: 90px
-    }
-
-    .w-110 {
-      width: 110px
-    }
-
-    .w-120 {
-      width: 120px
-    }
-
-    .w-150 {
-      width: 150px
-    }
-
-    .totals-card {
-      background: #fcfcfe;
-      border: 1px solid #eee;
-      border-radius: .5rem;
-    }
-
-    .totals-card .row+.row {
-      border-top: 1px dashed #e5e7eb;
-    }
-
-    .badge-soft {
-      background: #eef2ff;
-      color: #3730a3;
-    }
-  </style>
-  <style>
-    
-  /* ===== Sales Table UI Fix ===== */
-  .sales-table td.product-col {
-      min-width: 180px;
-  }
-  .sales-table td.warehouse-col {
-      min-width: 170px;
-  }
-  .sales-table td.small-col {
-      width: 110px;
-  }
-  .sales-table td.medium-col {
-      width: 120px;
-  }
-  .sales-table td.action-col {
-      width: 100px;
-      text-align: center;
+  .form-control, .form-select, .btn {
+    font-size: .85rem;
+    padding: .4rem .6rem;
+    height: auto;
   }
   .input-readonly {
-      background: #f1f3f5;
-      font-weight: 600;
+    background: #f9fbff;
+    font-weight: 600;
   }
-  </style>
+  .section-title {
+    font-weight: 700;
+    color: #6c757d;
+    letter-spacing: .3px;
+  }
+  .table {
+    --bs-table-padding-y: .35rem;
+    --bs-table-padding-x: .5rem;
+    font-size: .85rem;
+  }
+  .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fa;
+    text-align: center;
+  }
+  .table-responsive {
+    max-height: 400px;
+    overflow: auto;
+    border: 1px solid #eee;
+    border-radius: .5rem;
+  }
+  .totals-card {
+    background: #fcfcfe;
+    border: 1px solid #eee;
+    border-radius: .5rem;
+  }
+  .badge-info-custom {
+    background: #e7f3ff;
+    color: #004085;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+  }
+  .invalid-input {
+    border-color: #e3342f !important;
+  }
+</style>
 
-  
+<div class="container-fluid py-4">
+  <div class="main-container bg-white border shadow-sm mx-auto p-3 rounded-3">
 
-  <div class="container-fluid py-4">
-    <div class="main-container bg-white border shadow-sm mx-auto p-3 rounded-3">
-
-      <div id="alertBox" class="alert d-none mb-3" role="alert"></div>
-
-      <form id="saleForm" autocomplete="off">
-        @csrf
-        <input type="hidden" id="booking_id" name="booking_id" value="">
-        <input type="hidden" id="action" name="action" value="save">
-
-        {{-- HEADER --}}
-        <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
-          <div>
-            <small class="text-secondary" id="entryDateTime">Entry Date_Time: --</small> <br>
-            <a href="{{ route('sale.index') }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary" title="Sales List (opens new tab)">
-              Sales List
-            </a>
-          </div>
-
-
-          <h2 class="header-text text-secondary fw-bold mb-0">Sales</h2>
-
-
-          <div class="d-flex align-items-center gap-2">
-            <small class="text-secondary me-2" id="entryDate">Date: --</small>
-            <button type="button" class="btn btn-sm btn-light border" id="btnHeaderPosted" disabled>Posted</button>
-          </div>
-        </div>
-
-        <div class="d-flex gap-3 align-items-start border-bottom py-3">
-          {{-- LEFT: Invoice & Customer --}}
-          <div class="p-3 border rounded-3 minw-350">
-            <div class="section-title mb-3">Invoice & Customer</div>
-
-            <div class="mb-2 d-flex align-items-center gap-2">
-              <label class="form-label fw-bold mb-0">Invoice No.</label>
-              <input type="text" class="form-control input-readonly" name="Invoice_no" style="width:150px" value="{{ $nextInvoiceNumber }}" readonly>
-              <label class="form-label fw-bold mb-0">M. Inv#</label>
-              <input type="text" class="form-control" name="Invoice_main" placeholder="Manual invoice">
-            </div>
-
-            {{-- Type toggle --}}
-          <div class="mb-2">
-      <label class="form-label fw-bold mb-1 d-block">Type</label>
-      <div class="btn-group" role="group" id="partyTypeGroup">
-          <input type="radio" class="btn-check" name="partyType" id="typeCustomers" value="Main Customer" checked>
-          <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Customers</label>
-
-          <input type="radio" class="btn-check" name="partyType" id="typeWalkin" value="Walking Customer">
-          <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Walk-in</label>
-
-          {{-- <input type="radio" class="btn-check" name="partyType" id="typeVendors" value="vendor">
-          <label class="btn btn-outline-primary btn-sm" for="typeVendors">Vendors</label> --}}
+    {{-- Show validation errors --}}
+    @if ($errors->any())
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>⚠️ Validation Errors:</strong>
+        <ul class="mb-0 mt-2">
+          @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+          @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
-  </div>
+    @endif
 
-            <!-- CUSTOMER SELECT -->
-  <div class="mb-2">
-      <label class="form-label fw-bold mb-1">Select Customer</label>
-      <select class="form-select" id="customerSelect">
-          <option selected disabled>Loading…</option>
-      </select>
-      <small class="text-muted" id="customerCountHint"></small>
-  </div>
-{{-- ///////////////////// --}}
-  <div class="mb-2">
-      <label class="form-label fw-bold mb-1">Customer id & name</label>
-      <input type="text" class="form-control" id="customer_id" name="customer_id" value="">
-      <small class="text-muted" id="customerCountHint"></small>
-  </div>
-  
+    {{-- Show success message --}}
+    @if (session('success'))
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        ✅ {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    @endif
 
-  <div class="mb-2">
-      <label class="form-label fw-bold">Address</label>
-      <textarea class="form-control" id="address" name="address"></textarea>
-  </div>
+    <div id="alertBox" class="alert d-none mb-3" role="alert"></div>
 
-  <div class="mb-2">
-      <label class="form-label fw-bold">Tel</label>
-      <input type="text" class="form-control" id="tel" name="tel">
-  </div>
+    <form id="saleReturnForm" method="POST" action="{{ route('sales.return.store') }}" autocomplete="off">
+      @csrf
+      <input type="hidden" name="sale_id" value="{{ $sale->id }}">
+      <input type="hidden" name="customer_id" value="{{ $sale->customer_id }}">
+      <input type="hidden" id="branch_id" name="branch_id" value="1">
+      <input type="hidden" id="warehouse_id" name="warehouse_id" value="1">
 
-  <div class="mb-2">
-      <label class="form-label fw-bold">Remarks</label>
-      <textarea class="form-control" id="remarks" name="remarks"></textarea>
-  </div>
-
-  <div class="mb-2 d-flex justify-content-between">
-      <span>Previous Balance</span>
-      <input type="text" class="form-control w-25 text-end" id="previousBalance" value="0">
-  </div>
-
-            <div class="text-end mt-3">
-              <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary">Clear</button>
-            </div>
-          </div>
-
-          {{-- RIGHT: Items --}}
-          <div class="flex-grow-1">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div class="section-title mb-0">Items</div>
-              <button type="button" class="btn btn-sm btn-primary" id="btnAdd">Add Row</button>
-            </div>
-
-            <div class="table-responsive">
-  <table class="table table-bordered sales-table mb-0">
-
-                <thead>
-                  <tr>
-                    <th style="width:10px">Product</th>
-                    {{-- <th style="width:10px">Warehouse</th> --}}
-                    <th style="width:10px">Stock</th>
-                    {{-- <th style="width:10px">Sales Price</th> --}}
-                    <th style="width:10px">Qty</th>
-                    <th style="width:10px">Retail Price</th>
-                    <th style="width:10px">Disc %</th>
-                    <th style="width:10px">Disc Amt</th>
-                    <th style="width:10px">Amount</th>
-                    <th style="width:10px">—</th>
-                  </tr>
-                </thead>
-                <tbody id="salesTableBody">
-
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="8" class="text-end fw-bold">Total:</td>
-                    <td class="text-end fw-bold"><span id="totalAmount">0.00</span></td>
-                    <td></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
+      {{-- HEADER --}}
+      <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+        <div>
+          <small class="text-secondary" id="entryDateTime">Entry Date_Time: --</small><br>
+          <a href="{{ route('sale.index') }}" class="btn btn-sm btn-outline-secondary">Back to Sales</a>
         </div>
-
-        {{-- Totals + Receipts --}}
-        <div class="row g-3 mt-3">
-          <div class="col-lg-7">
-            <div class="section-title mb-2">Receipt Vouchers</div>
-            <div id="rvWrapper" class="border rounded-3 p-2">
-              <div class="d-flex gap-2 align-items-center mb-2 rv-row">
-                <select class="form-select rv-account" name="receipt_account_id[]" style="max-width: 320px">
-                  @foreach ($accounts as $acc)
-                  <option value="" disabled>Select account</option>
-                  <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-                  @endforeach
-                </select>
-                <input type="text" class="form-control text-end rv-amount" name="receipt_amount[]" placeholder="0.00" style="max-width:160px">
-                <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddRV">Add more</button>
-              </div>
-              <div class="text-end">
-                <span class="me-2">Receipts Total:</span>
-                <span class="fw-bold" id="receiptsTotal">0.00</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-lg-5">
-            <div class="section-title mb-2">Totals</div>
-            <div class="totals-card p-3">
-              <div class="row py-1">
-                <div class="col-7 text-muted">Total Qty</div>
-                <div class="col-5 text-end"><span id="tQty">0</span></div>
-              </div>
-              <div class="row py-1">
-                <div class="col-7 text-muted">Invoice Gross (Σ Sales Price × Qty)</div>
-                <div class="col-5 text-end"><span id="tGross">0.00</span></div>
-              </div>
-              <div class="row py-1">
-                <div class="col-7 text-muted">Line Discount (on Retail)</div>
-                <div class="col-5 text-end"><span id="tLineDisc">0.00</span></div>
-              </div>
-              <div class="row py-1">
-                <div class="col-7 fw-semibold">Sub-Total</div>
-                <div class="col-5 text-end fw-semibold"><span id="tSub">0.00</span></div>
-              </div>
-              <div class="row py-1">
-                <div class="col-7">Aditional Discount %</div>
-                <div class="col-5 text-end">
-                  <input type="text" class="form-control text-end" name="discountPercent" id="discountPercent" value="0" style="max-width:120px; margin-left:auto">
-                </div>
-              </div>
-              <div class="row py-1">
-                <div class="col-7 text-muted">Aditional Discount Rs</div>
-                <div class="col-5 text-end"><span id="tOrderDisc">0.00</span></div>
-              </div>
-              <div class="row py-1">
-                <div class="col-7 text-danger">Previous Balance</div>
-                <div class="col-5 text-end text-danger"><span id="tPrev">0.00</span></div>
-              </div>
-              <div class="row py-2">
-                <div class="col-7 fw-bold text-primary">Payable / Total Balance</div>
-                <div class="col-5 text-end fw-bold text-primary"><span id="tPayable">0.00</span></div>
-              </div>
-
-              {{-- hidden mirrors for backend --}}
-              <input type="hidden" name="subTotal1" id="subTotal1" value="0">
-              <input type="hidden" name="subTotal2" id="subTotal2" value="0">
-              <input type="hidden" name="discountAmount" id="discountAmount" value="0">
-              <input type="hidden" name="totalBalance" id="totalBalance" value="0">
-            </div>
-          </div>
+        <h2 class="header-text text-secondary fw-bold mb-0">Sale Return</h2>
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-secondary me-2" id="entryDate">Date: --</small>
         </div>
-
-        {{-- Buttons --}}
-        <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-          <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button>
-          <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button>
-
-          <button type="button" class="btn btn-sm btn-success" id="btnSave">Save</button>
-          <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted" disabled>Posted</button>
-
-          <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">Print</button>
-          <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Print-2</button>
-          <button type="button" class="btn btn-sm btn-secondary" id="btnDCPrint">DC Print</button>
-
-          <button type="button" class="btn btn-sm btn-danger" id="btnDelete">Delete</button>
-          <button type="button" class="btn btn-sm btn-dark" id="btnExit">Exit</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  {{-- product search model --}}
-
-  <div class="modal fade" id="productSearchModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-
-      <div class="modal-header">
-        <h5 class="modal-title">Search Product</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
-      <div class="modal-body">
+      {{-- ORIGINAL SALE INFO --}}
+      <div class="row mt-3 mb-3">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <div class="section-title mb-2">Original Sale Details</div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-0">Invoice No:</label>
+              <input type="text" class="form-control input-readonly" value="{{ $sale->invoice_no }}" readonly>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-0">Customer:</label>
+              <input type="text" class="form-control input-readonly" value="{{ $Customer->find($sale->customer_id)->customer_name ?? 'N/A' }}" readonly>
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-0">Original Total:</label>
+              <input type="text" class="form-control input-readonly text-end fw-bold" value="Rs. {{ number_format($sale->total_net, 2) }}" readonly>
+            </div>
+          </div>
+        </div>
 
-        <!-- Search input -->
-        <input type="text" id="productSearchInput" class="form-control mb-3"
-               placeholder="Search product by name...">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <div class="section-title mb-2">Return Information</div>
+            <div class="mb-2">
+              <label class="form-label fw-bold">Return Reference</label>
+              <input type="text" class="form-control" name="reference" placeholder="e.g, RET-001" value="RET-{{ $nextInvoiceNumber ?? date('YmdHis') }}">
+            </div>
+            <div class="mb-2">
+              <label class="form-label fw-bold">Return Note</label>
+              <textarea class="form-control" name="return_note" placeholder="Reason for return..." rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
 
-        <!-- Product list -->
+      {{-- RETURN ITEMS TABLE --}}
+      <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="section-title mb-0">Items to Return</div>
+          <button type="button" class="btn btn-sm btn-primary" id="btnAddReturnRow">+ Add Row</button>
+        </div>
+
         <div class="table-responsive">
-          <table class="table table-bordered table-hover">
+          <table class="table table-bordered mb-0">
             <thead>
-              <tr>
-                <th>Name</th>
-                <th>Action</th>
+              <tr class="table-light">
+                <th style="width: 35%">Product</th>
+                <th style="width: 12%">Stock</th>
+                <th style="width: 12%">Return Qty</th>
+                <th style="width: 12%">Price</th>
+                <th style="width: 12%">Discount</th>
+                <th style="width: 12%">Total</th>
+                <th style="width: 5%" class="text-center">Action</th>
               </tr>
             </thead>
-            <tbody id="productSearchResults">
-              <tr>
-                <td colspan="2" class="text-center">Type to search...</td>
-              </tr>
+            <tbody id="returnItemsBody">
             </tbody>
           </table>
         </div>
-
       </div>
-    </div>
+
+      {{-- PAYMENT HANDLING --}}
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <div class="section-title mb-2">Payment Method</div>
+            <div class="mb-2">
+              <label class="form-label fw-bold mb-1 d-block">Refund Type</label>
+              <div class="btn-group w-100" role="group">
+                <input type="radio" class="btn-check" name="refund_type" id="refund_credit" value="credit" checked>
+                <label class="btn btn-outline-primary btn-sm" for="refund_credit">Credit Note</label>
+
+                <input type="radio" class="btn-check" name="refund_type" id="refund_cash" value="cash">
+                <label class="btn btn-outline-primary btn-sm" for="refund_cash">Cash Refund</label>
+              </div>
+            </div>
+
+            {{-- CASH REFUND OPTION --}}
+            <div id="cashRefundSection" style="display: none;" class="mt-3 p-3 border rounded-2 bg-light">
+              <div class="section-title mb-2">Cash Distribution</div>
+              <div id="accountRefundWrapper" class="mb-2">
+                <div class="d-flex gap-2 align-items-center mb-2 account-row">
+                  <select class="form-select refund-account" name="refund_account_id[]" style="max-width: 300px">
+                    <option value="">Select Account</option>
+                    @foreach ($accounts as $acc)
+                      <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+                    @endforeach
+                  </select>
+                  <input type="text" class="form-control text-end refund-amount"
+                    name="refund_amount[]" placeholder="0.00" style="max-width: 150px">
+                  <button type="button" class="btn btn-outline-danger btn-sm btnRemoveAccount">&times;</button>
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddRefundAccount">+ Add Account</button>
+            </div>
+          </div>
+        </div>
+
+        {{-- TOTALS --}}
+        <div class="col-md-6">
+          <div class="card totals-card p-3">
+            <div class="section-title mb-2">Return Summary</div>
+
+            <div class="row py-2 border-bottom">
+              <div class="col-7 text-muted">Total Items Returned</div>
+              <div class="col-5 text-end"><span id="totalItemsReturn">0</span></div>
+            </div>
+
+            <div class="row py-2 border-bottom">
+              <div class="col-7 text-muted">Return Subtotal</div>
+              <div class="col-5 text-end"><span id="returnSubtotal">Rs. 0.00</span></div>
+            </div>
+
+            <div class="row py-2 border-bottom">
+              <div class="col-7 text-muted">Original Discount Deduction</div>
+              <div class="col-5 text-end"><span id="discountDeduction">Rs. 0.00</span></div>
+            </div>
+
+            <div class="row py-3 bg-light border-bottom">
+              <div class="col-7 fw-bold text-primary">Net Return Amount</div>
+              <div class="col-5 text-end fw-bold text-primary"><span id="netReturnAmount">Rs. 0.00</span></div>
+            </div>
+
+            {{-- AMOUNT WORDS --}}
+            <div class="row py-2">
+              <div class="col-12">
+                <small class="text-muted">In Words:</small><br>
+                <span id="amountInWords" class="badge badge-info-custom">Zero</span>
+              </div>
+            </div>
+
+            {{-- Hidden inputs for backend --}}
+            <input type="hidden" name="total_subtotal" id="total_subtotal" value="0">
+            <input type="hidden" name="total_extra_cost" id="total_extra_cost" value="0">
+            <input type="hidden" name="total_net" id="total_net" value="0">
+            <input type="hidden" name="cash" id="cash" value="0">
+            <input type="hidden" name="card" id="card" value="0">
+            <input type="hidden" name="change" id="change" value="0">
+            <input type="hidden" name="total_amount_Words" id="total_amount_Words" value="Zero">
+          </div>
+        </div>
+      </div>
+
+      {{-- ACTION BUTTONS --}}
+      <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
+        <button type="submit" class="btn btn-sm btn-success" id="btnSubmit">Process Return</button>
+        <button type="reset" class="btn btn-sm btn-warning">Clear</button>
+        <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">Print</button>
+        <a href="{{ route('sale.index') }}" class="btn btn-sm btn-danger">Exit</a>
+      </div>
+    </form>
   </div>
 </div>
 
-
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-{{--faarz memon --}}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-  let CURRENT_PRODUCT_ROW = null;
-
-
-
-$(document).on('keydown', function (e) {
-
-    if (e.key === 'F2') {
-        e.preventDefault();
-
-        // jis row me cursor hai wo detect karo
-        CURRENT_PRODUCT_ROW = $(':focus').closest('tr');
-
-        if (!CURRENT_PRODUCT_ROW.length) {
-            alert('Please focus on a product row first');
-            return;
-        }
-
-        $('#productSearchInput').val('');
-        $('#productSearchResults').html(
-            '<tr><td colspan="2" class="text-center">Type to search...</td></tr>'
-        );
-
-        $('#productSearchModal').modal('show');
-
-        setTimeout(() => $('#productSearchInput').focus(), 300);
-    }
-
-});
-
-
-
-
-
-
-
-$('#productSearchInput').on('keyup', function () {
-
-    const keyword = $(this).val().trim();
-
-    if (keyword.length < 2) {
-        $('#productSearchResults').html(
-            '<tr><td colspan="2" class="text-center">Type at least 2 characters</td></tr>'
-        );
-        return;
-    }
-
-    $.get('{{ route("search_products") }}', { q: keyword }, function (products) {
-
-        let html = '';
-
-        if (products.length === 0) {
-            html = '<tr><td colspan="2" class="text-center">No product found</td></tr>';
-        } else {
-            products.forEach(p => {
-                html += `
-                    <tr>
-                        <td>${p.item_name}</td>
-                        <td class="text-center">
-                            <button class="btn btn-sm btn-primary select-product"
-                                data-id="${p.id}"
-                                data-name="${p.item_name}"
-                                data-stock="${p.stock}"
-                                data-price="${p.retail_price}">
-                                Select
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        $('#productSearchResults').html(html);
-    });
-
-});
-
-
-
-$(document).on('click', '.select-product', function () {
-
-    if (!CURRENT_PRODUCT_ROW) return;
-
-    const id    = $(this).data('id');
-    const name  = $(this).data('name');
-    const stock = $(this).data('stock');
-    const price = $(this).data('price');
-
-    // product dropdown me add + select
-    const $productSelect = CURRENT_PRODUCT_ROW.find('.product');
-
-    if ($productSelect.find(`option[value="${id}"]`).length === 0) {
-        $productSelect.append(`<option value="${id}">${name}</option>`);
-    }
-
-    $productSelect.val(id).trigger('change');
-
-    // stock & price set
-    CURRENT_PRODUCT_ROW.find('.stock').val(stock);
-    CURRENT_PRODUCT_ROW.find('.retail-price').val(price);
-
-    // modal close
-    $('#productSearchModal').modal('hide');
-
-    // qty par focus
-    setTimeout(() => {
-        CURRENT_PRODUCT_ROW.find('.sales-qty').focus();
-    }, 200);
-});
-
-
-
-
-
-
-
-
-
-
-
-
-</script>
-
-
-
-
-
-
-
-
-
-
-{{--faarz memon --}}
-
-
-<script>
-    window.RECEIPT_ACCOUNTS = @json($accounts);
-</script>
-<script>
-function loadAccountsInto($select) {
-
-    const currentVal = $select.val(); // 🔒 preserve selection
-    let usedAccounts = [];
-
-    $('.rv-account').each(function () {
-        const val = $(this).val();
-        if (val && this !== $select[0]) {
-            usedAccounts.push(String(val));
-        }
-    });
-
-    let html = '<option value="">Select account</option>';
-
-    window.RECEIPT_ACCOUNTS.forEach(function (acc) {
-        const accId = String(acc.id);
-
-        if (!usedAccounts.includes(accId) || accId === String(currentVal)) {
-            html += `<option value="${accId}">${acc.title}</option>`;
-        }
-    });
-
-    $select.html(html);
-
-    // 🔥 restore selected value
-    if (currentVal) {
-        $select.val(currentVal);
-    }
-}
-</script>
-
-
-<script>
-  $(document).ready(function () {
-    loadAccountsInto($('.rv-account').first());
-});
-
-</script>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  <!--fgdffhjkjkhgkhkh  -->
-
-  <script>
-  $(document).ready(function () {
-  function init() {
-      addNewRow();
-      loadCustomersByType('Main Customer');
-      // loadAccountsInto($('.rv-account').first());
-      updateGrandTotals();
-      refreshPostedState();
-    }
-
-    init();
-      // 🔹 Load customers on page load
-      // loadCustomersByType('customer');
-
-      // 🔹 Change customer type (radio)
-      $(document).on('change', 'input[name="partyType"]', function () {
-          $('#customerSelect').val('');
-          
-          $('#address,#tel,#remarks').val('');
-          $('#previousBalance').val('0');
-          loadCustomersByType(this.value);
-      });
-
-      // 🔹 Load customers list
-      function loadCustomersByType(type) {
-         //alert('loadCustomersByType CALLED → ' + type);
-          $('#customerSelect')
-              .prop('disabled', true)
-              .html('<option selected disabled>Loading…</option>');
-
-          $.get('{{ route("salecustomers.index") }}',{type:type}, function (data) {
-
-              let html = '<option value="">-- Select --</option>';
-            
-              if (data.length > 0) {
-                  data.forEach(row => {
-                      html += `<option value="${row.id}">
-                        ${row.customer_id} -- ${row.customer_name}
-                      </option>`;
-                  });
-                  $('#customerCountHint').text(data.length + ' record(s) found');
-              } else {
-                  html += '<option disabled>No record found</option>';
-                  $('#customerCountHint').text('No record found');
-              }
-
-              $('#customerSelect').html(html).prop('disabled', false);
+// Pass sale items from PHP to JavaScript
+const SALE_ITEMS = {!! json_encode($saleItems ?? []) !!};
+
+// Initialize Select2 for return items product
+function initProductSelect2Return(selector = '.product-select-return') {
+  $(selector).select2({
+    ajax: {
+      transport: function (params, success, failure) {
+        let term = (params.data && (params.data.term || params.data.q)) || '';
+        let page = (params.data && (params.data.page || 1)) || 1;
+        let ajaxUrl = term && term.length > 0 ? '/search_products' : '/search-products-sale';
+        $.ajax({
+          url: ajaxUrl,
+          data: { q: term, page: page },
+          dataType: 'json',
+          success: function (data) { success(data); },
+          error: failure
+        });
+      },
+      delay: 250,
+      data: function (params) {
+        return { q: params.term || '', page: params.page || 1 };
+      },
+      processResults: function (data, params) {
+        params.page = params.page || 1;
+        let results = [];
+        if (Array.isArray(data)) {
+          results = data.map(function (p) {
+            // Extract stock quantity from object or use direct value
+            let stockQty = (typeof p.stock === 'object' && p.stock !== null) ? (p.stock.qty || 0) : (p.stock || 0);
+            return { id: p.id, text: p.item_name, stock: stockQty, price: p.retail_price || p.price };
           });
-      }
-
-      // 🔹 When customer selected → load detail
-      $(document).on('change', '#customerSelect', function () {
-          const id = $(this).val();
-          $('#customer_id').val(id);  
-          if (!id) return;
-
-          $.get(
-              '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
-              function (d) {
-                  $('#address').val(d.address || '');
-                  $('#tel').val(d.mobile || '');
-                  $('#remarks').val(d.status || '');
-                  $('#previousBalance').val((+d.opening_balance || 0).toFixed(2));
-              }
-          );
-      });
-
-      // 🔹 Clear button
-      $('#clearCustomerData').on('click', function () {
-          $('#customerSelect').val('');
-          $('#address,#tel,#remarks').val('');
-          $('#previousBalance').val('0');
-      });
-
+          return { results: results, pagination: { more: false } };
+        }
+        results = (data.products || []).map(function (p) {
+          // Extract stock quantity from object or use direct value
+          let stockQty = (typeof p.stock === 'object' && p.stock !== null) ? (p.stock.qty || 0) : (p.stock || 0);
+          return { id: p.id, text: p.item_name, stock: stockQty, price: p.retail_price || p.price };
+        });
+        return { results: results, pagination: { more: !!data.has_more } };
+      },
+      cache: true
+    },
+    minimumInputLength: 0,
+    placeholder: 'Search product...',
+    allowClear: true,
+    width: 'resolve'
   });
-  </script>
+}
 
-
-
-
-
-
-
-  
-
-
-  <script>
-    /* ---------- helpers ---------- */
-    function pad(n) {
-      return n < 10 ? '0' + n : n
-    }
-
-    function setNowStamp() {
-      const d = new Date();
-      const dt = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-      const dOnly = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${String(d.getFullYear()).slice(-2)}`;
-      $('#entryDateTime').text('Entry Date_Time: ' + dt);
-      $('#entryDate').text('Date: ' + dOnly);
-    }
-    setNowStamp();
-    setInterval(setNowStamp, 60 * 1000);
-    $('.js-customer').select2();
-
-    $.ajaxSetup({
-      headers: {
-        'X-CSRF-TOKEN': $('input[name="_token"]').val()
-      }
-    });
-
-    function showAlert(type, msg) {
-      const el = $('#alertBox');
-      el.removeClass('d-none alert-success alert-danger').addClass('alert-' + type).text(msg);
-      setTimeout(() => el.addClass('d-none'), 2500);
-    }
-    
-
-
-
-
-
-    function addNewRow() {
-  let productOptions = '<option value="">Select product</option>';
-  if (window.ALL_PRODUCTS && Array.isArray(window.ALL_PRODUCTS)) {
-    window.ALL_PRODUCTS.forEach(function(p) {
-      productOptions += `<option value="${p.id}">${p.item_name}</option>`;
-    });
-  }
-  $('#salesTableBody').append(`
-  <tr>
-    <!-- PRODUCT -->
-    <td class="product-col">
-      <div class="input-group">
-        <select class="form-select product" name="product_id[]">
-          ${productOptions}
+function addNewReturnRow(itemData = null) {
+  const rowHtml = `
+    <tr>
+      <td class="product-col">
+        <select class="form-select product-select-return" name="product_id[]" style="width:100%">
+          <option value="">Search product...</option>
         </select>
-      </div>
-    </td>
+        <input type="hidden" name="warehouse_id[]" class="warehouse-id-field">
+      </td>
+      <td class="text-center">
+        <input type="text" class="form-control text-center input-readonly stock-return" readonly>
+      </td>
+      <td class="text-center">
+        <input type="number" class="form-control text-center return-qty" name="qty[]" min="0" placeholder="0">
+      </td>
+      <td class="text-end">
+        <input type="text" class="form-control text-end input-readonly retail-price-return" value="0" readonly name="price[]">
+      </td>
+      <td class="text-end">
+        <input type="text" class="form-control text-end input-readonly discount-return" value="0" readonly name="discount[]">
+      </td>
+      <td class="text-end">
+        <input type="text" class="form-control text-end input-readonly line-total-return" value="Rs. 0.00" readonly>
+      </td>
+      <td class="text-center">
+        <button type="button" class="btn btn-sm btn-outline-danger del-return-row">&times;</button>
+      </td>
+    </tr>
+  `;
+  $('#returnItemsBody').append(rowHtml);
+  const $lastRow = $('#returnItemsBody tr:last-child');
 
-    <!-- STOCK -->
-    <td class="small-col">
-      <input type="text" class="form-control stock text-center input-readonly" readonly>
-    </td>
+  // If item data provided (from original sale), pre-fill the row
+  if (itemData) {
+    const $selectBox = $lastRow.find('.product-select-return');
+    const option = new Option(itemData.item_name, itemData.product_id, true, true);
+    $selectBox.append(option).trigger('change');
 
-    <!-- QTY -->
-    <td class="small-col">
-      <input type="text" class="form-control sales-qty text-end" id="sales-qty" name="sales_qty[]">
-    </td>
+    // Pre-fill all fields
+    $lastRow.find('.stock-return').val(itemData.qty);
+    $lastRow.find('input[name="qty[]"]').val(itemData.qty);  // Pre-fill return qty with original qty
+    $lastRow.find('input[name="price[]"]').val(parseFloat(itemData.price).toFixed(2));
+    $lastRow.find('.retail-price-return').val(parseFloat(itemData.price).toFixed(2));
+    $lastRow.find('input[name="discount[]"]').val(parseFloat(itemData.discount).toFixed(2));
+    $lastRow.find('.discount-return').val(parseFloat(itemData.discount).toFixed(2));
 
-    <!-- RETAIL PRICE -->
-    <td class="medium-col">
-      <input type="text" id="retail-price" class="form-control retail-price text-end input-readonly" value="0" readonly name="retail_price[]">
-    </td>
+    // Set warehouse_id in hidden field
+    $lastRow.find('.warehouse-id-field').val(itemData.warehouse_id);
 
-<!-- DISCOUNT -->
-<!-- DISCOUNT % / PKR -->
-<td class="large-col">
-  <div class="discount-wrapper">
-    <input type="text"
-           class="form-control discount-value text-end"
-           placeholder="" name="discount_percentage[]" >
-
-    <button type="button"
-            class="btn btn-outline-secondary discount-toggle"
-            data-type="percent">%</button>
-  </div>
-</td>
-
-
-
-    <!-- DISCOUNT AMOUNT -->
-    <td class="medium-col">
-      <input type="text" class="form-control discount-amount text-end" name="discount_amount[]">
-    </td>
-
-    <!-- NET AMOUNT -->
-    <td class="medium-col">
-      <input type="text" class="form-control sales-amount text-end input-readonly" name="sales_amount[]" value="0" readonly>
-    </td>
-
-    <!-- ACTION -->
-    <td class="action-col">
-      <button type="button" class="btn btn-sm btn-outline-danger del-row">&times;</button>
-    </td>
-  </tr>
-  `);
-
-
+    // Calculate and set line total
+    const lineTotal = (itemData.qty * itemData.price) - itemData.discount;
+    $lastRow.find('.line-total-return').val('Rs. ' + lineTotal.toFixed(2));
   }
 
-// discunt % field
-$(document).on('click', '.discount-toggle', function () {
+  initProductSelect2Return('#returnItemsBody tr:last-child .product-select-return');
 
-  const $btn = $(this);
-  const currentType = $btn.data('type');
-
-  if (currentType === 'percent') {
-    $btn.data('type', 'pkr').text('PKR');
-  } else {
-    $btn.data('type', 'percent').text('%');
-  }
-
-  // re-calc row
-  const $row = $btn.closest('tr');
-  computeRow($row);
-  updateGrandTotals();
-});
-
-
-
-
-
-
-
-
-    function canPost() {
-      let ok = false;
-      $('#salesTableBody tr').each(function() {
-        const pid = $(this).find('.product').val();
-        const qty = parseFloat($(this).find('.sales-qty').val() || '0');
-        if (pid && qty > 0) {
-          ok = true;
-          return false;
-        }
-      });
-      return ok;
-    }
-
-    function refreshPostedState() {
-      const state = canPost();
-      $('#btnPosted, #btnHeaderPosted').prop('disabled', !state);
-    }
-
-    /* ---------- SAVE/POST ---------- */
-    function serializeForm() {
-      return $('#saleForm').serialize();
-    }
-
- function ensureSaved() {
-  return new Promise(function(resolve, reject) {
-
-    const existing = $('#booking_id').val();
-    if (existing) return resolve(existing);
-
-    // 🔴 TESTING: form ka data console me print
-    const formData = serializeForm();
-    console.log('🚀 DATA GOING TO sale.ajax.save:', formData);
-
-    $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', true);
-
-    $.post('{{ route("sale.ajax.save") }}', formData)
-
-      .done(function(res) {
-       console.log('✅ RESPONSE FROM SERVER:', res);
-
-        $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
-
-        if (res?.ok) {
-          $('#booking_id').val(res.booking_id);
-          showAlert('success', 'Saved (Booking #' + res.booking_id + ')');
-          resolve(res.booking_id);
-        } else {
-          showAlert('danger', res.msg || 'Save failed');
-          reject(res);
-        }
-      })
-
-      .fail(function(xhr) {
-        console.error('❌ AJAX ERROR RESPONSE:', xhr.responseText);
-
-        $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
-        showAlert('danger', 'Save error');
-        reject(xhr);
-      });
-  });
-}
-
-
-   function postNow() {
-
-  const bookingId = $('#booking_id').val();
-
-  if (!bookingId) {
-    showAlert('danger', 'Please save booking first');
-    return;
-  }
-
-  // 🔒 disable buttons while posting
-  $('#btnPosted, #btnHeaderPosted').prop('disabled', true);
-
-  $.post('{{ route("sale.ajax.post") }}', {
-      _token: $('input[name="_token"]').val(),
-      booking_id: bookingId
-  })
-
-  .done(function(res) {
-
-      if (res && res.ok) {
-
-          // ✅ SUCCESS STATE
-          showAlert('success', 'Posted successfully');
-
-          // 🔒 permanently disable after post
-          $('#btnPosted, #btnHeaderPosted, #btnSave').prop('disabled', true);
-
-          // 🧾 open invoice
-          if (res.invoice_url) {
-              window.open(res.invoice_url, '_blank');
-          }
-
-      } else {
-
-          // ❌ FAILED
-          $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
-          showAlert('danger', res.msg || 'Post failed');
-
+  // Load product details on selection
+  $lastRow.find('.product-select-return').on('select2:select', function(e) {
+    if (e && e.params && e.params.data) {
+      const $row = $(this).closest('tr');
+      // Properly extract stock value (handle both object and numeric types)
+      let stockValue = e.params.data.stock || 0;
+      if (typeof stockValue === 'object' && stockValue !== null) {
+        stockValue = stockValue.qty || 0;
       }
-  })
+      $row.find('.stock-return').val(stockValue);
 
-  .fail(function(xhr) {
-
-      console.error(xhr.responseText);
-
-      // ❌ enable again if error
-      $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
-
-      showAlert('danger', 'Server error while posting');
+      // Properly extract price value (handle both object and numeric types)
+      let priceValue = e.params.data.price || 0;
+      if (typeof priceValue === 'object' && priceValue !== null) {
+        priceValue = priceValue.price || priceValue.retail_price || 0;
+      }
+      $row.find('.retail-price-return').val(parseFloat(priceValue).toFixed(2));
+      $row.find('input[name="price[]"]').val(parseFloat(priceValue).toFixed(2));
+    }
   });
 }
 
-    /* ---------- Events top buttons ---------- */
-    $('#btnAdd').on('click', addNewRow);
-    $('#btnEdit').on('click', () => alert('Edit mode activated'));
-    $('#btnRevert').on('click', () => location.reload());
-    $('#btnDelete').on('click', function() {
-      if (!confirm('Reset all fields?')) return;
-      $('#saleForm')[0].reset();
-      $('#booking_id').val('');
-      $('#salesTableBody').html('');
-      addNewRow();
-      $('#totalAmount').text('0.00');
-      updateGrandTotals();
-      refreshPostedState();
-      showAlert('success', 'Form cleared');
-    });
-    $('#btnSave').on('click', function() {
-      // alert();
-      ensureSaved();
-    });
-    $('#btnPrint').on('click', function() {
-      ensureSaved().then(id => window.open('{{ url("booking/print") }}/' + id, '_blank'));
-    });
-    $('#btnPrint2').on('click', function() {
-      ensureSaved().then(id => window.open('{{ url("booking/print2") }}/' + id, '_blank'));
-    });
-  $('#btnDCPrint').off('click').on('click', function () {
+$(document).ready(function() {
+  console.log('🟢 DOCUMENT READY FIRED - Sale Return Form JS Loading');
 
-    ensureSaved().then(function (id) {
+  // Set current date/time
+  function setNowStamp() {
+    const d = new Date();
+    const pad = (n) => n < 10 ? '0' + n : n;
+    const dt = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const dOnly = `${pad(d.getDate())}-${pad(d.getMonth()+1)}-${String(d.getFullYear()).slice(-2)}`;
+    $('#entryDateTime').text('Entry Date_Time: ' + dt);
+    $('#entryDate').text('Date: ' + dOnly);
+  }
+  setNowStamp();
 
-        // alert(id); // ✅ ab zaroor chalega
+  // Alert function - IMPROVED FOR VISIBILITY
+  function showAlert(type, msg) {
+    const el = $('#alertBox');
+    el.removeClass('d-none alert-success alert-danger alert-warning alert-info')
+      .addClass('alert-' + type)
+      .html(msg)
+      .show();
 
-        window.open('{{ url("booking/dc") }}/' + id, '_blank');
+    // Scroll to alert box so user sees it
+    $('html, body').animate({
+      scrollTop: el.offset().top - 100
+    }, 300);
 
-    }).catch(function () {
-        alert('Save failed');
-    });
-
-});
-
-    $('#btnExit').on('click', function() {
-      ensureSaved().finally(() => {
-        window.location.href = "{{ route('sale.index') }}";
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      el.fadeOut(300, function() {
+        el.addClass('d-none');
       });
-    });
-    $('#btnHeaderPosted, #btnPosted').on('click', function() {
-      if (!canPost()) return;
-      ensureSaved().then(postNow);
-    });
+    }, 5000);
 
+    console.log('🚨 Alert shown:', type, msg);
+  }
 
-    /* ---------- Row compute ---------- */
-    function toNum(v) {
-      return parseFloat(v || 0) || 0;
+  $.ajaxSetup({
+    headers: {
+      'X-CSRF-TOKEN': $('input[name="_token"]').val()
     }
-function computeRow($row) {
+  });
 
-  const rp  = toNum($row.find('.retail-price').val());
-  const qty = toNum($row.find('.sales-qty').val());
-
-  const discValue = toNum($row.find('.discount-value').val());
-  const discType  = $row.find('.discount-toggle').data('type'); // percent | pkr
-
-  let dam = toNum($row.find('.discount-amount').val());
-
-  // 🔹 GROSS
-  const gross = rp * qty;
-
-  /* ===== AUTO DISCOUNT ===== */
-  if (discValue > 0) {
-
-    if (discType === 'percent') {
-      dam = (gross * discValue) / 100;   // % from retail
+  // Toggle refund type
+  $('input[name="refund_type"]').on('change', function() {
+    if ($(this).val() === 'cash') {
+      $('#cashRefundSection').show();
     } else {
-      dam = discValue * qty;            // PKR × qty
+      $('#cashRefundSection').hide();
     }
-
-    $row.find('.discount-amount').val(dam.toFixed(2));
-
-  } else {
-    // ✅ NEW FEATURE → jab disc% / PKR empty ya 0 ho
-    dam = 0;
-    $row.find('.discount-amount').val('0.00');
-  }
-
-  /* ===== NET ===== */
-  const net = Math.max(0, gross - dam);
-  $row.find('.sales-amount').val(net.toFixed(2));
-}
-
-
-
-
-
-
-
- $(document).on('input', '.sales-qty, .discount-value', function () {
-  const $row = $(this).closest('tr');
-  computeRow($row);
-  updateGrandTotals();
-  refreshPostedState();
-});
-
-    $(document).on('input', '.discount-amount', function() {
-      const $row = $(this).closest('tr');
-      computeRow($row, true); // manual amount respected
-      updateGrandTotals();
-      refreshPostedState();
-    });
-
-    /* ---------- Delete row ---------- */
-    $(document).on('click', '.del-row', function() {
-      const $tr = $(this).closest('tr');
-      const $tbody = $('#salesTableBody');
-      if ($tbody.find('tr').length > 1) {
-        $tr.remove();
-        updateGrandTotals();
-        refreshPostedState();
-      }
-    });
-
-    /* ---------- Totals ---------- */
-   function updateGrandTotals() {
-
-  let tQty = 0;
-  let tGross = 0;
-  let tLineDisc = 0;
-  let tNet = 0;
-
-  $('#salesTableBody tr').each(function () {
-
-    const $r = $(this);
-
-    const rp  = toNum($r.find('.retail-price').val());
-    const qty = toNum($r.find('.sales-qty').val());
-    const dam = toNum($r.find('.discount-amount').val());
-
-    const gross = rp * qty;
-    const net   = Math.max(0, gross - dam);
-
-    tQty      += qty;
-    tGross    += gross;
-    tLineDisc += dam;
-    tNet      += net;   // ✅ NET TOTAL
   });
 
-  // ===== ORDER LEVEL =====
-  const orderPct  = toNum($('#discountPercent').val());
-  const orderDisc = (tNet * orderPct) / 100;
+  // Calculate line total when qty changes
+  $(document).on('input', '.return-qty', function() {
+    const $row = $(this).closest('tr');
+    const qty = parseFloat($(this).val()) || 0;
+    const price = parseFloat($row.find('input[name="price[]"]').val()) || 0;
+    const discount = parseFloat($row.find('input[name="discount[]"]').val()) || 0;
 
-  const prev      = toNum($('#previousBalance').val());
-  const receipts = toNum($('#receiptsTotal').text());
+    const lineTotal = (price * qty) - discount;
 
-  const payable = Math.max(0, tNet - orderDisc + prev - receipts);
+    $row.find('.line-total-return').val('Rs. ' + lineTotal.toFixed(2));
 
-  // ===== UI UPDATE =====
-  $('#tQty').text(tQty.toFixed(0));
-  $('#tGross').text(tGross.toFixed(2));
-  $('#tLineDisc').text(tLineDisc.toFixed(2));
-  $('#tSub').text(tNet.toFixed(2));
-  $('#tOrderDisc').text(orderDisc.toFixed(2));
-  $('#tPrev').text(prev.toFixed(2));
-  $('#tPayable').text(payable.toFixed(2));
+    updateGrandTotal();
+  });
 
-  // 🔥 TABLE FOOTER TOTAL
-  $('#totalAmount').text(tNet.toFixed(2));
+  // Delete return row
+  $(document).on('click', '.del-return-row', function() {
+    const $tr = $(this).closest('tr');
+    const $tbody = $('#returnItemsBody');
+    if ($tbody.find('tr').length > 1) {
+      $tr.remove();
+    }
+    updateGrandTotal();
+  });
 
-  // ===== BACKEND MIRRORS =====
-  $('#subTotal1').val(tGross.toFixed(2));
-  $('#subTotal2').val(tNet.toFixed(2));
-  $('#discountAmount').val(orderDisc.toFixed(2));
-  $('#totalBalance').val(payable.toFixed(2));
-}
+  // Add row button
+  $('#btnAddReturnRow').on('click', function() {
+    addNewReturnRow();
+  });
 
-    $(document).on('input', '#previousBalance, #discountPercent', updateGrandTotals);
+  // Update grand totals
+  function updateGrandTotal() {
+    let totalQty = 0;
+    let totalSubtotal = 0;
+    let totalDiscount = 0;
 
-    /* ---------- Row auto-add ---------- */
-    $('#salesTableBody').on('input', '.sales-qty', function() {
-      const $row = $(this).closest('tr');
-      computeRow($row);
-      updateGrandTotals();
-      refreshPostedState();
+    $('#returnItemsBody tr').each(function() {
+      const qty = parseFloat($(this).find('.return-qty').val()) || 0;
+      const price = parseFloat($(this).find('input[name="price[]"]').val()) || 0;
+      const discount = parseFloat($(this).find('input[name="discount[]"]').val()) || 0;
+
+      totalQty += qty;
+      totalSubtotal += (price * qty);
+      totalDiscount += discount;
     });
 
-    /* ---------- Add new row when user presses Enter in Disc % (only on last row) ---------- */
-    $('#salesTableBody').on('keydown', '.discount-value', function(e) {
-      if (e.key === 'Enter' || e.keyCode === 13) {
-        e.preventDefault(); // prevent accidental form submit
-        const $current = $(this).closest('tr');
+    const netReturn = totalSubtotal - totalDiscount;
 
-        // compute current row first (in case user typed value and pressed Enter)
-        computeRow($current);
-        updateGrandTotals();
-        refreshPostedState();
+    $('#totalItemsReturn').text(totalQty.toFixed(0));
+    $('#returnSubtotal').text('Rs. ' + totalSubtotal.toFixed(2));
+    $('#discountDeduction').text('Rs. ' + totalDiscount.toFixed(2));
+    $('#netReturnAmount').text('Rs. ' + netReturn.toFixed(2));
 
-        // only add new row when this is the last row AND discount has some value OR qty > 0 or product selected
-        const isLast = $current.is(':last-child');
-        const discVal = parseFloat($(this).val() || '0') || 0;
-        const qtyVal = parseFloat($current.find('.sales-qty').val() || '0') || 0;
-        const prodSelected = !!$current.find('.product').val();
+    // Update hidden fields
+    $('#total_subtotal').val(totalSubtotal.toFixed(2));
+    $('#total_extra_cost').val(totalDiscount.toFixed(2));
+    $('#total_net').val(netReturn.toFixed(2));
 
-        // require at least one 'meaningful' value so blank Enter doesn't create rows
-        if (isLast && (discVal !== 0 || qtyVal > 0 || prodSelected)) {
-          addNewRow();
-          // focus on new row product for quick entry
-          const $newRow = $('#salesTableBody tr:last-child');
-          // setTimeout(() => $newRow.find('.warehouse').focus(), 0);
-        }
+    // Convert to words
+    $('#total_amount_Words').val(numberToWords(netReturn));
+    $('#amountInWords').text(numberToWords(netReturn));
+
+    // Update cash fields
+    $('#cash').val(netReturn.toFixed(2));
+  }
+
+  // Add refund account row
+  $('#btnAddRefundAccount').on('click', function() {
+    const newRow = `
+      <div class="d-flex gap-2 align-items-center mb-2 account-row">
+        <select class="form-select refund-account" name="refund_account_id[]" style="max-width: 300px">
+          <option value="">Select Account</option>
+          @foreach ($accounts as $acc)
+            <option value="{{ $acc->id }}">{{ $acc->title }}</option>
+          @endforeach
+        </select>
+        <input type="text" class="form-control text-end refund-amount"
+          name="refund_amount[]" placeholder="0.00" style="max-width: 150px">
+        <button type="button" class="btn btn-outline-danger btn-sm btnRemoveAccount">&times;</button>
+      </div>
+    `;
+    $('#accountRefundWrapper').append(newRow);
+  });
+
+  // Remove refund account row
+  $(document).on('click', '.btnRemoveAccount', function() {
+    $(this).closest('.account-row').remove();
+  });
+
+  // Form validation and submission
+  $('#saleReturnForm').on('submit', function(e) {
+    console.log('🔵 FORM SUBMIT CLICKED');
+    e.preventDefault();
+
+    // Validate at least one item selected
+    let hasItems = false;
+    $('#returnItemsBody tr').each(function() {
+      const qty = parseFloat($(this).find('.return-qty').val()) || 0;
+      console.log('Row qty check:', qty);
+      if (qty > 0) hasItems = true;
+    });
+
+    console.log('Has items:', hasItems);
+    if (!hasItems) {
+      console.log('❌ NO ITEMS VALIDATION FAILED');
+      showAlert('danger', 'Please select at least one item to return');
+      return;
+    }
+    console.log('✅ VALIDATION PASSED');
+
+    // If cash refund, validate accounts
+    const isCashRefund = $('#refund_cash').is(':checked');
+    console.log('🔍 Is Cash Refund?', isCashRefund);
+
+    if (isCashRefund) {
+      let totalAmount = parseFloat($('#total_net').val()) || 0;
+      let allocatedAmount = 0;
+
+      console.log('💰 Total Return Amount:', totalAmount);
+
+      $('.refund-amount').each(function() {
+        const amt = parseFloat($(this).val()) || 0;
+        console.log('   Refund account amount:', amt);
+        allocatedAmount += amt;
+      });
+
+      console.log('💵 Total Allocated:', allocatedAmount);
+
+      // ✅ ALLOW PARTIAL REFUNDS: Allocated can be less than or equal to total
+      // Remaining balance auto-converts to credit note
+      if (allocatedAmount > totalAmount) {
+        console.log('❌ ACCOUNTS VALIDATION FAILED - Allocated exceeds total');
+        showAlert('danger', `Refund accounts total (Rs. ${allocatedAmount.toFixed(2)}) cannot exceed return amount (Rs. ${totalAmount.toFixed(2)})`);
+        return;
       }
-    });
 
+      if (allocatedAmount === 0 && totalAmount > 0) {
+        console.log('❌ ACCOUNTS VALIDATION FAILED - No amount allocated');
+        showAlert('danger', `Please enter refund amount. Total to refund: Rs. ${totalAmount.toFixed(2)}`);
+        return;
+      }
 
-    /* ---------- Receipts (accounts) ---------- */
-    // function loadAccountsInto($select) {
-    //   $select.prop('disabled', true).empty().append('<option value="">Loading...</option>');
-
-    //   // Get the list of accounts
-    // //   $.get(, {
-    // //     scope: 'cashbank'
-    // //   }, function(rows) {
-    // //     $select.empty().append('<option value="">Select account</option>');
-    // //     (rows || []).forEach(function(a) {
-    // //       $select.append('<option value="' + a.id + '">' + a.title + '</option>'); // Add account options
-    // //     });
-    // //     $select.prop('disabled', false); // Enable the select input after loading
-    // //   }).fail(function() {
-    // //     // If there's an error, display an error message
-    // //     $select.empty().append('<option value="">Error loading</option>').prop('disabled', false);
-    // //   });
-    // }
-
-    function recomputeReceipts() {
-      let sum = 0;
-      // Calculate the total receipt amount
-      $('.rv-amount').each(function() {
-        sum += toNum($(this).val()); // Sum up all the receipt amounts
-      });
-      $('#receiptsTotal').text(sum.toFixed(2)); // Display total in the respective element
-      updateGrandTotals(); // Update other totals if needed
-    }
-
-$('#btnAddRV').on('click', function () {
-
-    const $row = $(`
-        <div class="d-flex gap-2 align-items-center mb-2 rv-row">
-            <select class="form-select rv-account" name="receipt_account_id[]" style="max-width:320px"></select>
-            <input type="text" class="form-control text-end rv-amount" name="receipt_amount[]" placeholder="0.00" style="max-width:160px">
-            <button type="button" class="btn btn-outline-danger btn-sm btnRemRV">&times;</button>
-        </div>
-    `);
-
-    $('#rvWrapper').append($row);
-
-    loadAccountsInto($row.find('.rv-account'));
-});
-
-
-   // $(document).on('click', '.btnRemRV', function() {
-    //  $(this).closest('.rv-row').remove();
-    //  recomputeReceipts(); // Recompute total receipts after removal
-    //});
-$(document).on('click', '.btnRemRV', function () {
-    $(this).closest('.rv-row').remove();
-    recomputeReceipts();
-
-    $('.rv-account').each(function () {
-        loadAccountsInto($(this));
-    });
-});
-
-    // Recompute total receipt amounts when input changes
-    $(document).on('input', '.rv-amount', recomputeReceipts);
-
-    /* ---------- init ---------- */
-    // function init() {
-    //   addNewRow();
-    //   loadCustomersByType('customer');
-    //   // loadAccountsInto($('.rv-account').first());
-    //   updateGrandTotals();
-    //   refreshPostedState();
-    // }
-
-    // init();
-
-    function markInvalid($el) {
-      // add visuals; $el can be input/select/td
-      $el.addClass('invalid-input invalid-select');
-      // also add class to closest td for table cells
-      $el.closest('td').addClass('invalid-cell');
-    }
-
-    function clearInvalid($el) {
-      $el.removeClass('invalid-input invalid-select');
-      $el.closest('td').removeClass('invalid-cell');
-    }
-
-    function clearAllInvalids() {
-      $('.invalid-input, .invalid-select').removeClass('invalid-input invalid-select');
-      $('.invalid-cell').removeClass('invalid-cell');
-    }
-
-    $(document).on('input change', 'select, input, textarea', function() {
-      clearInvalid($(this));
-    });
-
-    function validateRows() {
-      let ok = true;
-      let firstMessage = null;
-      let firstEl = null;
-
-      $('#salesTableBody tr').each(function(rowIndex) {
-        const $row = $(this);
-        // const $wh = $row.find('.warehouse');
-        const $prod = $row.find('.product');
-        const $qty = $row.find('.sales-qty');
-
-        // Warehouse
-        // if (!$wh.val()) {
-        //   ok = false;
-        //   if (!firstMessage) {
-        //     firstMessage = 'Please select Warehouse for row ' + (rowIndex + 1);
-        //     firstEl = $wh;
-        //   }
-        //   markInvalid($wh);
-        // }
-
-        // Product / Item
-        if (!$prod.val()) {
-          ok = false;
-          if (!firstMessage) {
-            firstMessage = 'Please select Item for row ' + (rowIndex + 1);
-            firstEl = $prod;
-          }
-          markInvalid($prod);
-        }
-
-        // Qty > 0
-        const qtyVal = parseFloat($qty.val() || '0') || 0;
-        if (qtyVal <= 0) {
-          ok = false;
-          if (!firstMessage) {
-            firstMessage = 'Please enter Item qty (> 0) for row ' + (rowIndex + 1);
-            firstEl = $qty;
-          }
-          markInvalid($qty);
-        }
-      });
-
-      return {
-        ok,
-        firstMessage,
-        firstEl
-      };
-    }
-
-    /**
-    * validateReceipts() -> if any receipt amount > 0 then account must be selected
-    * returns { ok, firstMessage, firstEl }
-    */
-    function validateReceipts() {
-      let ok = true,
-        firstMessage = null,
-        firstEl = null;
-      $('#rvWrapper .rv-row').each(function(i) {
-        const $row = $(this);
-        const $acc = $row.find('.rv-account');
-        const $amt = $row.find('.rv-amount');
-        const amtVal = parseFloat($amt.val() || '0') || 0;
-
-        if (amtVal > 0 && (!$acc.val() || $acc.val() === "")) {
-          ok = false;
-          if (!firstMessage) {
-            firstMessage = 'Please select Account for receipt row ' + (i + 1);
-            firstEl = $acc;
-          }
-          markInvalid($acc);
-        }
-      });
-      return {
-        ok,
-        firstMessage,
-        firstEl
-      };
-    }
-
-    /**
-    * validateHeader() -> Type & Party mandatory
-    */
-    function validateHeader() {
-      let ok = true,
-        firstMessage = null,
-        firstEl = null;
-      // Type (partyType) - we expect a radio selected
-      const partyType = $('input[name="partyType"]:checked').val();
-      if (!partyType) {
-        ok = false;
-        firstMessage = 'Please select Type';
-        firstEl = $('input[name="partyType"]').first();
-        // mark buttons visually
-        $('#partyTypeGroup').addClass('invalid-cell');
+      const creditBalance = totalAmount - allocatedAmount;
+      if (creditBalance > 0) {
+        console.log('ℹ️ INFO: Partial refund detected');
+        console.log(`   Cash: Rs. ${allocatedAmount.toFixed(2)}`);
+        console.log(`   Credit Note: Rs. ${creditBalance.toFixed(2)}`);
       } else {
-        $('#partyTypeGroup').removeClass('invalid-cell');
+        console.log('✅ FULL CASH REFUND');
       }
 
-      // Party / Customer
-      const cust = $('#customerSelect').val();
-      if (!cust) {
-        ok = false;
-        if (!firstMessage) {
-          firstMessage = 'Please select Party (Customer / Vendor)';
-          firstEl = $('#customerSelect');
-        }
-        markInvalid($('#customerSelect'));
-      }
-
-      return {
-        ok,
-        firstMessage,
-        firstEl
-      };
+      console.log('✅ ACCOUNTS VALIDATION PASSED');
     }
 
-    /**
-    * validateFormAll() -> run header, rows, receipts
-    * returns { ok, message, el }
-    */
-    function validateFormAll() {
-      clearAllInvalids();
+    // ✅ All validations passed - submit form via AJAX
+    console.log('📤 AJAX SUBMISSION STARTING');
+    const formData = $(this).serialize();
+    console.log('Form data:', formData);
 
-      // header
-      const h = validateHeader();
-      if (!h.ok) {
-        return {
-          ok: false,
-          message: h.firstMessage,
-          el: h.firstEl
-        };
-      }
+    $.ajax({
+      url: '{{ route("sales.return.store") }}',
+      type: 'POST',
+      dataType: 'json',
+      data: formData,
+      success: function(response) {
+        console.log('✅ AJAX SUCCESS:', response);
+        showAlert('success', '✅ Sale return processed successfully!');
+        setTimeout(() => {
+          window.location.href = '{{ route("sale.index") }}';
+        }, 1500);
+      },
+      error: function(xhr) {
+        console.error('❌ AJAX ERROR:', xhr);
+        console.error('Full Response:', xhr.responseJSON); // Log full response
+        let msg = 'Server error occurred';
 
-      // rows
-      const r = validateRows();
-      if (!r.ok) {
-        return {
-          ok: false,
-          message: r.firstMessage,
-          el: r.firstEl
-        };
-      }
-
-      // receipts
-      const rec = validateReceipts();
-      if (!rec.ok) {
-        return {
-          ok: false,
-          message: rec.firstMessage,
-          el: rec.firstEl
-        };
-      }
-
-      // if all ok
-      return {
-        ok: true
-      };
-    }
-
-    /* ---------- Hook validation into Save / Post ---------- */
-
-    // override Save button to validate first
-    $('#btnSave').off('click').on('click', function() {
-      cleanupEmptyRows(); // remove empty rows
-      updateGrandTotals(); // recompute totals after cleanup
-      refreshPostedState();
-
-      // run the existing validation pipeline
-      const v = validateFormAll();
-      if (!v.ok) {
-        showAlert('danger', v.message);
-        if (v.el && v.el.length) {
-          v.el.focus();
-          if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+        // Check for validation errors
+        if (xhr.status === 422 && xhr.responseJSON?.errors) {
+          msg = 'Validation errors:\n';
+          $.each(xhr.responseJSON.errors, function(key, val) {
+            msg += '- ' + val[0] + '\n';
+          });
+        } else if (xhr.responseJSON?.message) {
+          msg = xhr.responseJSON.message;
+        } else if (xhr.responseText) {
+          msg = xhr.responseText;
         }
-        return;
-      }
 
-      // proceed to save
-      ensureSaved();
+        console.error('Error message:', msg);
+        showAlert('danger', '❌ ' + msg);
+      }
     });
+  });
 
-
-    // override Post buttons to validate first
-    $('#btnHeaderPosted, #btnPosted').off('click').on('click', function() {
-      cleanupEmptyRows();
-      updateGrandTotals();
-      refreshPostedState();
-
-      const v = validateFormAll();
-      if (!v.ok) {
-        showAlert('danger', v.message);
-        if (v.el && v.el.length) {
-          v.el.focus();
-          if (v.el.hasClass('js-customer')) v.el.select2?.('open');
-        }
-        return;
-      }
-
-      if (!canPost()) {
-        showAlert('danger', 'No valid item lines to post');
-        return;
-      }
-
-      ensureSaved().then(postNow);
+  // Initialize with sale items on page load
+  if (SALE_ITEMS && SALE_ITEMS.length > 0) {
+    // Create a row for each sale item
+    SALE_ITEMS.forEach(function(item) {
+      addNewReturnRow(item);
     });
+  } else {
+    // If no sale items, add one empty row
+    addNewReturnRow();
+  }
+  updateGrandTotal();
+});
 
+// Number to words conversion
+function numberToWords(num) {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const scales = ['', 'Thousand', 'Million', 'Billion'];
 
-    function isRowMeaningful($row) {
-      const prod = $row.find('.product').val();
-      // const wh = $row.find('.warehouse').val();
-      const qty = parseFloat($row.find('.sales-qty').val() || '0') || 0;
-      const discPct = parseFloat($row.find('.discount-value.discount-percent').val() || '0') || 0;
-      const discAmt = parseFloat($row.find('.discount-amount').val() || '0') || 0;
+  if (num === 0) return 'Zero';
 
-      // consider row meaningful if product selected OR qty > 0 OR discount entered OR warehouse selected
-      return !!prod || !!wh || qty > 0 || discPct !== 0 || discAmt !== 0;
+  let parts = [];
+  let scaleIndex = 0;
+
+  while (num > 0) {
+    const part = num % 1000;
+    if (part !== 0) {
+      parts.unshift(convertHundreds(part) + (scaleIndex > 0 ? ' ' + scales[scaleIndex] : ''));
     }
+    num = Math.floor(num / 1000);
+    scaleIndex++;
+  }
 
-    function cleanupEmptyRows() {
-      $('#salesTableBody tr').each(function() {
-        const $r = $(this);
-        const prod = $r.find('.product').val();
-        // const wh = $r.find('.warehouse').val();
-        const qty = parseFloat($r.find('.sales-qty').val() || '0') || 0;
+  return parts.join(' ');
 
-        // Remove row when qty is zero or (product empty AND warehouse empty)
-        // We want to remove:
-        //  - rows where qty <= 0 (user didn't enter qty) because they are meaningless,
-        //  - or rows that are fully empty.
-        if ((qty <= 0) || ((!prod || prod === '') && (!wh || wh === ''))) {
-          // ensure we keep at least one row in UI
-          if ($('#salesTableBody tr').length > 1) {
-            $r.remove();
-          } else {
-            // if only one row left, clear its fields instead of removing (keeps UI stable)
-            $r.find('select').val('');
-            $r.find('input').val('');
-            $r.find('.stock').val('');
-            $r.find('.sales-amount').val('0');
-          }
-        }
-      });
+  function convertHundreds(n) {
+    let result = '';
+    const hundreds = Math.floor(n / 100);
+    const remainder = n % 100;
 
-      // ensure at least one blank row exists
-      if ($('#salesTableBody tr').length === 0) addNewRow();
+    if (hundreds > 0) result += ones[hundreds] + ' Hundred';
+    if (remainder > 0) {
+      if (result) result += ' ';
+      if (remainder < 10) result += ones[remainder];
+      else if (remainder < 20) result += teens[remainder - 10];
+      else {
+        result += tens[Math.floor(remainder / 10)];
+        if (remainder % 10 > 0) result += ' ' + ones[remainder % 10];
+      }
     }
-  </script>
-  <script>
-window.ALL_PRODUCTS = @json($products ?? []);
+    return result;
+  }
+}
 </script>
-  @endsection
+
+@endsection
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

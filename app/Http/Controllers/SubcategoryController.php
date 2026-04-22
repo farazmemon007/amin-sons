@@ -60,10 +60,18 @@ public function store(Request $request)
     $subcategory->save();
 
     // RESPONSE FOR ALERT
-    if ($request->page === 'product_page') {
-        return redirect()->route('store')->with('success',$message);
-    }
+       if ($request->page === 'product_edit') {
+        return redirect()
+            ->route('products.edit', $request->product_id)
+            ->with('success', 'Subcategory added successfully');
 
+     }else if($request->page === 'product_page'){
+
+    
+    return redirect()
+        ->route('store')
+        ->with('success', 'Subctegory added successfully');
+}
     return response()->json([
         'status' => 'success',
         'message' => $message,

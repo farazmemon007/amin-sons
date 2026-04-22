@@ -243,8 +243,20 @@
             <!-- Left : Title -->
             <div class="col-md-3">
                 <div class="gp-title">
-                    <h5 class="mb-0 fw-semibold">Add Inward Gatepass</h5>
-                    <small class="text-muted">Create & manage inward stock entries</small>
+                    <h5 class="mb-0 fw-semibold">
+                        @if($purchase)
+                            Receive Purchase #{{ $purchase->id }}
+                        @else
+                            Add Inward Gatepass
+                        @endif
+                    </h5>
+                    <small class="text-muted">
+                        @if($purchase)
+                            Create inward gatepass for purchase from {{ $purchase->vendor->name ?? 'N/A' }}
+                        @else
+                            Create & manage inward stock entries
+                        @endif
+                    </small>
                 </div>
             </div>
 
@@ -313,6 +325,15 @@
             <form action="{{ route('store.InwardGatepass') }}" method="POST" id="gatepassForm">
                 @csrf
 
+                {{-- Hidden purchase_id if from purchase --}}
+                @if($purchase)
+                    <input type="hidden" name="purchase_id" value="{{ $purchase->id }}">
+                    {{-- 🚨 CRITICAL: Flag for JavaScript to prevent blank row on from-purchase mode --}}
+                    <input type="hidden" id="isFromPurchase" value="1">
+                @else
+                    <input type="hidden" id="isFromPurchase" value="0">
+                @endif
+
                 {{-- Top fields --}}
                 {{-- Top fields in 2 columns --}}
                 <div class="row mb-2">
@@ -329,18 +350,24 @@
                                         value="{{ old('gatepass_date', date('Y-m-d')) }}">
                                 </div>
 
-                                <div>
-                                    <label>Branch</label>
-                                    <select name="branch_id" class="form-select select2">
-                                        <option value="">Select One</option>
-                                        @foreach ($branches as $item)
-                                            <option value="{{ $item->id }}"
-                                                {{ old('branch_id') == $item->id ? 'selected' : '' }}>
-                                                {{ $item->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                @if($isSuperAdmin)
+                                    {{-- ✅ ERP STANDARD: Super admin can change branch --}}
+                                    <div>
+                                        <label>Branch</label>
+                                        <select name="branch_id" class="form-select select2">
+                                            <option value="">Select One</option>
+                                            @foreach ($branches as $item)
+                                                <option value="{{ $item->id }}"
+                                                    {{ old('branch_id', $purchase?->branch_id) == $item->id ? 'selected' : '' }}>
+                                                    {{ $item->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                @else
+                                    {{-- ✅ CRITICAL: Hidden branch_id for simple users (locked to their branch) --}}
+                                    <input type="hidden" name="branch_id" value="{{ Auth::user()->branch_id ?? 1 }}">
+                                @endif
 
                                 <div>
                                     <label>Warehouse</label>
@@ -348,7 +375,7 @@
                                         <option value="">Select One</option>
                                         @foreach ($warehouses as $item)
                                             <option value="{{ $item->id }}"
-                                                {{ old('warehouse_id') == $item->id ? 'selected' : '' }}>
+                                                {{ old('warehouse_id', $purchase?->warehouse_id) == $item->id ? 'selected' : '' }}>
                                                 {{ $item->warehouse_name }}
                                             </option>
                                         @endforeach
@@ -377,7 +404,7 @@
                                         <option value="">Select One</option>
                                         @foreach ($vendors as $item)
                                             <option value="{{ $item->id }}"
-                                                {{ old('vendor_id') == $item->id ? 'selected' : '' }}>
+                                                {{ old('vendor_id', $purchase?->vendor_id) == $item->id ? 'selected' : '' }}>
                                                 {{ $item->name }}
                                             </option>
                                         @endforeach
@@ -387,12 +414,12 @@
                                 <div style="grid-column:span 2">
                                     <label>Transport Name</label>
                                     <input type="text" name="transport_name" class="form-control"
-                                        value="{{ old('transport_name') }}">
+                                        value="{{ old('transport_name', ($purchase?->note ? 'From Purchase #'.$purchase->id : '')) }}">
                                 </div>
 
                                 <div style="grid-column:span 2">
                                     <label>Note</label>
-                                    <input type="text" name="note" class="form-control" value="{{ old('note') }}">
+                                    <input type="text" name="note" class="form-control" value="{{ old('note', ($purchase ? 'Ref: Purchase #'.$purchase->id : '')) }}">
                                 </div>
                             </div>
                         </div>
@@ -400,6 +427,32 @@
 
                 </div>
 
+                {{-- Delivery Type Indicator (ERP Standard) --}}
+                @if($purchase)
+                    @php
+                        $hasPartialDelivery = $vendorRemaining && $vendorRemaining->count() > 0;
+                        $totalPending = $vendorRemaining->sum('remaining_qty') ?? 0;
+                    @endphp
+                    
+                    @if($hasPartialDelivery)
+                        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+                            <i class="fa fa-hourglass-half"></i>
+                            <strong>Partial Delivery Mode:</strong> 
+                            This is a subsequent delivery. 
+                            <strong>{{ $totalPending }} units</strong> still pending from purchase #{{ $purchase->id }}.
+                            The "Received Qty" field is pre-filled with the <strong>remaining quantity</strong> from the last delivery.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @else
+                        <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+                            <i class="fa fa-box"></i>
+                            <strong>First Delivery:</strong> 
+                            Creating first inward gatepass for purchase #{{ $purchase->id }}.
+                            You can modify the "Received Qty" if receiving partial quantities.
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    @endif
+                @endif
 
                 {{-- Items table --}}
                 <div class="table-responsive compact mb-2">
@@ -410,27 +463,112 @@
                                 <th style="min-width:120px;">Item Code</th>
                                 <th style="min-width:120px;">Brand</th>
                                 <th style="min-width:100px;">Unit</th>
-                                <th style="min-width:90px;">Qty</th>
+                                <th style="min-width:90px;">Ordered Qty</th>
+                                <th style="min-width:90px;">Received Qty</th>
+                                <th style="min-width:90px;">Remaining</th>
                                 <th style="width:80px">Action</th>
                             </tr>
                         </thead>
                         <tbody id="gatepassItems">
-                            <tr>
-                                <td class="searchWrap">
-                                    <input type="hidden" name="product_id[]" class="product_id">
-                                    <input type="text" class="form-control productSearch"
-                                        placeholder="Search product by name/code" autocomplete="off">
-                                    <div class="searchResults"></div>
-                                </td>
-                                <td><input type="text" name="item_code[]" class="form-control" readonly></td>
-                                <td><input type="text" name="brand[]" class="form-control" readonly></td>
-                                <td><input type="text" name="unit[]" class="form-control" readonly></td>
-                                <td><input type="number" name="qty[]" class="form-control quantity text-end"
-                                        min="1" value="1"></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-outline-danger btn-slim remove-row">X</button>
-                                </td>
-                            </tr>
+                            @if($purchase)
+                                @if($purchase->items && $purchase->items->count() > 0)
+                                    {{-- Pre-populate from purchase items with vendor_remaining tracking --}}
+                                    @foreach($purchase->items as $item)
+                                        @php
+                                            // ✅ Check if this product has a partial delivery record
+                                            $remaining = $vendorRemaining[$item->product_id] ?? null;
+                                            
+                                            // For Received Qty field:
+                                            // - If partial delivery exists: Show remaining qty (what's still pending)
+                                            // - Otherwise: Show full order qty (first delivery)
+                                            $preFilledReceivedQty = $remaining ? $remaining->remaining_qty : $item->qty;
+                                            
+                                            // Status indicator for user
+                                            $deliveryStatus = $remaining ? 'Partial Delivery - ' . $remaining->received_qty . ' already received' : 'First Delivery';
+                                            
+                                            // Title for input tooltip
+                                            $receivedQtyTitle = $remaining ? 'Remaining qty from last delivery' : 'Qty expected in this delivery';
+                                        @endphp
+                                        <tr>
+                                            <td class="searchWrap">
+                                                <input type="hidden" name="product_id[]" class="product_id" value="{{ $item->product_id }}">
+                                                <input type="text" class="form-control productSearch"
+                                                    placeholder="Search product by name/code" autocomplete="off" 
+                                                    value="{{ $item->product?->name ?? $item->product?->item_name ?? 'Product #'.$item->product_id }}" readonly>
+                                                <div class="searchResults"></div>
+                                            </td>
+                                            <td><input type="text" name="item_code[]" class="form-control" 
+                                                value="{{ $item->product?->code ?? $item->product?->item_code ?? '' }}" readonly></td>
+                                            <td><input type="text" name="brand[]" class="form-control" 
+                                                value="{{ $item->product?->brand?->name ?? '' }}" readonly></td>
+                                            <td><input type="text" name="unit[]" class="form-control" 
+                                                value="{{ $item->product?->unit?->name ?? $item->unit ?? '' }}" readonly></td>
+                                            <td>
+                                                <input type="text" name="ordered_qty[]" class="form-control text-end ordered-qty" 
+                                                    value="{{ $item->qty }}" readonly title="Original order quantity from purchase">
+                                                {{-- ✅ CRITICAL: Store pending qty for THIS delivery (for partial delivery calculations) --}}
+                                                <input type="hidden" class="pending-qty-for-delivery" value="{{ $preFilledReceivedQty }}">
+                                                @if($remaining)
+                                                    <small class="text-muted d-block">{{ $deliveryStatus }}</small>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <input type="number" name="received_qty[]" class="form-control quantity text-end received-qty"
+                                                        min="0" step="1" value="{{ $preFilledReceivedQty }}" max="{{ $item->qty }}" 
+                                                        style="border: 1px solid #ffc107; background: #fffbf0;"
+                                                        title="{{ $receivedQtyTitle }}">
+                                            </td>
+                                            <td><input type="text" name="remaining[]" class="form-control text-end remaining-qty" 
+                                                value="0" readonly style="background: #f8f9fa;"></td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-outline-danger btn-slim remove-row">X</button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @else
+                                    {{-- No items, show empty row --}}
+                                    <tr>
+                                        <td class="searchWrap">
+                                            <input type="hidden" name="product_id[]" class="product_id">
+                                            <input type="text" class="form-control productSearch"
+                                                placeholder="Search product by name/code" autocomplete="off">
+                                            <div class="searchResults"></div>
+                                        </td>
+                                        <td><input type="text" name="item_code[]" class="form-control" readonly></td>
+                                        <td><input type="text" name="brand[]" class="form-control" readonly></td>
+                                        <td><input type="text" name="unit[]" class="form-control" readonly></td>
+                                        <td><input type="text" name="ordered_qty[]" class="form-control text-end ordered-qty" value="0" readonly></td>
+                                        <td><input type="number" name="received_qty[]" class="form-control quantity text-end received-qty"
+                                                min="0" step="1" value="0"></td>
+                                        <td><input type="text" name="remaining[]" class="form-control text-end remaining-qty" 
+                                            value="0" readonly style="background: #f8f9fa;"></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-outline-danger btn-slim remove-row">X</button>
+                                        </td>
+                                    </tr>
+                                @endif
+                            @else
+                                {{-- No purchase selected --}}
+                                <tr>
+                                    <td class="searchWrap">
+                                        <input type="hidden" name="product_id[]" class="product_id">
+                                        <input type="text" class="form-control productSearch"
+                                            placeholder="Search product by name/code" autocomplete="off">
+                                        <div class="searchResults"></div>
+                                    </td>
+                                    <td><input type="text" name="item_code[]" class="form-control" readonly></td>
+                                    <td><input type="text" name="brand[]" class="form-control" readonly></td>
+                                    <td><input type="text" name="unit[]" class="form-control" readonly></td>
+                                    <td><input type="text" name="ordered_qty[]" class="form-control text-end ordered-qty" value="0" readonly></td>
+                                    <td><input type="number" name="received_qty[]" class="form-control quantity text-end received-qty"
+                                            min="0" step="1" value="0"></td>
+                                    <td><input type="text" name="remaining[]" class="form-control text-end remaining-qty" 
+                                        value="0" readonly style="background: #f8f9fa;"></td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-outline-danger btn-slim remove-row">X</button>
+                                    </td>
+                                </tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>
@@ -552,7 +690,9 @@ $(document).ready(function () {
         <td><input type="text" name="item_code[]" class="form-control" readonly></td>
         <td><input type="text" name="brand[]" class="form-control" readonly></td>
         <td><input type="text" name="unit[]" class="form-control" readonly></td>
-        <td><input type="number" name="qty[]" class="form-control quantity text-end" min="1" value="1"></td>
+        <td><input type="text" name="ordered_qty[]" class="form-control text-end ordered-qty" value="0" readonly></td>
+        <td><input type="number" name="received_qty[]" class="form-control quantity text-end received-qty" min="0" step="1" value="0" style="border: 1px solid #ffc107; background: #fffbf0;"></td>
+        <td><input type="text" name="remaining[]" class="form-control text-end remaining-qty" value="0" readonly style="background: #f8f9fa;"></td>
         <td class="text-center"><button type="button" class="btn btn-outline-danger btn-slim remove-row">X</button></td>
       </tr>`);
         }
@@ -606,6 +746,73 @@ $(document).ready(function () {
                 $('#gatepassItems tr:last .productSearch').focus();
             }
         });
+
+        // Handle received qty changes - calculate remaining = ordered - received
+        function calculateRemaining($tr) {
+            // ✅ CRITICAL FIX: For partial deliveries, use pending-qty-for-delivery, not original ordered-qty
+            const pendingQtyForDelivery = parseFloat($tr.find('.pending-qty-for-delivery').val()) || 0;
+            const orderedQty = parseFloat($tr.find('.ordered-qty').val()) || 0;
+            const maxQtyForThisDelivery = pendingQtyForDelivery > 0 ? pendingQtyForDelivery : orderedQty;
+            
+            let receivedQty = parseFloat($tr.find('.received-qty').val()) || 0;
+            
+            // ✅ ERP VALIDATION: CANNOT EXCEED PENDING QTY FOR THIS DELIVERY
+            if (receivedQty > maxQtyForThisDelivery) {
+                receivedQty = maxQtyForThisDelivery;
+                $tr.find('.received-qty').val(receivedQty);
+                // Visual feedback
+                Swal.fire({
+                    title: '⚠️ Cannot Exceed Available Qty',
+                    text: `Received qty set to maximum: ${maxQtyForThisDelivery} units`,
+                    icon: 'warning',
+                    timer: 2000,
+                    toast: true,
+                    position: 'top-end'
+                });
+            }
+            
+            // ✅ CORRECT CALCULATION: remaining = pending_qty_for_this_delivery - received_qty_in_this_delivery
+            const remaining = maxQtyForThisDelivery - receivedQty;
+            
+            // Update remaining qty field
+            $tr.find('.remaining-qty').val(remaining);
+
+            // Color coding based on qty status
+            const $receivedInput = $tr.find('.received-qty');
+            if (remaining > 0) {
+                // Still items pending
+                $receivedInput.css({ 'background': '#fff9e6', 'border': '1px solid #ffc107' });
+                $tr.find('.remaining-qty').css({ 'background': '#e6f3ff', 'color': '#0066cc' });
+            } else if (remaining === 0) {
+                // All received
+                $receivedInput.css({ 'background': '#e6ffe6', 'border': '1px solid #28a745' });
+                $tr.find('.remaining-qty').css({ 'background': '#e6ffe6', 'color': '#28a745' });
+            } else {
+                // Over received (should not happen due to validation)
+                $receivedInput.css({ 'background': '#ffe0e0', 'border': '2px solid #dc3545' });
+                $tr.find('.remaining-qty').css({ 'background': '#ffe0e0', 'color': '#dc3545' });
+            }
+        }
+
+        // On change or keyup of received qty
+        $(document).on('change keyup', '.received-qty', function() {
+            const $tr = $(this).closest('tr');
+            calculateRemaining($tr);
+        });
+
+        // Calculate on page load for all pre-filled rows
+        $('#gatepassItems tr').each(function() {
+            if ($(this).find('.ordered-qty').val()) {
+                calculateRemaining($(this));
+            }
+        });
+
+        {{-- ❌ REMOVED: No blank row on from-purchase mode (only for fresh create) --}}
+        const isFromPurchase = $('#isFromPurchase').val() === '1';
+        if (!isFromPurchase && $('#gatepassItems tr:last .product_id').val()) {
+            appendBlankRow();
+            $('#gatepassItems tr:last .productSearch').focus();
+        }
 
         // click outside hides dropdown
         $(document).on('click', function(e) {

@@ -46,8 +46,9 @@
             bottom: -36px;
             font-size: 0.85rem;
             line-height: 1;
-            color: #dc3545; /* Bootstrap danger */
-            background: rgba(255,255,255,0.9);
+            color: #dc3545;
+            /* Bootstrap danger */
+            background: rgba(255, 255, 255, 0.9);
             padding: 0 4px;
             border-radius: 3px;
         }
@@ -386,8 +387,8 @@
         }
 
         /* .sales-table td.warehouse-col {
-          min-width: 170px;
-      } */
+              min-width: 170px;
+          } */
         .sales-table td.small-col {
             width: 110px;
         }
@@ -408,12 +409,13 @@
 
         /* 🔥 FIX: Items panel overflow + Add Row cut issue */
         .items-panel {
-            min-width: 0;        /* allow flex shrink */
+            min-width: 0;
+            /* allow flex shrink */
             width: 100%;
             overflow: visible;
         }
 
-        .items-panel > .d-flex {
+        .items-panel>.d-flex {
             flex-wrap: wrap;
             gap: 8px;
         }
@@ -426,8 +428,62 @@
 
         /* Select2 dropdown height + scroll */
         .select2-results__options {
-            max-height: 200px;   /* yahan height set karo */
-            overflow-y: auto;   /* 🔥 scroll enable */
+            max-height: 200px;
+            /* yahan height set karo */
+            overflow-y: auto;
+            /* 🔥 scroll enable */
+        }
+
+        /* ✅ MODAL STYLING - Ensure Modal is Fully Interactive */
+        #branchSelectionModal .modal-content {
+            pointer-events: auto !important;
+            opacity: 1 !important;
+            background-color: white;
+        }
+
+        #branchSelectionModal .modal-body,
+        #branchSelectionModal .modal-footer {
+            pointer-events: auto !important;
+        }
+
+        #branchSelectionDropdown {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            background-color: #f8f9fa;
+            border: 2px solid #dee2e6;
+            padding: 0.75rem;
+            font-size: 1rem;
+        }
+
+        #branchSelectionDropdown:focus {
+            background-color: white;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+
+        #branchConfirmBtn {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease;
+        }
+
+        #branchConfirmBtn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        #branchConfirmBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Ensure modal backdrop doesn't block interaction */
+        .modal-backdrop {
+            z-index: 1040;
+        }
+
+        #branchSelectionModal {
+            z-index: 1050;
         }
     </style>
 
@@ -444,6 +500,8 @@
                 @csrf
                 <input type="hidden" id="booking_id" name="booking_id" value="">
                 <input type="hidden" id="action" name="action" value="save">
+                <input type="hidden" id="is_posted" name="is_posted" value="0">
+                <input type="hidden" id="is_finalized" name="is_finalized" value="0">
 
                 {{-- HEADER --}}
                 <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
@@ -459,14 +517,14 @@
                     <h2 class="header-text text-secondary fw-bold mb-0">Sales</h2>
 
 
-                    <div class="d-flex align-items-center gap-2">
+                    {{-- <div class="d-flex align-items-center gap-2">
                         <small class="text-secondary me-2" id="entryDate">Date: --</small>
                         <button type="button" class="btn btn-sm btn-light border" id="btnHeaderPosted"
                             disabled>Posted</button>
-                    </div>
+                    </div> --}}
                 </div>
 
-    <div class="d-flex gap-3 align-items-start border-bottom py-3">
+                <div class="d-flex gap-3 align-items-start border-bottom py-3">
                     {{-- LEFT: Invoice & Customer --}}
                     <div class="p-3 border rounded-3 minw-350">
                         <div class="section-title mb-3">Invoice & Customer</div>
@@ -483,18 +541,31 @@
                         <div class="mb-2">
                             <label class="form-label fw-bold mb-1 d-block">Type</label>
                             <div class="btn-group" role="group" id="partyTypeGroup">
-                                <input type="radio" class="btn-check" name="partyType" id="typeCustomers"
-                                    value="Main Customer" checked>
-                                <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Customers</label>
+                                <input type="radio" class="btn-check" name="partyType" id="typeCustomers" value="credit"
+                                    checked>
+                                <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Credit</label>
 
-                                <input type="radio" class="btn-check" name="partyType" id="typeWalkin"
-                                    value="Walking Customer">
-                                <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Walk-in</label>
+                                <input type="radio" class="btn-check" name="partyType" id="typeWalkin" value="cash">
+                                <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Cash</label>
 
-                                {{-- <input type="radio" class="btn-check" name="partyType" id="typeVendors" value="vendor">
-                                <label class="btn btn-outline-primary btn-sm" for="typeVendors">Vendors</label> --}}
+                                <input type="radio" class="btn-check" name="partyType" id="typewalking" value="walking">
+                                <label class="btn btn-outline-primary btn-sm" for="typewalking">Walking</label>
                             </div>
                         </div>
+
+                        {{-- BRANCH SELECT (super-admin only) --}}
+                        @if (Auth::user() && Auth::user()->hasRole('super admin'))
+                            <div class="mb-2">
+                                <label class="form-label fw-bold mb-1">Select Branch</label>
+                                <select class="form-select" name="branch_id" id="branch_id">
+                                    @foreach($branches as $b)
+                                        <option value="{{ $b->id }}">{{ $b->branch_name ?? $b->name ?? 'Branch ' . $b->id }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @else
+                            <input type="hidden" name="branch_id" value="{{ Auth::user()->branch_id ?? 1 }}">
+                        @endif
 
                         <!-- CUSTOMER SELECT -->
                         <div class="mb-2">
@@ -509,7 +580,8 @@
                             <label class="form-label fw-bold mb-1">Customer</label>
                             <input type="hidden" id="customer_id" name="customer_id" value="">
                             <input type="hidden" id="customer" name="customer" value="">
-                            <input type="text" class="form-control" id="customerDisplay" name="customer_display" value="" readonly>
+                            <input type="text" class="form-control" id="customerDisplay" name="customer_display"
+                                value="" readonly>
                             <small class="text-muted" id="customerCountHint"></small>
                         </div>
 
@@ -520,7 +592,7 @@
                         </div>
 
                         <div class="mb-2">
-                            <label class="form-label fw-bold">Tel</label>
+                            <label class="form-label fw-bold">Phone #</label>
                             <input type="text" class="form-control" id="tel" name="tel">
                         </div>
 
@@ -529,13 +601,22 @@
                             <textarea class="form-control" id="remarks" name="remarks"></textarea>
                         </div>
 
-                        <div class="mb-2 d-flex justify-content-between">
-                            <span>Previous Balance</span>
-                            <input type="text" class="form-control w-25 text-end" id="previousBalance" value="0">
-                        </div>
-                        <div class="mb-2 d-flex justify-content-between">
-                            <span>Credit Limit</span>
-                            <input type="text" class="form-control w-25 text-end" id="creditLimit" value="0">
+                        <div id="balanceFieldsContainer">
+                            <div class="mb-2 d-flex justify-content-between">
+                                <span>Previous Balance</span>
+                                <input type="text" class="form-control text-end" id="previousBalance" value="0"
+                                    style="width: 80px;">
+                            </div>
+                            <div class="mb-2 d-flex justify-content-between align-items-center">
+                                <span>Credit Limit</span>
+                                <div class="d-flex flex-column align-items-end">
+                                    <input type="text" class="form-control text-end" id="creditLimit" value="0"
+                                        style="width: 80px;">
+                                    <small id="noCreditLimitMsg" class="text-success fw-bold"
+                                        style="display:none;">Infinite Credit Limit</small>
+                                </div>
+                            </div>
+                            <input type="hidden" id="noCreditLimit" value="0">
                         </div>
 
                         <div class="text-end mt-3">
@@ -544,9 +625,9 @@
                     </div>
 
                     {{-- RIGHT: Items --}}
-                    <div class="flex-grow-1 items-panel" >
+                    <div class="flex-grow-1 items-panel">
 
-                    <!-- <div class="flex-grow-1" style="border:2px solid red;"> -->
+                        <!-- <div class="flex-grow-1" style="border:2px solid red;"> -->
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="section-title mb-0">Items</div>
                             <button type="button" class="btn btn-sm btn-primary" id="btnAdd">Add Row</button>
@@ -589,7 +670,8 @@
                         <div class="section-title mb-2">Receipt Vouchers</div>
                         <div id="rvWrapper" class="border rounded-3 p-2">
                             <div class="d-flex gap-2 align-items-center mb-2 rv-row">
-                                <select class="form-select rv-account" name="receipt_account_id[]" style="max-width: 320px">
+                                <select class="form-select rv-account" name="receipt_account_id[]"
+                                    style="max-width: 320px">
                                     @foreach ($accounts as $acc)
                                         <option value="" disabled>Select account</option>
                                         <option value="{{ $acc->id }}">{{ $acc->title }}</option>
@@ -597,7 +679,8 @@
                                 </select>
                                 <input type="text" class="form-control text-end rv-amount" name="receipt_amount[]"
                                     placeholder="0.00" style="max-width:160px">
-                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddRV">Add more</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnAddRV">Add
+                                    more</button>
                             </div>
                             <div class="text-end">
                                 <span class="me-2">Receipts Total:</span>
@@ -621,6 +704,7 @@
                                 <div class="col-7 text-muted">Line Discount (on Retail)</div>
                                 <div class="col-5 text-end"><span id="tLineDisc">0.00</span></div>
                             </div>
+
                             <div class="row py-1">
                                 <div class="col-7 fw-semibold">Sub-Total</div>
                                 <div class="col-5 text-end fw-semibold"><span id="tSub">0.00</span></div>
@@ -628,15 +712,25 @@
                             <div class="row py-1">
                                 <div class="col-7">Aditional Discount</div>
                                 <div class="col-5 text-end d-flex justify-content-end align-items-center">
-                                    <input type="text" class="form-control text-end me-2" name="discountPercent"
+                                    <input type="text" class="form-control text-end me-2" name="additional_discount"
                                         id="discountPercent" value="0" style="max-width:120px;">
-                                    <button type="button" id="orderDiscountToggle" class="btn btn-outline-secondary btn-sm"
-                                        data-type="pkr">PKR</button>
+                                    <button type="button" id="orderDiscountToggle"
+                                        class="btn btn-outline-secondary btn-sm" data-type="pkr">PKR</button>
                                 </div>
                             </div>
                             <div class="row py-1">
                                 <div class="col-7 text-muted">Aditional Discount Rs</div>
                                 <div class="col-5 text-end"><span id="tOrderDisc">0.00</span></div>
+                            </div>
+                           
+                            <div class="row py-1">
+                                <div class="col-7">Extra Charges (Fread charges)</div>
+                                <div class="col-5 text-end d-flex justify-content-end align-items-center">
+                                    <input type="text" class="form-control text-end " name="extra_charges" id="echarges"
+                                        value="0" style="max-width:120px;">
+                                    {{-- <button type="button" id="orderDiscountToggle" class="btn btn-outline-secondary btn-sm"
+                                        data-type="pkr">PKR</button> --}}
+                                </div>
                             </div>
                             <div class="row py-1">
                                 <div class="col-7 text-danger">Previous Balance</div>
@@ -651,8 +745,9 @@
                             <div class="row py-2 border-top mt-2">
                                 <div class="col-7 text-muted medium">Notify Me (Days - Optional)</div>
                                 <div class="col-5">
-                                    <input type="number" name="notify_me" id="notify_me"  class="form-control form-control-sm" 
-                                           placeholder="Enter payment Expected days" min="0" max="365" value="">
+                                    <input type="number" name="notify_me" id="notify_me"
+                                        class="form-control form-control-sm" placeholder="Enter payment Expected days"
+                                        min="0" max="365" value="">
                                 </div>
                             </div>
 
@@ -667,21 +762,47 @@
 
                 {{-- Buttons --}}
                 <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-                    <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button>
-                    <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button>
+                    {{-- <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button> --}}
+                    {{-- <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button> --}}
 
-                    <button type="button" class="btn btn-sm btn-success" id="btnSave">Save</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="faraz()" id="btnPosted"
-                        disabled>Posted</button>
+                    <button type="button" class="btn btn-sm btn-success" id="btnSave">Sale Order</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted" disabled>warehouse sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted2" disabled>Sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted3" >Post</button>
 
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">Print</button>
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Print-2</button>
+                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">BookingInvoice</button>
+                    {{-- <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Save + Invoice </button> --}}
                     <button type="button" class="btn btn-sm btn-secondary" id="btnDCPrint">DC Print</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="btnThermalPrint">🧾 Thermal Print</button>
 
                     <button type="button" class="btn btn-sm btn-danger" id="btnDelete">Delete</button>
                     <button type="button" class="btn btn-sm btn-dark" id="btnExit">Exit</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- BRANCH SELECTION MODAL (Admin Users) --}}
+    <div class="modal fade" id="branchSelectionModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">📍 Select Branch for Sale</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Branch</label>
+                        <select class="form-select form-select-lg" id="branchSelectionDropdown" style="pointer-events: auto; cursor: pointer;">
+                            <option selected disabled value="">-- Choose a branch --</option>
+                        </select>
+                        <small class="text-muted d-block mt-2">Admin users must select a branch for this sale transaction</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-info btn-lg" id="branchConfirmBtn" style="pointer-events: auto; cursor: pointer;">✓ Confirm & Proceed</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -739,38 +860,38 @@
         </div>
     </div>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
 
-        const alertBox = document.getElementById('alertBox');
-        if (!alertBox) return;
+            const alertBox = document.getElementById('alertBox');
+            if (!alertBox) return;
 
-        const message = alertBox.innerText.trim();
-        if (message === '') return;
+            const message = alertBox.innerText.trim();
+            if (message === '') return;
 
-        let icon = 'info';
-        if (alertBox.classList.contains('alert-success')) icon = 'success';
-        if (alertBox.classList.contains('alert-danger')) icon = 'error';
-        if (alertBox.classList.contains('alert-warning')) icon = 'warning';
+            let icon = 'info';
+            if (alertBox.classList.contains('alert-success')) icon = 'success';
+            if (alertBox.classList.contains('alert-danger')) icon = 'error';
+            if (alertBox.classList.contains('alert-warning')) icon = 'warning';
 
-        Swal.fire({
-            icon: icon,
-            title: 'Message',
-            text: message
+            Swal.fire({
+                icon: icon,
+                title: 'Message',
+                text: message
+            });
+
+            alertBox.classList.add('d-none');
         });
-
-        alertBox.classList.add('d-none');
-    });
-</script>
+    </script>
     <script>
         function faraz() {
             const productIds = [];
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 const pid = $(this).find('.product-select').val();
                 if (pid) productIds.push(pid);
             });
@@ -781,18 +902,22 @@
             $.ajax({
                 url: '/get-warehouses/',
                 type: 'GET',
-                data: { product_ids: productIds },
-                success: function (res) {
+                data: {
+                    product_ids: productIds
+                },
+                success: function(res) {
                     // Build per-product rows with warehouse dropdowns
                     if (!Array.isArray(res) || res.length === 0) {
-                        $('#warehouseModalBody').html('<div class="text-center">No warehouses available for selected products</div>');
+                        $('#warehouseModalBody').html(
+                            '<div class="text-center">No warehouses available for selected products</div>');
                         $('#warehouseModal').modal('show');
                         return;
                     }
 
                     let html = '<form id="warehouseSelectForm">';
-                    html += '<table class="table table-sm"><thead><tr><th>Product</th><th>Warehouse</th></tr></thead><tbody>';
-                    res.forEach(function (row) {
+                    html +=
+                        '<table class="table table-sm"><thead><tr><th>Product</th><th>Warehouse</th></tr></thead><tbody>';
+                    res.forEach(function(row) {
                         const pid = row.product_id;
                         const pname = row.product_name;
                         const whs = row.warehouses || [];
@@ -800,13 +925,15 @@
                         html += `<tr data-product-id="${pid}">`;
                         html += `<td>${pname}</td>`;
                         html += `<td>`;
-                        html += `<select class="form-control form-select warehouse-for-product" data-product-id="${pid}">`;
+                        html +=
+                            `<select class="form-control form-select warehouse-for-product" data-product-id="${pid}">`;
                         if (whs.length === 0) {
                             html += `<option value="">No stock in any warehouse</option>`;
                         } else {
                             html += `<option value="">Select warehouse</option>`;
-                            whs.forEach(function (w) {
-                                html += `<option value="${w.warehouse_id}" data-qty="${w.quantity}">${w.warehouse_name} (qty: ${w.quantity})</option>`;
+                            whs.forEach(function(w) {
+                                html +=
+                                    `<option value="${w.warehouse_id}" data-qty="${w.quantity}">${w.warehouse_name} (qty: ${w.quantity})</option>`;
                             });
                         }
                         html += `</select>`;
@@ -814,13 +941,14 @@
                         html += `</tr>`;
                     });
                     html += '</tbody></table>';
-                    html += '<div class="text-end"><button type="button" id="warehouseApplyBtn" class="btn btn-primary">Apply</button></div>';
+                    html +=
+                        '<div class="text-end"><button type="button" id="warehouseApplyBtn" class="btn btn-primary">Apply</button></div>';
                     html += '</form>';
 
                     $('#warehouseModalBody').html(html);
                     $('#warehouseModal').modal('show');
                 },
-                error: function (err) {
+                error: function(err) {
                     console.error(err);
                     alert('Something went wrong fetching warehouses!');
                 }
@@ -828,16 +956,16 @@
         }
 
         // Apply per-product warehouse selections
-        $(document).on('click', '#warehouseApplyBtn', function () {
+        $(document).on('click', '#warehouseApplyBtn', function() {
             const mapping = {};
-            $('.warehouse-for-product').each(function () {
+            $('.warehouse-for-product').each(function() {
                 const pid = $(this).data('product-id');
                 const wid = $(this).val();
                 if (pid && wid) mapping[pid] = wid;
             });
 
             // write mapping into hidden inputs in table rows
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 const pid = $(this).find('.product-select').val();
                 if (!pid) return;
                 const wid = mapping[pid] || '';
@@ -846,10 +974,15 @@
             });
 
             $('#warehouseModal').modal('hide');
-            ensureSaved().then(postNow);
+            
+            // 🔹 Check if we're in print mode - DISABLED (btnPrint2 is commented out)
+            // if (PRINT_AFTER_POST) {
+            //     PRINT_AFTER_POST = false; // Reset flag
+            //     ensureSaved().then(directPostAndPrint); // Post + Print flow
+            // } else {
+                ensureSaved().then(postNow); // Normal Post flow
+            // }
         });
-
-
     </script>
 
 
@@ -859,15 +992,16 @@
 
 
 
-    {{--faarz memon --}}
+    {{-- faarz memon --}}
     <script>
         let CURRENT_PRODUCT_ROW = null;
+        // let PRINT_AFTER_POST = false; // 🔹 Flag to track if we should print after posting - DISABLED (btnPrint2 commented out)
 
         // faraz memon
 
 
 
-        $(document).on('click', '.select-product', function () {
+        $(document).on('click', '.select-product', function() {
 
             if (!CURRENT_PRODUCT_ROW) return;
 
@@ -886,7 +1020,8 @@
             $productSelect.val(id).trigger('change');
 
             // stock & price set
-            CURRENT_PRODUCT_ROW.find('.stock').val(stock);
+            CURRENT_PRODUCT_ROW.find('.stock').val(stock).data('available-stock', stock);
+            CURRENT_PRODUCT_ROW.find('.sales-qty').data('available-stock', stock);
             CURRENT_PRODUCT_ROW.find('.retail-price').val(price);
 
             // modal close
@@ -908,11 +1043,26 @@
 
 
 
-    {{--faarz memon --}}
+    {{-- faarz memon --}}
 
 
     <script>
         window.RECEIPT_ACCOUNTS = @json($accounts);
+        // products list sent from controller (branch‑filtered for non‑super admins)
+        window.AVAILABLE_PRODUCTS = @json($products ?? []);
+        // Branches for admin users
+        window.BRANCHES = @json($branches ?? []);
+        // Warehouse stocks for client-side validation
+        window.WAREHOUSE_STOCKS = @json($warehouseStocks ?? []);
+        // Check if current user is admin
+        window.IS_ADMIN = {{ Auth::user() && Auth::user()->hasRole('super admin') ? 'true' : 'false' }};
+        // Current user's branch ID
+        window.USER_BRANCH_ID = {{ Auth::user()->branch_id ?? 1 }};
+        
+        // ✅ Booking prefill data (passed from SaleController::convertFromBooking)
+        window.BOOKING_DATA = @json($booking ?? null);
+        window.BOOKING_CUSTOMER = @json($booking_customer ?? null);
+        window.BOOKING_ITEMS = @json($bookingItems ?? []);
     </script>
     <script>
         function loadAccountsInto($select) {
@@ -920,7 +1070,7 @@
             const currentVal = $select.val(); // 🔒 preserve selection
             let usedAccounts = [];
 
-            $('.rv-account').each(function () {
+            $('.rv-account').each(function() {
                 const val = $(this).val();
                 if (val && this !== $select[0]) {
                     usedAccounts.push(String(val));
@@ -929,7 +1079,7 @@
 
             let html = '<option value="">Select account</option>';
 
-            window.RECEIPT_ACCOUNTS.forEach(function (acc) {
+            window.RECEIPT_ACCOUNTS.forEach(function(acc) {
                 const accId = String(acc.id);
 
                 if (!usedAccounts.includes(accId) || accId === String(currentVal)) {
@@ -948,53 +1098,312 @@
 
 
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
             loadAccountsInto($('.rv-account').first());
         });
-
     </script>
 
     <!--fgdffhjkjkhgkhkh  -->
 
     <script>
-        $(document).ready(function () {
+        $(document).ready(function() {
+            
+            // ✅ NEW: Function to prefill form with booking data
+            function prefillFormWithBooking() {
+                if (!window.BOOKING_DATA || !window.BOOKING_CUSTOMER) {
+                    console.log('📭 No booking data to prefill');
+                    return;
+                }
+
+                console.log('🔍 Prefilling form with booking data:', {
+                    booking: window.BOOKING_DATA,
+                    customer: window.BOOKING_CUSTOMER,
+                    items: window.BOOKING_ITEMS
+                });
+
+                // === 1. SET BOOKING ID ===
+                $('#booking_id').val(window.BOOKING_DATA.id || '');
+
+                // === 2. SET CUSTOMER TYPE ===
+                const customerType = window.BOOKING_CUSTOMER.customer_type || 'credit';
+                $(`input[name="partyType"][value="${customerType}"]`).prop('checked', true).trigger('change');
+
+                // === 3. WAIT FOR CUSTOMER DROPDOWN TO LOAD ===
+                setTimeout(() => {
+                    // === 4. POPULATE CUSTOMER FIELDS ===
+                    if (window.BOOKING_CUSTOMER.id) {
+                        // Credit or Cash customer
+                        const customerId = window.BOOKING_CUSTOMER.id;
+                        $('#customer_id').val(customerId);
+                        $('#customerSelect').val(customerId).trigger('change');
+                        
+                        const customerName = window.BOOKING_CUSTOMER.customer_name || 
+                                           window.BOOKING_CUSTOMER.name || '';
+                        $('#customerDisplay').val(customerName);
+                        $('#customer').val(customerId);
+
+                        // Load customer details (address, phone, balance, credit limit)
+                        $.ajax({
+                            url: `/customers/${customerId}`,
+                            type: 'GET',
+                            success: function(customer) {
+                                $('#address').val(customer.address || '');
+                                $('#tel').val(customer.phone_no || '');
+                                $('#previousBalance').val(customer.previous_balance || '0');
+                                $('#creditLimit').val(customer.credit_limit || '0');
+                                console.log('✅ Customer details loaded:', customer);
+                            },
+                            error: function(err) {
+                                console.log('⚠️ Could not load customer details:', err);
+                                // Use data from booking_customer as fallback
+                                $('#address').val(window.BOOKING_CUSTOMER.address || '');
+                                $('#tel').val(window.BOOKING_CUSTOMER.mobile || '');
+                            }
+                        });
+                    } else if (customerType === 'walking') {
+                        // Walking customer
+                        const customerName = window.BOOKING_CUSTOMER.customer_name || 
+                                           window.BOOKING_CUSTOMER.name || 
+                                           window.BOOKING_CUSTOMER.walking_customer_name || '';
+                        $('#customerDisplay').val(customerName).prop('readonly', false);
+                        $('#customer').val(customerName);
+                        
+                        $('#address').val(window.BOOKING_CUSTOMER.address || '');
+                        $('#tel').val(window.BOOKING_CUSTOMER.mobile || '');
+                    }
+                    
+                    $('#remarks').val(window.BOOKING_DATA.remarks || '');
+
+                    // === 5. PREFILL ITEMS TABLE ===
+                    if (Array.isArray(window.BOOKING_ITEMS) && window.BOOKING_ITEMS.length > 0) {
+                        console.log(`📦 Adding ${window.BOOKING_ITEMS.length} items to table...`);
+                        
+                        // ✅ CLEAR EXISTING EMPTY ROWS FROM INIT
+                        // Remove all existing rows (from init) so we have a clean slate
+                        $('#salesTableBody').empty();
+                        console.log('🧹 Cleared existing rows');
+                        
+                        window.BOOKING_ITEMS.forEach((item, index) => {
+                            // Add new row for each booking item
+                            addNewRow();
+
+                            // Get the newly added row (should be at current length - 1)
+                            const $newRow = $('#salesTableBody tr').last();
+
+                            // Set product
+                            const productId = item.product_id;
+                            const $productSelect = $newRow.find('.product-select');
+
+                            // Add option if not exists
+                            if ($productSelect.find(`option[value="${productId}"]`).length === 0) {
+                                $productSelect.append(
+                                    `<option value="${productId}">${item.item_name || ''}</option>`
+                                );
+                            }
+
+                            $productSelect.val(productId).trigger('change');
+
+                            // Set stock
+                            $newRow.find('.stock').val(item.onhand_qty || 0);
+
+                            // Set quantity
+                            $newRow.find('.sales-qty').val(item.qty || 0);
+
+                            // Set price
+                            $newRow.find('.retail-price').val(parseFloat(item.price || 0).toFixed(2));
+
+                            // Set discount (handle both percent and amount)
+                            const $discountInput = $newRow.find('.discount-value');
+                            const $discountBtn = $newRow.find('.discount-toggle');
+                            const $discountAmount = $newRow.find('.discount-amount');
+                            const $discountTypeField = $newRow.find('.discount-type-field');
+
+                            if (item.discount_type === 'percent' || item.discount_percent > 0) {
+                                $discountBtn.data('type', 'percent').text('%');
+                                $discountTypeField.val('percent');
+                                $discountInput.val(parseFloat(item.discount_percent || 0).toFixed(2));
+                                $discountAmount.val('0');
+                            } else {
+                                $discountBtn.data('type', 'pkr').text('PKR');
+                                $discountTypeField.val('pkr');
+                                $discountInput.val('0');
+                                $discountAmount.val(parseFloat(item.discount_amount || 0).toFixed(2));
+                            }
+
+                            // Set warehouse if available
+                            if (item.warehouse_id) {
+                                $newRow.find('.warehouse-id')
+                                    .attr('name', `warehouse_id[${productId}]`)
+                                    .val(item.warehouse_id);
+                            }
+
+                            // ✅ DIRECTLY COMPUTE THE ROW
+                            // Call computeRow directly to ensure calculations happen
+                            // This will:
+                            // 1. Calculate discount amount based on discount % or PKR
+                            // 2. Calculate final amount (gross - discount)
+                            // 3. Format all display values properly
+                            computeRow($newRow, false, true);
+                        });
+
+                        console.log(`✅ ${window.BOOKING_ITEMS.length} items prefilled successfully`);
+                    }
+
+                    // === 6. RECALCULATE TOTALS ===
+                    updateGrandTotals();
+                    
+                    // === 7. UPDATE BUTTON STATES ===
+                    // Refresh button enable/disable states based on new item count
+                    refreshPostedState();
+
+                    console.log('✅ Form prefilled with booking data');
+                }, 500);
+            }
+            
             function init() {
                 addNewRow();
-                loadCustomersByType('Main Customer');
+                // If super-admin (branch selector exists), check if branch is already selected
+                const branchEl = document.getElementById('branch_id');
+                if (branchEl && branchEl.value) {
+                    // Branch already selected on page load → load customers
+                    loadCustomersByType('credit');
+                } else if (branchEl) {
+                    // No branch selected yet → show prompt
+                    $('#customerSelect').html('<option selected disabled>Select branch first</option>').prop('disabled', true);
+                } else {
+                    // Non super-admin → load normally
+                    loadCustomersByType('credit');
+                }
                 // loadAccountsInto($('.rv-account').first());
                 updateGrandTotals();
                 refreshPostedState();
             }
 
             init();
+            
+            // ✅ PREFILL WITH BOOKING DATA AFTER INIT
+            if (window.BOOKING_DATA) {
+                console.log('📥 Preparing to prefill with booking data...');
+                setTimeout(() => {
+                    prefillFormWithBooking();
+                }, 800);
+            }
+            
+            // ✅ NEW: Fetch and restore booking state on page load
+            // Try multiple ways to get booking_id:
+            // 1. URL parameter: ?booking_id=123
+            // 2. localStorage: stored after previous save
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            let bookingIdParam = urlParams.get('booking_id');
+            
+            // Fallback to localStorage if no URL param
+            if (!bookingIdParam) {
+                bookingIdParam = localStorage.getItem('current_booking_id');
+            }
+            
+            if (bookingIdParam) {
+                console.log('📥 Loading booking state:', bookingIdParam);
+                $.get('/booking/check-posted-state/' + bookingIdParam)
+                    .done(function(res) {
+                        if (res && res.booking) {
+                            $('#booking_id').val(res.booking.id);
+                            $('#is_posted').val(res.booking.is_posted ? '1' : '0');
+                            $('#is_finalized').val(res.booking.is_finalized ? '1' : '0');
+                            localStorage.setItem('current_booking_id', res.booking.id);
+                            console.log('✅ Booking state restored:', res.booking);
+                            refreshPostedState();
+                        }
+                    })
+                    .fail(function(err) {
+                        console.log('⏭️ Booking state endpoint error or booking not found');
+                        localStorage.removeItem('current_booking_id');
+                    });
+            }
             // 🔹 Load customers on page load
             // loadCustomersByType('customer');
 
             // 🔹 Change customer type (radio)
-            $(document).on('change', 'input[name="partyType"]', function () {
+            $(document).on('change', 'input[name="partyType"]', function() {
                 $('#customerSelect').val('');
-
                 $('#address,#tel,#remarks').val('');
                 $('#previousBalance').val('0');
                 $('#creditLimit').val('0');
-                loadCustomersByType(this.value);
+                $('#customer_id').val('');
+                $('#customer').val('');
+
+                // 🔹 Toggle fields based on type
+                if (this.value === 'cash') {
+                    // CASH CUSTOMER: Same as credit but NO balance fields
+                    $('#balanceFieldsContainer').hide();
+                    $('#customerSelect').show();
+                    $('#customerDisplay').val('').prop('readonly', true);
+                    loadCustomersByType(this.value);
+                    refreshPostedState();
+                } else if (this.value === 'walking') {
+                    // WALKING CUSTOMER: Manual entry, no balance fields
+                    $('#balanceFieldsContainer').hide();
+                    $('#customerSelect').hide();
+                    $('#customerDisplay').val('').prop('readonly', false);
+                    loadCustomersByType('walking'); // Clear any previous selections
+                    refreshPostedState();
+                } else {
+                    // CREDIT CUSTOMER: Full details with balance fields
+                    $('#balanceFieldsContainer').show();
+                    $('#customerSelect').show();
+                    $('#customerDisplay').val('').prop('readonly', true);
+                    loadCustomersByType(this.value);
+                    refreshPostedState();
+                }
             });
+
+            // 🔹 When walking customer types their name, copy to hidden field for ajaxsave
+            $(document).on('input', '#customerDisplay', function() {
+                if ($('input[name="partyType"]:checked').val() === 'walking') {
+                    $('#customer').val($(this).val());
+                }
+            });
+
+            // 🔹 Initialize on page load
+            if ($('input[name="partyType"]:checked').val() === 'cash') {
+                $('#balanceFieldsContainer').hide();
+            }
 
             // 🔹 Load customers list
             function loadCustomersByType(type) {
-                //alert('loadCustomersByType CALLED → ' + type);
+                // For walking customers, don't load from API (no pre-defined customers)
+                if (type === 'walking') {
+                    $('#customerSelect').html('<option selected disabled>N/A</option>')
+                        .prop('disabled', true);
+                    return;
+                }
+
+                // If branch selector present, include branch_id parameter; if not selected, prompt user
+                const branchEl = document.getElementById('branch_id');
+                let params = { type: type };
+                if (branchEl) {
+                    const bid = branchEl.value;
+                    if (!bid) {
+                        $('#customerSelect').html('<option selected disabled>Select branch first</option>').prop('disabled', true);
+                        return;
+                    }
+                    params.branch_id = bid;
+                }
+
+                // alert('loadCustomersByType CALLED → ' + type);
                 $('#customerSelect')
                     .prop('disabled', true)
                     .html('<option selected disabled>Loading…</option>');
 
-                $.get('{{ route("salecustomers.index") }}', { type: type }, function (data) {
+                $.get('{{ route('salecustomers.index') }}', params, function(data) {
 
                     let html = '<option value="">-- Select --</option>';
 
                     if (data.length > 0) {
                         data.forEach(row => {
                             // show customer name first for clarity
-                            const label = (row.customer_name || '(No name)') + ' — ' + (row.customer_id || '');
+                            const label = (row.customer_name || '(No name)') + ' — ' + (row
+                                .customer_id || '');
                             html += `<option value="${row.id}">` + label + `</option>`;
                         });
                         $('#customerCountHint').text(data.length + ' record(s) found');
@@ -1005,42 +1414,62 @@
 
                     $('#customerSelect').html(html).prop('disabled', false);
                 });
+
+                // If branch selector present, bind change to reload customers
+                if (document.getElementById('branch_id')) {
+                    $('#branch_id').off('change.branchCustomer').on('change.branchCustomer', function() {
+                        const currentType = $('input[name="partyType"]:checked').val() || 'credit';
+                        loadCustomersByType(currentType);
+                    });
+                }
             }
 
             // 🔹 When customer selected → load detail
-        $(document).on('change', '#customerSelect', function () {
-    const id = $(this).val();
-    $('#customer_id').val(id);
-    $('#customer').val(id);
-    if (!id) return;
+            $(document).on('change', '#customerSelect', function() {
+                const id = $(this).val();
+                $('#customer_id').val(id);
+                $('#customer').val(id);
+                if (!id) return;
 
-    $.get(
-        '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
-        function (d) {
+                $.get(
+                    '{{ route('salecustomers.show', '__ID__') }}'.replace('__ID__', id),
+                    function(d) {
 
-            // basic customer info
-            $('#address').val(d.address || '');
-            $('#tel').val(d.mobile || '');
-            $('#remarks').val(d.remarks || d.status || '');
-            $('#creditLimit').val(d.credit_limit || '0');
+                        // basic customer info
+                        $('#address').val(d.address || '');
+                        $('#tel').val(d.mobile || '');
+                        $('#remarks').val(d.remarks || d.status || '');
+                        $('#creditLimit').val(d.credit_limit || '0');
 
 
-                    // Display selected customer's id + name in the visible field
-                    $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
+                        // Display selected customer's id + name in the visible field
+                        $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id ||
+                            ''));
 
-            // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
-            // Fallback to opening_balance if no closing_balance exists
-            let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
-            
-            // show balance (positive / negative as-it-is)
-            $('#previousBalance').val(previousBalance.toFixed(2));
+                        // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
+                        // Fallback to opening_balance if no closing_balance exists
+                        let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
 
-        }
-    );
-});
+                        // show balance (positive / negative as-it-is)
+                        $('#previousBalance').val(previousBalance.toFixed(2));
+
+                        // 🔹 Check for no_credit_limit - if 1, disable credit limit field and show message
+                        if (d.no_credit_limit == 1) {
+                            $('#creditLimit').prop('disabled', true);
+                            $('#noCreditLimitMsg').show();
+                            $('#noCreditLimit').val(1);
+                        } else {
+                            $('#creditLimit').prop('disabled', false);
+                            $('#noCreditLimitMsg').hide();
+                            $('#noCreditLimit').val(0);
+                        }
+
+                    }
+                );
+            });
 
             // 🔹 Clear button
-            $('#clearCustomerData').on('click', function () {
+            $('#clearCustomerData').on('click', function() {
                 $('#customerSelect').val('');
                 $('#customer_id, #customer, #customerDisplay').val('');
                 $('#address,#tel,#remarks').val('');
@@ -1067,7 +1496,8 @@
 
         function setNowStamp() {
             const d = new Date();
-            const dt = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            const dt =
+                `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${String(d.getFullYear()).slice(-2)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
             const dOnly = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${String(d.getFullYear()).slice(-2)}`;
             $('#entryDateTime').text('Entry Date_Time: ' + dt);
             $('#entryDate').text('Date: ' + dOnly);
@@ -1084,7 +1514,8 @@
 
         function showAlert(type, msg) {
             const el = $('#alertBox');
-            el.removeClass('d-none alert-success alert-danger alert-warning alert-info').addClass('alert-' + type).text(msg);
+            el.removeClass('d-none alert-success alert-danger alert-warning alert-info').addClass('alert-' + type).text(
+            msg);
             console.log('Showing alert:', msg);
 
             // Map our types to SweetAlert icons
@@ -1126,7 +1557,7 @@
       </div>
     </td>
 
- 
+
 
 
 
@@ -1134,14 +1565,14 @@
 
         <!-- STOCK -->
         <td class="small-col">
-          <input type="text"  class="form-control stock text-center input-readonly" readonly>
+          <input type="text"  class="form-control stock text-center input-readonly" readonly data-available-stock="0">
         </td>
 
 
 
         <!-- QTY -->
         <td class="small-col">
-          <input type="text" class="form-control sales-qty text-end" id="sales-qty" name="sales_qty[]">
+          <input type="text" class="form-control sales-qty text-end" id="sales-qty" name="sales_qty[]" data-available-stock="0">
         </td>
 
         <!-- RETAIL PRICE -->
@@ -1160,6 +1591,8 @@
         <button type="button"
                 class="btn btn-outline-secondary discount-toggle"
                 data-type="percent">%</button>
+        
+        <input type="hidden" class="discount-type-field" name="discount_type[]" value="percent">
       </div>
     </td>
 
@@ -1182,14 +1615,15 @@
       </tr>
       `);
 
-                        // initialize select2 on the newly appended product-select
-                        initProductSelect2('#salesTableBody tr:last-child .product-select', '/search-products-sale', '/search_products');
+            // initialize select2 on the newly appended product-select
+            initProductSelect2('#salesTableBody tr:last-child .product-select', '/search-products-sale',
+            '/search_products');
 
         }
 
 
         // discunt % field
-        $(document).on('click', '.discount-toggle', function () {
+        $(document).on('click', '.discount-toggle', function() {
 
             const $btn = $(this);
             const currentType = $btn.data('type');
@@ -1199,6 +1633,10 @@
             } else {
                 $btn.data('type', 'percent').text('%');
             }
+
+            // ✅ NEW: Sync the hidden discount_type field with button state
+            const newType = $btn.data('type');
+            $btn.closest('tr').find('.discount-type-field').val(newType);
 
             // re-calc row
             const $row = $btn.closest('tr');
@@ -1215,7 +1653,7 @@
 
         function canPost() {
             let ok = false;
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 const pid = $(this).find('.product-select').val();
                 const qty = parseFloat($(this).find('.sales-qty').val() || '0');
                 if (pid && qty > 0) {
@@ -1228,23 +1666,86 @@
 
         function refreshPostedState() {
             const state = canPost();
-            $('#btnPosted, #btnHeaderPosted').prop('disabled', !state);
+            // Quick-post (btnPosted2) should be enabled only for cash/walking customers
+            const partyType = $('input[name="partyType"]:checked').val();
+            const isPosted = $('#is_posted').val() === '1';
+            
+            // btnPosted: enabled if items exist AND NOT already posted
+            $('#btnPosted, #btnHeaderPosted').prop('disabled', !state || isPosted);
+            
+            // btnPosted2: enabled if items AND valid party type AND NOT posted
+            const quickAllowed = (partyType === 'cash' || partyType === 'walking' || partyType === 'credit') && state && !isPosted;
+            $('#btnPosted2').prop('disabled', !quickAllowed);
+            
+            // btnPosted3: enabled if items exist AND NOT finalized (same logic as btnPosted & btnPosted2)
+            const canFinalize = state && ($('#is_finalized').val() !== '1');
+            $('#btnPosted3').prop('disabled', !canFinalize);
+            
+            console.log('🔧 refreshPostedState:', {
+                hasItems: state,
+                partyType: partyType,
+                isPosted: isPosted,
+                btnPosted_disabled: !state || isPosted,
+                btnPosted2_disabled: !quickAllowed,
+                btnPosted3_disabled: !canFinalize
+            });
         }
 
         /* ---------- SAVE/POST ---------- */
         function serializeForm() {
-            return $('#saleForm').serialize();
+            // ✅ FILTER OUT EMPTY ROWS BEFORE SERIALIZING
+            // Temporarily remove empty rows, then serialize, then restore them
+            
+            const emptyRows = [];
+            let emptyRowCount = 0;
+            
+            // Find and remove empty rows
+            $('#salesTableBody tr').each(function(index) {
+                const $row = $(this);
+                const productId = $row.find('.product-select').val();
+                const qty = parseFloat($row.find('.sales-qty').val() || 0);
+                
+                // If row is empty (no product or qty = 0), remove it temporarily
+                if (!productId || qty === 0) {
+                    emptyRows.push($row.clone()); // Save a copy for restoration
+                    $row.detach(); // Remove from DOM temporarily
+                    emptyRowCount++;
+                }
+            });
+
+            console.log(`✅ Removed ${emptyRowCount} empty rows before serialization`);
+
+            // Serialize the form with only valid rows
+            const serialized = $('#saleForm').serialize();
+
+            // Restore empty rows back to the DOM
+            if (emptyRows.length > 0) {
+                emptyRows.forEach(row => {
+                    $('#salesTableBody').append(row);
+                });
+                console.log(`✅ Restored ${emptyRows.length} empty rows`);
+            }
+
+            return serialized;
         }
 
         function ensureSaved() {
             console.log('ensureSaved called');
-            return new Promise(function (resolve, reject) {
+            return new Promise(function(resolve, reject) {
 
-                const existing = $('#booking_id').val();
-                if (existing) return resolve(existing);
+                // ✅ CHANGED: Remove early return when booking exists
+                // Now we ALWAYS save/update booking items from form (even when converting from booking)
+                // This ensures that if user modifies qty/price/discount, those changes are saved
+
+                // 🔴 VALIDATION: Check if form has items before saving
+                if (!canPost()) {
+                    showAlert('danger', 'Please add at least one product with quantity before saving');
+                    reject({ msg: 'No items in form' });
+                    return;
+                }
 
                 // Recompute every row so discount % and discount amount fields are populated
-                $('#salesTableBody tr').each(function () {
+                $('#salesTableBody tr').each(function() {
                     try {
                         computeRow($(this));
                     } catch (e) {
@@ -1255,10 +1756,10 @@
                 updateGrandTotals();
 
                 // � Ensure discount fields have values (not empty strings)
-                $('#salesTableBody tr').each(function () {
+                $('#salesTableBody tr').each(function() {
                     const $discValue = $(this).find('.discount-value');
                     const $discAmount = $(this).find('.discount-amount');
-                    
+
                     // Set default 0.00 if empty
                     if (!$discValue.val()) {
                         $discValue.val('0.00');
@@ -1274,16 +1775,26 @@
 
                 $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', true);
 
-                $.post('{{ route("sale.ajax.save") }}', formData)
+                // 🔹 Add CSRF token to form data
+                const dataToSend = formData + '&_token=' + '{{ csrf_token() }}';
 
-                    .done(function (res) {
+                $.post('{{ route('sale.ajax.save') }}', dataToSend)
+
+                    .done(function(res) {
                         console.log('✅ RESPONSE FROM SERVER:', res);
 
                         $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
 
                         if (res?.ok) {
                             $('#booking_id').val(res.booking_id);
-                            showAlert('success', 'Saved (Booking #' + res.booking_id + ')');
+                            // Update the invoice_no field with the actual generated invoice from backend
+                            if (res.invoice_no) {
+                                $('input[name="Invoice_no"]').val(res.invoice_no);
+                            }
+                            // Show branch invoice number if available, otherwise show booking_id
+                            const displayNumber = res.invoice_no || res.booking_id;
+                            const displayLabel = res.invoice_no ? 'Invoice #' : 'Booking #';
+                            showAlert('success', 'Saved (' + displayLabel + displayNumber + ')');
                             resolve(res.booking_id);
                         } else {
                             showAlert('danger', res.msg || 'Save failed');
@@ -1291,7 +1802,7 @@
                         }
                     })
 
-                    .fail(function (xhr) {
+                    .fail(function(xhr) {
                         console.error('❌ AJAX ERROR RESPONSE:', xhr.responseText);
 
                         $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
@@ -1327,7 +1838,7 @@
             let bookingId = $('#booking_id').val();
 
             // 🔹 Ensure all discount fields have values before posting
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 const $discValue = $(this).find('.discount-value');
                 const $discAmount = $(this).find('.discount-amount');
                 if (!$discValue.val()) $discValue.val('0.00');
@@ -1340,7 +1851,9 @@
             const receiptValidation = validateReceipts();
             // If there are any receipt amounts > 0 but receipts are invalid, prevent post
             let hasReceiptAmount = false;
-            $('.rv-amount').each(function() { if (toNum($(this).val()) > 0) hasReceiptAmount = true; });
+            $('.rv-amount').each(function() {
+                if (toNum($(this).val()) > 0) hasReceiptAmount = true;
+            });
             if (hasReceiptAmount && !receiptValidation.ok) {
                 showAlert('danger', receiptValidation.firstMessage || 'Please fix receipt rows before posting');
                 if (receiptValidation.firstEl) receiptValidation.firstEl.focus();
@@ -1348,7 +1861,7 @@
             }
 
             // warehouse_id[product_id] build karo
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 let productId = $(this).find('.product-select').val();
                 let warehouseId = $(this).find('.warehouse-id').val();
 
@@ -1367,27 +1880,35 @@
             });
 
             // Include receipt rows (if any) so ajaxPost can create/process them
-            $('.rv-account').each(function (i) {
+            $('.rv-account').each(function(i) {
                 const acc = $(this).val();
                 const amt = $('.rv-amount').eq(i).val() || '';
-                data.push({ name: 'receipt_account_id[]', value: acc });
-                data.push({ name: 'receipt_amount[]', value: amt });
+                data.push({
+                    name: 'receipt_account_id[]',
+                    value: acc
+                });
+                data.push({
+                    name: 'receipt_amount[]',
+                    value: amt
+                });
             });
 
             // 🔹 GET request ke liye data query string me convert karo
             let queryString = $.param(data);
 
-            console.log('GET Request URL:', '{{ route("sale.ajax.post") }}?' + queryString);
+            console.log('GET Request URL:', '{{ route('sale.ajax.post') }}?' + queryString);
 
             // 🔹 AJAX GET request
-            $.get('{{ route("sale.ajax.post") }}', queryString)
+            $.get('{{ route('sale.ajax.post') }}', queryString)
 
-                .done(function (res) {
+                .done(function(res) {
                     console.log('Response:', res);
 
                     if (res && res.ok) {
                         showAlert('success', 'Posted successfully');
+                        $('#is_posted').val('1'); // Mark sale as posted
                         $('#btnPosted, #btnHeaderPosted, #btnSave').prop('disabled', true);
+                        enableBtnPosted3(); // ✅ Enable finalization button after post
 
                         if (res.invoice_url) {
                             window.open(res.invoice_url, '_blank');
@@ -1398,7 +1919,7 @@
                     }
                 })
 
-                .fail(function (xhr) {
+                .fail(function(xhr) {
                     console.error('Server Error:', xhr.responseText);
                     $('#btnPosted, #btnHeaderPosted').prop('disabled', false);
 
@@ -1428,7 +1949,7 @@
         $('#btnAdd').on('click', addNewRow);
         $('#btnEdit').on('click', () => alert('Edit mode activated'));
         $('#btnRevert').on('click', () => location.reload());
-        $('#btnDelete').on('click', function () {
+        $('#btnDelete').on('click', function() {
             if (!confirm('Reset all fields?')) return;
             $('#saleForm')[0].reset();
             $('#booking_id').val('');
@@ -1439,31 +1960,480 @@
             refreshPostedState();
             showAlert('success', 'Form cleared');
         });
-        $('#btnSave').on('click', function () {
-            // alert();
+        $('#btnSave').on('click', function() {
+            // 🔴 Validate form has items
+            if (!canPost()) {
+                showAlert('danger', 'Please add at least one product with quantity');
+                return;
+            }
             ensureSaved();
         });
-        $('#btnPrint').on('click', function () {
-            ensureSaved().then(id => window.open('{{ url("booking/print") }}/' + id, '_blank'));
-        });
-        $('#btnPrint2').on('click', function () {
-            ensureSaved().then(id => window.open('{{ url("booking/print2") }}/' + id, '_blank'));
-        });
-        $('#btnDCPrint').off('click').on('click', function () {
+        
+        // Quick post to Main Store for cash / walking customers (bypass warehouse modal)
+        $('#btnPosted2').on('click', function() {
+            const partyType = $('input[name="partyType"]:checked').val();
 
-            ensureSaved().then(function (id) {
+            console.log('Sale button clicked, IS_ADMIN:', window.IS_ADMIN, 'partyType:', partyType);
+
+            if (!['cash','walking','credit'].includes(partyType?.toLowerCase())) {
+                showAlert('danger', 'Main Store quick post is allowed only for Cash, Walking or Credit customers');
+                return;
+            }
+
+            if (!canPost()) {
+                showAlert('danger', 'Please add at least one product with quantity before posting');
+                return;
+            }
+
+            // 🔴 VALIDATION: Cash/Walking customers MUST have at least 1 receipt amount
+            if (['cash', 'walking'].includes(partyType?.toLowerCase())) {
+                let hasValidReceipt = false;
+                $('.rv-amount').each(function(i) {
+                    const amt = toNum($(this).val());
+                    if (amt > 0) {
+                        hasValidReceipt = true;
+                        return false; // break
+                    }
+                });
+                
+                if (!hasValidReceipt) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Required',
+                        text: 'Amount required in at least 1 bank account for ' + partyType + ' customer',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+
+            // ONLY VALIDATE FOR NON-ADMIN (they use their own fixed branch)
+            // ADMIN validation happens AFTER branch selection in confirmation button
+            if (!(window.IS_ADMIN === 'true' || window.IS_ADMIN === true)) {
+                // Non-admin user: validate stock for their branch before proceeding
+                const stockValidation = validateBranchStock(window.USER_BRANCH_ID);
+                if (!stockValidation.ok) {
+                    showAlert('danger', stockValidation.message);
+                    return;
+                }
+            }
+
+            // If user is admin, show branch selection modal first
+            if (window.IS_ADMIN === 'true' || window.IS_ADMIN === true) {
+                console.log('Admin user detected, showing branch modal');
+                console.log('BRANCHES data:', window.BRANCHES);
+                
+                // Populate branch dropdown
+                const $branchSelect = $('#branchSelectionDropdown');
+                $branchSelect.empty();
+                $branchSelect.append('<option selected disabled>Choose a branch...</option>');
+                
+                if (window.BRANCHES && window.BRANCHES.length > 0) {
+                    console.log('Adding', window.BRANCHES.length, 'branches to dropdown');
+                    window.BRANCHES.forEach(branch => {
+                        console.log('Branch:', branch);
+                        $branchSelect.append(`<option value="${branch.id}">${branch.branch_name || branch.name}</option>`);
+                    });
+                } else {
+                    console.warn('No branches available');
+                }
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('branchSelectionModal'));
+                modal.show();
+                console.log('Modal shown');
+                return;
+            }
+
+            console.log('Non-admin user, proceeding directly');
+            // Non-admin users proceed directly with their branch (already validated above)
+            proceedWithSale(partyType);
+        });
+
+        // STOCK VALIDATION FUNCTION
+        function validateBranchStock(branchId) {
+            // Get all products from sales table rows
+            const products = [];
+            $('#salesTableBody tr').each(function() {
+                const productId = $(this).find('.product-select').val();
+                const qty = toNum($(this).find('.sales-qty').val());
+                const warehouseId = $(this).find('.warehouse-id').val();
+                
+                if (productId && qty > 0) {
+                    products.push({ 
+                        product_id: productId, 
+                        qty: qty,
+                        warehouse_id: warehouseId || null  // Include warehouse if selected
+                    });
+                }
+            });
+
+            if (products.length === 0) {
+                return { ok: false, message: 'No products added to sale' };
+            }
+
+            // Check each product against warehouse_stocks
+            const insufficientProducts = [];
+            
+            products.forEach(product => {
+                let availableQty = 0;
+                
+                // ✅ ERP STANDARD: Check total available stock (shop + warehouses)
+                if (product.warehouse_id) {
+                    // If specific warehouse is selected, verify that warehouse has stock
+                    const warehouseStock = window.WAREHOUSE_STOCKS.find(stock => 
+                        stock.product_id == product.product_id && 
+                        stock.branch_id == branchId && 
+                        stock.warehouse_id == product.warehouse_id
+                    );
+                    availableQty = warehouseStock ? (warehouseStock.quantity || 0) : 0;
+                } else {
+                    // NO warehouse specified - check TOTAL available stock
+                    // Sum: Shop stock (warehouse_id = null) + All warehouse stock (warehouse_id > 0)
+                    const allStocks = window.WAREHOUSE_STOCKS.filter(stock => 
+                        stock.product_id == product.product_id && 
+                        stock.branch_id == branchId
+                        // Include BOTH shop stock (NULL) and warehouse stock (> 0)
+                    );
+                    availableQty = allStocks.reduce((sum, stock) => sum + (stock.quantity || 0), 0);
+                }
+                
+                if (availableQty < product.qty) {
+                    const productName = $('#salesTableBody tr').find(`.product-select[value="${product.product_id}"]`)
+                        .closest('tr').find('.product-select').text() || `Product #${product.product_id}`;
+                    
+                    insufficientProducts.push({
+                        name: productName,
+                        required: product.qty,
+                        available: availableQty
+                    });
+                }
+            });
+
+            if (insufficientProducts.length > 0) {
+                let msg = 'Branch does not have sufficient stock for sale:\n\n';
+                insufficientProducts.forEach(p => {
+                    msg += `• ${p.name}: Need ${p.required}, Available ${p.available}\n`;
+                });
+                return { ok: false, message: msg };
+            }
+
+            return { ok: true };
+        }
+
+        // Handle branch confirmation
+        $(document).on('click', '#branchConfirmBtn', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const selectedBranch = $('#branchSelectionDropdown').val();
+            const partyType = $('input[name="partyType"]:checked').val();
+            
+            console.log('Branch Confirm clicked:', {
+                selectedBranch: selectedBranch,
+                partyType: partyType
+            });
+            
+            if (!selectedBranch || selectedBranch === '') {
+                showAlert('danger', 'Please select a branch');
+                return;
+            }
+
+            // VALIDATE STOCK FOR SELECTED BRANCH
+            const stockValidation = validateBranchStock(parseInt(selectedBranch));
+            if (!stockValidation.ok) {
+                showAlert('danger', stockValidation.message);
+                return;
+            }
+            
+            // Update the hidden branch_id field
+            $('input[name="branch_id"]').val(selectedBranch);
+            console.log('Updated branch_id to:', selectedBranch);
+            
+            // Close modal
+            try {
+                const modalEl = document.getElementById('branchSelectionModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) {
+                    modalInstance.hide();
+                } else {
+                    console.warn('Modal instance not found, trying manual hide');
+                    $(modalEl).modal('hide');
+                }
+            } catch (err) {
+                console.error('Error closing modal:', err);
+            }
+            
+            // Proceed with sale
+            console.log('Proceeding with sale, partyType:', partyType);
+            proceedWithSale(partyType);
+        });
+
+        // Helper function to proceed with sale after branch selection
+        function proceedWithSale(partyType) {
+            ensureSaved().then(function(bookingId) {
+                console.log('Booking saved, proceeding with post:', bookingId);
+                
+                // Collect receipt data from form (needed for customer ledger + receipt vouchers)
+                let receiptAccountIds = [];
+                let receiptAmounts = [];
+                $('.rv-account').each(function(i) {
+                    let acc = toNum($(this).val());
+                    let amt = toNum($('.rv-amount').eq(i).val());
+                    if (acc && amt > 0) {
+                        receiptAccountIds.push(acc);
+                        receiptAmounts.push(amt);
+                    }
+                });
+
+                // Build form data with all required fields for ajaxPost
+                // Include CSRF token for POST request
+                let formData = {
+                    _token: '{{ csrf_token() }}',
+                    booking_id: bookingId,
+                    partyType: partyType,
+                    branch_id: $('input[name="branch_id"]').val(),  // Include selected branch for admin
+                    receipt_account_id: receiptAccountIds,
+                    receipt_amount: receiptAmounts
+                };
+                
+                console.log('Form data:', formData);
+
+                // Perform quick post via dedicated endpoint
+                const url = '{{ route('sale.ajax.post-mainstore') }}';
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    data: formData,
+                    dataType: 'json',
+                    success: function(res) {
+                        console.log('Sale post response:', res);
+                        if (res && res.ok) {
+                            showAlert('success', 'Sale completed using Branch Stock');
+                            $('#is_posted').val('1'); // Mark sale as posted
+                            enableBtnPosted3(); // ✅ Enable finalization button after post
+                            // Open invoice in new tab
+                            if (res.invoice_url) window.open(res.invoice_url, '_blank');
+                            // mark posted state & refresh UI
+                            $('#booking_id').val(bookingId);
+                            refreshPostedState();
+                        } else {
+                            showAlert('danger', (res && res.error) ? res.error : 'Unknown response');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        // ✅ IMPROVED ERROR HANDLING
+                        console.error('❌ Ajax error details:', {
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            responseText: xhr.responseText,
+                            responseJSON: xhr.responseJSON,
+                            error: error
+                        });
+
+                        let errorMsg = 'Post failed';
+
+                        // Try multiple ways to extract error message
+                        if (xhr.responseJSON) {
+                            // JSON response - try multiple field names
+                            if (xhr.responseJSON.error) {
+                                errorMsg = xhr.responseJSON.error;
+                            } else if (xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            } else if (xhr.responseJSON.msg) {
+                                errorMsg = xhr.responseJSON.msg;
+                            } else if (xhr.responseJSON.errors) {
+                                // Multiple field errors
+                                let errStr = '';
+                                for (const [field, msgs] of Object.entries(xhr.responseJSON.errors)) {
+                                    if (Array.isArray(msgs)) {
+                                        errStr += `${field}: ${msgs.join(', ')}\n`;
+                                    } else {
+                                        errStr += `${field}: ${msgs}\n`;
+                                    }
+                                }
+                                if (errStr) errorMsg = errStr.trim();
+                            }
+                        } else if (xhr.responseText) {
+                            // Text response - extract meaningful part
+                            try {
+                                const text = xhr.responseText.trim();
+                                // Try to parse as JSON if it looks like JSON
+                                if (text.startsWith('{')) {
+                                    const json = JSON.parse(text);
+                                    errorMsg = json.error || json.message || json.msg || text;
+                                } else {
+                                    // Plain text error - take first non-empty line
+                                    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+                                    if (lines.length > 0) {
+                                        errorMsg = lines[0];
+                                    }
+                                }
+                            } catch (e) {
+                                // If parsing fails, use raw text
+                                errorMsg = xhr.responseText.substring(0, 200);
+                            }
+                        }
+
+                        // Fallback to status text if no message found
+                        if (!errorMsg || errorMsg === 'Post failed') {
+                            if (xhr.status === 0) {
+                                errorMsg = 'Network error - Cannot connect to server';
+                            } else if (xhr.status === 404) {
+                                errorMsg = 'Route not found (404)';
+                            } else if (xhr.status === 403) {
+                                errorMsg = 'Access denied (403)';
+                            } else if (xhr.status === 500) {
+                                errorMsg = 'Server error (500) - Check server logs';
+                            } else if (xhr.status === 422) {
+                                errorMsg = 'Validation error - Check your form data';
+                            } else if (status === 'timeout') {
+                                errorMsg = 'Request timeout - Server took too long to respond';
+                            } else if (status === 'error') {
+                                errorMsg = error || 'Unknown error occurred';
+                            }
+                        }
+
+                        console.error('🔴 Final error message:', errorMsg);
+                        showAlert('danger', errorMsg);
+                    }
+                });
+            }).catch(function(err) {
+                console.error('ensureSaved failed', err);
+                showAlert('danger', 'Failed to save booking: ' + (err?.msg || err?.message || err));
+            });
+        }
+        $('#btnPrint').on('click', function() {
+            // 🔴 Validate form has items
+            if (!canPost()) {
+                showAlert('danger', 'Please add at least one product with quantity');
+                return;
+            }
+            ensureSaved().then(id => window.open('{{ url('booking/invoice/') }}/' + id, '_blank'));
+        });
+        // $('#btnPrint2').off('click').on('click', function() {
+        //     // Post + Print flow: post the sale and then show print2
+        //     cleanupEmptyRows();
+        //     updateGrandTotals();
+        //     refreshPostedState();
+
+        //     const v = validateFormAll();
+        //     if (!v.ok) {
+        //         showAlert('danger', v.message);
+        //         if (v.el && v.el.length) {
+        //             v.el.focus();
+        //             if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+        //         }
+        //         return;
+        //     }
+
+        //     if (!canPost()) {
+        //         showAlert('danger', 'No valid item lines to post');
+        //         return;
+        //     }
+
+        //     // 🔹 CHECK IF ALREADY SAVED - if yes, skip save and go directly to warehouse modal
+        //     const bookingId = $('#booking_id').val();
+            
+        //     if (bookingId) {
+        //         // ✅ Already saved - directly open warehouse modal (like Posted button)
+        //         PRINT_AFTER_POST = true;
+        //         faraz();
+        //         return;
+        //     }
+
+        //     // 🔹 NOT SAVED YET - Check credit limit and save first
+        //     const partyType = $('input[name="partyType"]:checked').val();
+        //     let cust = null;
+
+        //     if (partyType === 'walking') {
+        //         cust = $('#customerDisplay').val();
+        //     } else {
+        //         cust = $('#customerSelect').val();
+        //     }
+
+        //     const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+        //     // For walking customers, skip credit check
+        //     if (partyType === 'walking') {
+        //         // Direct post+print without credit check
+        //         ensureSaved().then(() => {
+        //             PRINT_AFTER_POST = true; // 🔹 Set flag for print mode
+        //             faraz(); // Open warehouse modal
+        //         }).catch(() => {
+        //             showAlert('danger', 'Failed to save booking. Please try again.');
+        //         });
+        //     } else if (cust) {
+        //         $.get('/get-customer/' + cust)
+        //             .done(function(res) {
+        //                 const credit = parseFloat(res.credit_limit || 0) || 0;
+        //                 if (credit > 0 && payable > credit) {
+        //                     Swal.fire({
+        //                         icon: 'warning',
+        //                         title: 'Credit limit exceeded',
+        //                         html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
+        //                     });
+        //                     return;
+        //                 }
+        //                 // Proceed to save, then open warehouse modal for print+post
+        //                 ensureSaved().then(() => {
+        //                     PRINT_AFTER_POST = true; // 🔹 Set flag for print mode
+        //                     faraz(); // Open warehouse modal
+        //                 }).catch(() => {
+        //                     showAlert('danger', 'Failed to save booking. Please try again.');
+        //                 });
+        //             })
+        //             .fail(function() {
+        //                 showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+        //             });
+        //     } else {
+        //         showAlert('danger', 'Please select a customer before posting');
+        //         return;
+        //     }
+        // });
+
+        // ❌ DISABLED - btnPrint2 button is commented out, directPostAndPrint function removed
+        // This function is no longer needed
+        $('#btnDCPrint').off('click').on('click', function() {
+            // 🔴 Validate form has items
+            if (!canPost()) {
+                showAlert('danger', 'Please add at least one product with quantity');
+                return;
+            }
+
+            ensureSaved().then(function(Invoice_no) {
 
                 // alert(id); // ✅ ab zaroor chalega
 
-                window.open('{{ url("booking/dc") }}/' + id, '_blank');
+                window.open('{{ url('sale/dc/') }}/' + Invoice_no, '_blank');
 
-            }).catch(function () {
+            }).catch(function() {
                 alert('Save failed');
             });
 
         });
 
-        $('#btnExit').on('click', function () {
+        $('#btnThermalPrint').off('click').on('click', function() {
+            // 🔴 Validate form has items
+            if (!canPost()) {
+                showAlert('danger', 'Please add at least one product with quantity');
+                return;
+            }
+
+            ensureSaved().then(function(id) {
+
+                window.open('{{ url('booking/print2') }}/' + id, '_blank');
+
+            }).catch(function() {
+                alert('Save failed');
+            });
+
+        });
+
+        $('#btnExit').on('click', function() {
             ensureSaved().finally(() => {
                 window.location.href = "{{ route('sale.index') }}";
             });
@@ -1476,105 +2446,105 @@
 
 
         /* ---------- Row compute ---------- */
-  function toNum(v) {
-    return parseFloat(v || 0) || 0;
-}
+        function toNum(v) {
+            return parseFloat(v || 0) || 0;
+        }
 
-function computeRow($row, manualAmount = false, formatDiscount = true) {
+        function computeRow($row, manualAmount = false, formatDiscount = true) {
 
-    const rp = toNum($row.find('.retail-price').val());
-    // console.log("retail price",rp);
-    const qty = toNum($row.find('.sales-qty').val());
-// console.log("qty:",qty);
+            const rp = toNum($row.find('.retail-price').val());
+            // console.log("retail price",rp);
+            const qty = toNum($row.find('.sales-qty').val());
+            // console.log("qty:",qty);
 
-    // 🔹 Safe discount value (never negative)
-    const $discInput = $row.find('.discount-value');
-    const rawDisc = Math.max(0, $discInput.val());
-    let discValue = rawDisc;
+            // 🔹 Safe discount value (never negative)
+            const $discInput = $row.find('.discount-value');
+            const rawDisc = Math.max(0, $discInput.val());
+            let discValue = rawDisc;
 
-    const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
-     console.log("percent discount:",discType) ;
-    let dam = toNum($row.find('.discount-amount').val());
+            const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
+            console.log("percent discount:", discType);
+            let dam = toNum($row.find('.discount-amount').val());
 
-    // 🔹 GROSS
-    const gross = rp * qty;
+            // 🔹 GROSS
+            const gross = rp * qty;
 
-    /* ===== AUTO DISCOUNT ===== */
-    if (discValue > 0) {
+            /* ===== AUTO DISCOUNT ===== */
+            if (discValue > 0) {
 
-        if (discType === 'percent') {
-           
-            // If user entered >100%, mark invalid and show helper text
-            const $help = $row.find('.discount-help');
-                if (rawDisc > 101) {
-                markInvalid($discInput);
-                const $wrapper = $row.find('.discount-wrapper');
-                if ($wrapper.find('.discount-help').length === 0) {
-                    $wrapper.append('<div class="discount-help">Discount never be <= 100%</div>');
+                if (discType === 'percent') {
+
+                    // If user entered >100%, mark invalid and show helper text
+                    const $help = $row.find('.discount-help');
+                    if (rawDisc > 101) {
+                        markInvalid($discInput);
+                        const $wrapper = $row.find('.discount-wrapper');
+                        if ($wrapper.find('.discount-help').length === 0) {
+                            $wrapper.append('<div class="discount-help">Discount never be <= 100%</div>');
+                        } else {
+                            $wrapper.find('.discount-help').text('Discount must be <= 100%');
+                        }
+                        // use 100 for calculation but keep visual warning
+                        discValue = 100;
+                    } else {
+
+                        clearInvalid($discInput);
+                        $row.find('.discount-help').remove();
+                        discValue = Math.min(discValue, 100);
+                    }
+
+                    dam = (gross * discValue) / 100; // % from retail
+
                 } else {
-                    $wrapper.find('.discount-help').text('Discount must be <= 100%');
+                    // PKR discount should not exceed gross per row
+                    const totalPKR = discValue * qty;
+                    if (totalPKR > gross) {
+                        markInvalid($discInput);
+                        const $wrapper = $row.find('.discount-wrapper');
+                        if ($wrapper.find('.discount-help').length === 0) {
+                            $wrapper.append('<div class="discount-help">Discount cannot exceed row gross</div>');
+                        } else {
+                            $wrapper.find('.discount-help').text('Discount cannot exceed row gross');
+                        }
+                        // cap discount amount to gross but keep user's per-unit input unchanged
+                        dam = gross;
+                    } else {
+                        clearInvalid($discInput);
+                        $row.find('.discount-help').remove();
+                        dam = totalPKR;
+                    }
                 }
-                // use 100 for calculation but keep visual warning
-                discValue = 100;
+
+                if (formatDiscount) {
+                    $discInput.val(discValue.toFixed(2));
+                }
+                $row.find('.discount-amount').val(dam.toFixed(2));
+
             } else {
-                
+                // 🔹 Discount empty or 0
+                dam = 0;
+                $row.find('.discount-amount').val('0.00');
+                // clear any helper/invalid state when input is empty
                 clearInvalid($discInput);
                 $row.find('.discount-help').remove();
-                discValue = Math.min(discValue, 100);
-            }
-
-            dam = (gross * discValue) / 100;   // % from retail
-
-        } else {
-            // PKR discount should not exceed gross per row
-            const totalPKR = discValue * qty;
-            if (totalPKR > gross) {
-                markInvalid($discInput);
-                const $wrapper = $row.find('.discount-wrapper');
-                if ($wrapper.find('.discount-help').length === 0) {
-                    $wrapper.append('<div class="discount-help">Discount cannot exceed row gross</div>');
-                } else {
-                    $wrapper.find('.discount-help').text('Discount cannot exceed row gross');
+                // Don't clear discount-value, keep it empty or with user's last input
+                if (!$discInput.val()) {
+                    $discInput.val('');
                 }
-                // cap discount amount to gross but keep user's per-unit input unchanged
-                dam = gross;
-            } else {
-                clearInvalid($discInput);
-                $row.find('.discount-help').remove();
-                dam = totalPKR;
             }
+
+            /* ===== NET ===== */
+            const net = Math.max(0, gross - dam);
+            $row.find('.sales-amount').val(net.toFixed(2));
         }
 
-        if (formatDiscount) {
-            $discInput.val(discValue.toFixed(2));
-        }
-        $row.find('.discount-amount').val(dam.toFixed(2));
-
-    } else {
-        // 🔹 Discount empty or 0
-        dam = 0;
-        $row.find('.discount-amount').val('0.00');
-        // clear any helper/invalid state when input is empty
-        clearInvalid($discInput);
-        $row.find('.discount-help').remove();
-        // Don't clear discount-value, keep it empty or with user's last input
-        if (!$discInput.val()) {
-            $discInput.val('');
-        }
-    }
-
-    /* ===== NET ===== */
-    const net = Math.max(0, gross - dam);
-    $row.find('.sales-amount').val(net.toFixed(2));
-}
 
 
 
 
 
 
-
-        $(document).on('input', '.sales-qty, .discount-value', function (e) {
+        $(document).on('input', '.sales-qty, .discount-value', function(e) {
             const $row = $(this).closest('tr');
             // If typing in discount input, do not reformat it while typing
             if ($(this).hasClass('discount-value')) {
@@ -1587,14 +2557,14 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
         // On blur of discount input, format and validate
-        $(document).on('blur', '.discount-value', function () {
+        $(document).on('blur', '.discount-value', function() {
             const $row = $(this).closest('tr');
             computeRow($row, false, true); // now format the discount input
             updateGrandTotals();
             refreshPostedState();
         });
 
-        $(document).on('input', '.discount-amount', function () {
+        $(document).on('input', '.discount-amount', function() {
             const $row = $(this).closest('tr');
             computeRow($row, true); // manual amount respected
             updateGrandTotals();
@@ -1602,7 +2572,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
         /* ---------- Delete row ---------- */
-        $(document).on('click', '.del-row', function () {
+        $(document).on('click', '.del-row', function() {
             const $tr = $(this).closest('tr');
             const $tbody = $('#salesTableBody');
             if ($tbody.find('tr').length > 1) {
@@ -1620,7 +2590,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             let tLineDisc = 0;
             let tNet = 0;
 
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
 
                 const $r = $(this);
 
@@ -1634,7 +2604,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 tQty += qty;
                 tGross += gross;
                 tLineDisc += dam;
-                tNet += net;   // ✅ NET TOTAL
+                tNet += net; // ✅ NET TOTAL
             });
 
             // ===== ORDER LEVEL =====
@@ -1648,16 +2618,21 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 orderDisc = orderRaw;
             }
 
-            const prev = toNum($('#previousBalance').val());
+            // 🔹 For cash & walking customers: NO previous balance (they don't have ledger)
+            const partyType = $('input[name="partyType"]:checked').val();
+            const isCashOrWalking = (partyType === 'cash' || partyType === 'walking');
+            const prev = isCashOrWalking ? 0 : toNum($('#previousBalance').val());
             const receipts = toNum($('#receiptsTotal').text());
+            const echarges = toNum($('#echarges').val());
 
-            const payable = Math.max(0, tNet - orderDisc + prev - receipts);
+            const payable = Math.max(0, tNet - orderDisc + prev - receipts + echarges);
 
             // ===== UI UPDATE =====
             $('#tQty').text(tQty.toFixed(0));
             $('#tGross').text(tGross.toFixed(2));
             $('#tLineDisc').text(tLineDisc.toFixed(2));
             $('#tSub').text(tNet.toFixed(2));
+            
             $('#tOrderDisc').text(orderDisc.toFixed(2));
             $('#tPrev').text(prev.toFixed(2));
             $('#tPayable').text(payable.toFixed(2));
@@ -1666,15 +2641,20 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             $('#totalAmount').text(tNet.toFixed(2));
 
             // ===== BACKEND MIRRORS =====
+            // subTotal2 = subTotal1 + additional_discount + extra_charges
+            const additionalDiscount = toNum($('#discountPercent').val());
+            const extraCharges = toNum($('#echarges').val());
+            const subTotal2Calculated = (tNet - additionalDiscount) + extraCharges;
+            
             $('#subTotal1').val(tGross.toFixed(2));
-            $('#subTotal2').val(tNet.toFixed(2));
+            $('#subTotal2').val(subTotal2Calculated.toFixed(2));
             $('#discountAmount').val(orderDisc.toFixed(2));
             $('#totalBalance').val(payable.toFixed(2));
         }
 
-        // recalc when discount/toggle/previous balance change
-        $(document).on('input', '#previousBalance, #discountPercent', updateGrandTotals);
-        $(document).on('click', '#orderDiscountToggle', function () {
+        // recalc when discount/toggle/previous balance/echarges change
+        $(document).on('input', '#previousBalance, #discountPercent, #echarges', updateGrandTotals);
+        $(document).on('click', '#orderDiscountToggle', function() {
             const $btn = $(this);
             const current = $btn.data('type');
             if (current === 'percent') {
@@ -1686,15 +2666,58 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
         /* ---------- Row auto-add ---------- */
-        $('#salesTableBody').on('input', '.sales-qty', function () {
+        $('#salesTableBody').on('input', '.sales-qty', function() {
             const $row = $(this).closest('tr');
             computeRow($row);
             updateGrandTotals();
             refreshPostedState();
         });
 
+        // ✅ ERP STOCK VALIDATION: On blur of qty field, check if qty > available stock
+        $('#salesTableBody').on('blur', '.sales-qty', function() {
+            const $row = $(this).closest('tr');
+            const $qtyInput = $(this);
+            const enteredQty = parseFloat($qtyInput.val() || '0') || 0;
+            const availableStock = parseFloat($qtyInput.data('available-stock') || '0') || 0;
+            const productName = $row.find('.product-select option:selected').text() || 'Product';
+
+            // If qty > available stock, show confirmation popup
+            if (enteredQty > 0 && availableStock > 0 && enteredQty > availableStock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Limit Exceeded',
+                    html: `<div style="text-align:left;">
+                        <p><strong>${productName}</strong></p>
+                        <p>Available Stock: <strong>${availableStock}</strong> pieces</p>
+                        <p>You want to sell: <strong>${enteredQty}</strong> pieces</p>
+                        <p style="margin-top:15px;"><strong>Do you want to sell ${enteredQty} pieces?</strong></p>
+                    </div>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Proceed',
+                    cancelButtonText: 'No, Use Available Stock',
+                    confirmButtonColor: '#d32f2f',
+                    cancelButtonColor: '#999'
+                }).then(result => {
+                    if (result.isConfirmed) {
+                        // User confirmed - keep the qty as entered
+                        console.log('✅ User confirmed sale of', enteredQty, 'pieces (Available:', availableStock + ')');
+                        computeRow($row);
+                        updateGrandTotals();
+                        refreshPostedState();
+                    } else {
+                        // User cancelled - reset to available stock
+                        console.log('❌ User cancelled - resetting qty to available stock:', availableStock);
+                        $qtyInput.val(availableStock);
+                        computeRow($row);
+                        updateGrandTotals();
+                        refreshPostedState();
+                    }
+                });
+            }
+        });
+
         /* ---------- Add new row when user presses Enter in Disc % (only on last row) ---------- */
-        $('#salesTableBody').on('keydown', '.discount-value', function (e) {
+        $('#salesTableBody').on('keydown', '.discount-value', function(e) {
             if (e.key === 'Enter' || e.keyCode === 13) {
                 e.preventDefault(); // prevent accidental form submit
                 const $current = $(this).closest('tr');
@@ -1725,7 +2748,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         function recomputeReceipts() {
             let sum = 0;
             // Calculate the total receipt amount
-            $('.rv-amount').each(function () {
+            $('.rv-amount').each(function() {
                 sum += toNum($(this).val()); // Sum up all the receipt amounts
             });
             $('#receiptsTotal').text(sum.toFixed(2)); // Display total in the respective element
@@ -1735,7 +2758,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             validateReceipts();
         }
 
-        $('#btnAddRV').on('click', function () {
+        $('#btnAddRV').on('click', function() {
 
             const $row = $(`
             <div class="d-flex gap-2 align-items-center mb-2 rv-row">
@@ -1753,12 +2776,12 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
 
-      
-        $(document).on('click', '.btnRemRV', function () {
+
+        $(document).on('click', '.btnRemRV', function() {
             $(this).closest('.rv-row').remove();
             recomputeReceipts();
 
-            $('.rv-account').each(function () {
+            $('.rv-account').each(function() {
                 loadAccountsInto($(this));
             });
             updatePostButtonState();
@@ -1773,10 +2796,12 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         $(document).on('change', '.rv-account', function() {
             updatePostButtonState();
             validateReceipts();
-            $('.rv-account').each(function () { loadAccountsInto($(this)); });
+            $('.rv-account').each(function() {
+                loadAccountsInto($(this));
+            });
         });
 
-     
+
 
         function markInvalid($el) {
             // add visuals; $el can be input/select/td
@@ -1795,7 +2820,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             $('.invalid-cell').removeClass('invalid-cell');
         }
 
-        $(document).on('input change', 'select, input, textarea', function () {
+        $(document).on('input change', 'select, input, textarea', function() {
             clearInvalid($(this));
         });
 
@@ -1804,12 +2829,12 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             let firstMessage = null;
             let firstEl = null;
 
-            $('#salesTableBody tr').each(function (rowIndex) {
+            $('#salesTableBody tr').each(function(rowIndex) {
                 const $row = $(this);
                 // const $wh = $row.find('.warehouse');
                 const $prod = $row.find('.product-select');
                 const $qty = $row.find('.sales-qty');
-            
+
                 // Product / Item
                 if (!$prod.val()) {
                     ok = false;
@@ -1839,12 +2864,12 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             };
         }
 
-      
+
         function validateReceipts() {
             let ok = true,
                 firstMessage = null,
                 firstEl = null;
-            $('#rvWrapper .rv-row').each(function (i) {
+            $('#rvWrapper .rv-row').each(function(i) {
                 const $row = $(this);
                 const $acc = $row.find('.rv-account');
                 const $amt = $row.find('.rv-amount');
@@ -1876,7 +2901,9 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
 
             // If there are any receipt amount inputs with value > 0, require receiptsValid
             let hasReceiptAmount = false;
-            $('.rv-amount').each(function() { if (toNum($(this).val()) > 0) hasReceiptAmount = true; });
+            $('.rv-amount').each(function() {
+                if (toNum($(this).val()) > 0) hasReceiptAmount = true;
+            });
 
             const enable = rowsValid && (!hasReceiptAmount || receiptsValid);
             postBtn.prop('disabled', !enable);
@@ -1884,8 +2911,8 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         }
 
         /**
-        * validateHeader() -> Type & Party mandatory
-        */
+         * validateHeader() -> Type & Party mandatory
+         */
         function validateHeader() {
             let ok = true,
                 firstMessage = null,
@@ -1904,7 +2931,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
 
             // Party / Customer
             const cust = $('#customerSelect').val();
-            if (!cust) {
+            if (!cust && partyType !== 'walking') {
                 ok = false;
                 if (!firstMessage) {
                     firstMessage = 'Please select Party (Customer / Vendor)';
@@ -1921,9 +2948,9 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         }
 
         /**
-        * validateFormAll() -> run header, rows, receipts
-        * returns { ok, message, el }
-        */
+         * validateFormAll() -> run header, rows, receipts
+         * returns { ok, message, el }
+         */
         function validateFormAll() {
             clearAllInvalids();
 
@@ -1966,7 +2993,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         /* ---------- Hook validation into Save / Post ---------- */
 
         // override Save button to validate first and check credit limit
-        $('#btnSave').off('click').on('click', function () {
+        $('#btnSave').off('click').on('click', function() {
             cleanupEmptyRows(); // remove empty rows
             updateGrandTotals(); // recompute totals after cleanup
             refreshPostedState();
@@ -1983,12 +3010,24 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             }
 
             // CHECK CREDIT LIMIT BEFORE SAVING
-            const cust = $('#customerSelect').val();
+            const partyType = $('input[name="partyType"]:checked').val();
+            let cust = null;
+
+            // Walking customers use manual name input, others use dropdown
+            if (partyType === 'walking') {
+                cust = $('#customerDisplay').val();
+            } else {
+                cust = $('#customerSelect').val();
+            }
+
             const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
 
-            if (cust) {
+            // For walking customers, skip credit check and save directly
+            if (partyType === 'walking') {
+                ensureSaved();
+            } else if (cust) {
                 $.get('/get-customer/' + cust)
-                    .done(function (res) {
+                    .done(function(res) {
                         const credit = parseFloat(res.credit_limit || 0) || 0;
                         if (credit > 0 && payable > credit) {
                             Swal.fire({
@@ -2001,7 +3040,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                         // proceed to save
                         ensureSaved();
                     })
-                    .fail(function () {
+                    .fail(function() {
                         // If customer lookup fails, proceed with save but log
                         ensureSaved();
                     });
@@ -2011,8 +3050,8 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
 
-        // override Post buttons to validate first
-        $('#btnHeaderPosted, #btnPosted').off('click').on('click', function () {
+        // override Post buttons to validate first AND CHECK CREDIT LIMIT
+        $('#btnHeaderPosted, #btnPosted').off('click').on('click', function() {
             cleanupEmptyRows();
             updateGrandTotals();
             refreshPostedState();
@@ -2032,10 +3071,76 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 return;
             }
 
-            ensureSaved().then(function () {
-                console.log('✅ ensureSaved resolved');
-                //postNow();
-            });
+            // 🔴 VALIDATION: Cash/Walking customers MUST have at least 1 receipt amount (for warehouse sales too)
+            const partyType = $('input[name="partyType"]:checked').val();
+            if (['cash', 'walking'].includes(partyType?.toLowerCase())) {
+                let hasValidReceipt = false;
+                $('.rv-amount').each(function(i) {
+                    const amt = toNum($(this).val());
+                    if (amt > 0) {
+                        hasValidReceipt = true;
+                        return false; // break
+                    }
+                });
+                
+                if (!hasValidReceipt) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Required',
+                        text: 'Amount required in at least 1 bank account for ' + partyType + ' customer',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+
+            // ✅ CHECK CREDIT LIMIT BEFORE POSTING (SAME AS SAVE BUTTON)
+            let cust = null;
+
+            // Walking customers use manual name input, others use dropdown
+            if (partyType === 'walking') {
+                cust = $('#customerDisplay').val();
+            } else {
+                cust = $('#customerSelect').val();
+            }
+
+            const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+            // For walking customers, skip credit check and proceed directly
+            if (partyType === 'walking') {
+                ensureSaved().then(() => faraz()).catch(() => {
+                    showAlert('danger', 'Failed to save booking before posting');
+                }); // Open warehouse modal immediately after save
+            } else if (cust) {
+                $.get('/get-customer/' + cust)
+                    .done(function(res) {
+                        const credit = parseFloat(res.credit_limit || 0) || 0;
+                        // ✅ BLOCK: If credit limit exceeded, show alert and DO NOT save
+                        if (credit > 0 && payable > credit) {
+                            console.log('❌ CREDIT LIMIT EXCEEDED - BLOCKING SAVE');
+                            console.log('Credit Limit:', credit, 'Payable:', payable);
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit limit exceeded',
+                                html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
+                            });
+                            return; // STOP HERE - DO NOT SAVE
+                        }
+                        // ✅ OK: Credit limit is sufficient, proceed to save and warehouse selection
+                        console.log('✅ CREDIT LIMIT OK - SAVING AND OPENING WAREHOUSE MODAL');
+                        ensureSaved().then(() => faraz()).catch(() => {
+                            showAlert('danger', 'Failed to save booking before posting');
+                        }); // Open warehouse modal only after save
+                    })
+                    .fail(function() {
+                        // If customer lookup fails, do NOT proceed - require customer to exist
+                        console.log('❌ Customer lookup failed - blocking save');
+                        showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+                    });
+            } else {
+                showAlert('danger', 'Please select a customer before posting');
+                return;
+            }
         });
 
 
@@ -2051,7 +3156,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         }
 
         function cleanupEmptyRows() {
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 const $r = $(this);
                 const prod = $r.find('.product-select').val();
                 // const wh = $r.find('.warehouse').val();
@@ -2076,7 +3181,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             });
 
             // Ensure all remaining rows have discount fields populated
-            $('#salesTableBody tr').each(function () {
+            $('#salesTableBody tr').each(function() {
                 const $discValue = $(this).find('.discount-value');
                 const $discAmount = $(this).find('.discount-amount');
                 if (!$discValue.val()) $discValue.val('0.00');
@@ -2090,87 +3195,357 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
 
     <script>
         // Product dropdown infinite scroll with Select2
-    function initProductSelect2(
-    selector = '.product-select',
-    url = '/search-products-sale',
-    searchUrl = '/search_products'
-) {
-    $(selector).select2({
-        ajax: {
-            transport: function (params, success, failure) {
-                // prefer params.data.term which Select2 populates
-                let term = (params.data && (params.data.term || params.data.q)) || '';
-                let page = (params.data && (params.data.page || 1)) || 1;
-                let ajaxUrl = term && term.length > 0 ? searchUrl : url;
-                $.ajax({
-                    url: ajaxUrl,
-                    data: { q: term, page: page },
-                    dataType: 'json',
-                    success: function (data) { success(data); },
-                    error: failure
-                });
-            },
-            delay: 250,
-            data: function (params) {
-                return {
-                    q: params.term || '',
-                    page: params.page || 1
-                };
-            },
-            processResults: function (data, params) {
-                params.page = params.page || 1;
-                let results = [];
-                if (Array.isArray(data)) {
-                    results = data.map(function (p) {
-                        return { id: p.id, text: p.item_name, stock: p.stock, price: p.retail_price || p.price };
-                    });
-                    return { results: results, pagination: { more: false } };
-                }
+        function initProductSelect2(
+            selector = '.product-select',
+            url = '/search-products-sale',
+            searchUrl = '/search_products'
+        ) {
+            $(selector).select2({
+                ajax: {
+                    transport: function(params, success, failure) {
+                        // prefer params.data.term which Select2 populates
+                        let term = (params.data && (params.data.term || params.data.q)) || '';
+                        let page = (params.data && (params.data.page || 1)) || 1;
+                        let ajaxUrl = term && term.length > 0 ? searchUrl : url;
+                        $.ajax({
+                            url: ajaxUrl,
+                            data: {
+                                q: term,
+                                page: page
+                            },
+                            dataType: 'json',
+                            success: function(data) {
+                                success(data);
+                            },
+                            error: failure
+                        });
+                    },
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            q: params.term || '',
+                            page: params.page || 1
+                        };
+                    },
+                    processResults: function(data, params) {
+                        params.page = params.page || 1;
+                        let results = [];
+                        if (Array.isArray(data)) {
+                            results = data.map(function(p) {
+                                const ownershipBadge = p.is_owner ? '' : ' [SECONDARY]';
+                                return {
+                                    id: p.id,
+                                    text: p.item_name + ownershipBadge,
+                                    stock: p.stock,
+                                    price: p.retail_price || p.price,
+                                    is_owner: p.is_owner,
+                                    branch_id: p.branch_id
+                                };
+                            });
+                            return {
+                                results: results,
+                                pagination: {
+                                    more: false
+                                }
+                            };
+                        }
 
-                results = (data.products || []).map(function (p) {
-                    return { id: p.id, text: p.item_name, stock: p.stock, price: p.retail_price || p.price };
-                });
+                        results = (data.products || []).map(function(p) {
+                            const ownershipBadge = p.is_owner ? '' : ' [SECONDARY]';
+                            return {
+                                id: p.id,
+                                text: p.item_name + ownershipBadge,
+                                stock: p.stock,
+                                price: p.retail_price || p.price,
+                                is_owner: p.is_owner,
+                                branch_id: p.branch_id
+                            };
+                        });
 
-                return {
-                    results: results,
-                    pagination: { more: !!data.has_more }
-                };
-            },
-            cache: true
-        },
-        minimumInputLength: 0,
-        placeholder: 'Search product...',
-        allowClear: true,
-        width: 'resolve'
-    });
-}
-
-
-
-$(document).ready(function () {
-    initProductSelect2('.product-select', '/search-products-sale', '/search_products');
-    // Log selected product id on selection
-    $(document).on('select2:select', '.product-select', function (e) {
-        if (e && e.params && e.params.data && e.params.data.id) {
-            $.get('/get-product-details/' + e.params.data.id, function (data) {
-                const $row = $(e.target).closest('tr');
-                // console.log('Product details loaded:', data);
-                if (data && data.product) {
-                    // price field may be `price` or `retail_price` depending on model
-                    const price = parseFloat(data.product.retail_price ?? data.product.price ?? 0).toFixed(2);
-                    const stockQty = (data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0;
-                    $row.find('.retail-price').val(price);
-                    $row.find('.stock').val(stockQty);
-                    // set the underlying select value (product-select) so validation/serialize picks it up
-                    $row.find('.product-select').val(data.product.id).trigger('change');
-                    // Recompute row and totals
-                    computeRow($row);
-                    updateGrandTotals();
-                    refreshPostedState();
-                }
+                        return {
+                            results: results,
+                            pagination: {
+                                more: !!data.has_more
+                            }
+                        };
+                    },
+                    cache: true
+                },
+                minimumInputLength: 0,
+                placeholder: 'Search product...',
+                allowClear: true,
+                width: 'resolve'
             });
         }
-    });
-});
+
+
+
+        $(document).ready(function() {
+            initProductSelect2('.product-select', '/search-products-sale', '/search_products');
+            // Log selected product id on selection
+            $(document).on('select2:select', '.product-select', function(e) {
+                if (e && e.params && e.params.data && e.params.data.id) {
+                    $.get('/get-product-details/' + e.params.data.id, function(data) {
+                        const $row = $(e.target).closest('tr');
+                        // console.log('Product details loaded:', data);
+                        if (data && data.product) {
+                            // price field may be `price` or `retail_price` depending on model
+                            const price = parseFloat(data.product.retail_price ?? data.product
+                                .price ?? 0).toFixed(2);
+                            const stockQty = (data.product.stock && (data.product.stock.qty ?? data
+                                .product.stock)) || 0;
+                            $row.find('.retail-price').val(price);
+                            $row.find('.stock').val(stockQty).data('available-stock', stockQty);
+                            $row.find('.sales-qty').data('available-stock', stockQty);
+                            // set the underlying select value (product-select) so validation/serialize picks it up
+                            $row.find('.product-select').val(data.product.id).trigger('change');
+                            // Recompute row and totals
+                            computeRow($row);
+                            updateGrandTotals();
+                            refreshPostedState();
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+
+    <!-- ============================================ -->
+    <!-- btnPosted3 - DRAFT POSTING (Save → AjaxPostDraft) -->
+    <!-- ============================================ -->
+    <script>
+        /**
+         * 🎯 btnPosted3 Handler - DRAFT MODE POSTING
+         * 
+         * Professional ERP Flow:
+         * 1. Validate form (items, party type, receipts)
+         * 2. Check credit limit
+         * 3. SAVE booking via ensureSaved()
+         * 4. POST to ajaxPostDraft endpoint
+         * 5. Proper error handling & button state management
+         */
+        $('#btnPosted3').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            console.log('🎯 btnPosted3 clicked - Starting draft posting flow');
+
+            // Step 1: Cleanup & Validate
+            cleanupEmptyRows();
+            updateGrandTotals();
+            refreshPostedState();
+
+            const v = validateFormAll();
+            if (!v.ok) {
+                showAlert('danger', v.message);
+                if (v.el && v.el.length) {
+                    v.el.focus();
+                    if (v.el.hasClass('js-customer')) v.el.select2?.('open');
+                }
+                return;
+            }
+
+            if (!canPost()) {
+                showAlert('danger', 'No valid item lines to post');
+                return;
+            }
+
+            // Step 2: Receipt validation for cash/walking customers
+            const partyType = $('input[name="partyType"]:checked').val();
+            if (['cash', 'walking'].includes(partyType?.toLowerCase())) {
+                let hasValidReceipt = false;
+                $('.rv-amount').each(function(i) {
+                    const amt = toNum($(this).val());
+                    if (amt > 0) {
+                        hasValidReceipt = true;
+                        return false;
+                    }
+                });
+                
+                if (!hasValidReceipt) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Required',
+                        text: 'Amount required in at least 1 bank account for ' + partyType + ' customer',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+
+            // Step 3: Check credit limit
+            let cust = null;
+            if (partyType === 'walking') {
+                cust = $('#customerDisplay').val();
+            } else {
+                cust = $('#customerSelect').val();
+            }
+
+            const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+            // Step 4: Handle walking customers (skip credit check)
+            if (partyType === 'walking') {
+                console.log('✅ Walking customer - skipping credit check, proceeding to save');
+                proceedWithDraftPost();
+                return;
+            }
+
+            // Step 5: Check credit for other party types
+            if (cust) {
+                $.get('/get-customer/' + cust)
+                    .done(function(res) {
+                        const credit = parseFloat(res.credit_limit || 0) || 0;
+                        if (credit > 0 && payable > credit) {
+                            console.log('❌ CREDIT LIMIT EXCEEDED');
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit limit exceeded',
+                                html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
+                            });
+                            return;
+                        }
+                        console.log('✅ Credit limit OK - proceeding to save and post');
+                        proceedWithDraftPost();
+                    })
+                    .fail(function() {
+                        showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+                    });
+            } else {
+                showAlert('danger', 'Please select a customer before posting');
+                return;
+            }
+        });
+
+        /**
+         * 🔄 STEP 1: SAVE BOOKING
+         * 🔄 STEP 2: POST TO DRAFT (ajaxPostDraft)
+         */
+        function proceedWithDraftPost() {
+            console.log('📝 proceedWithDraftPost - Starting save → post flow');
+
+            // Disable button to prevent double-click
+            $('#btnPosted3').prop('disabled', true).css('opacity', '0.6');
+
+            // STEP 1: Save booking first
+            ensureSaved()
+                .then(function(bookingId) {
+                    console.log('✅ Booking saved:', bookingId);
+                    console.log('📤 Now posting to ajaxPostDraft...');
+
+                    // Collect form data for ajaxPostDraft
+                    let formData = new FormData();
+                    formData.append('_token', '{{ csrf_token() }}');
+                    formData.append('booking_id', bookingId);
+
+                    // Collect warehouse selections per product
+                    $('#salesTableBody tr').each(function() {
+                        const productId = $(this).find('.product-select').val();
+                        const warehouseId = $(this).find('.warehouse-id').val();
+                        if (productId) {
+                            formData.append(`warehouse_id[${productId}]`, warehouseId || '');
+                        }
+                    });
+
+                    // Collect receipt rows
+                    $('.rv-account').each(function(i) {
+                        const acc = $(this).val();
+                        const amt = $('.rv-amount').eq(i).val() || '0';
+                        if (acc) {
+                            formData.append(`receipt_account_id[]`, acc);
+                            formData.append(`receipt_amount[]`, amt);
+                        }
+                    });
+
+                    // STEP 2: Call ajaxPostDraft
+                    $.ajax({
+                        url: '{{ route('sale.ajax.post-draft') }}',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        dataType: 'json',
+                        success: function(res) {
+                            console.log('✅ Draft post successful:', res);
+
+                            if (res && res.ok) {
+                                showAlert('success', 'Draft posted! Items ready for delivery. Stock will be deducted on gate pass.');
+                                $('#is_posted').val('1');
+                                $('#btnPosted3').prop('disabled', true);
+                                
+                                // Disable other post buttons
+                                $('#btnPosted, #btnPosted2, #btnHeaderPosted, #btnSave').prop('disabled', true);
+                                refreshPostedState();
+
+                                // Open invoice in new tab
+                                if (res.invoice_url) {
+                                    window.open(res.invoice_url, '_blank');
+                                }
+                            } else {
+                                $('#btnPosted3').prop('disabled', false).css('opacity', '1');
+                                showAlert('danger', res.msg || 'Draft post failed');
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('❌ Draft post error:', xhr);
+                            $('#btnPosted3').prop('disabled', false).css('opacity', '1');
+
+                            let msg = 'Server error while posting';
+                            try {
+                                const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+                                msg = json.message || json.msg || json.error || msg;
+                            } catch (e) {
+                                if (xhr.responseText) {
+                                    msg = xhr.responseText.split('\n')[0];
+                                }
+                            }
+
+                            showAlert('danger', msg);
+                        }
+                    });
+                })
+                .catch(function(err) {
+                    console.error('❌ Save failed:', err);
+                    $('#btnPosted3').prop('disabled', false).css('opacity', '1');
+                    showAlert('danger', 'Failed to save booking before posting');
+                });
+        }
+
+        /**
+         * 🔧 Enable btnPosted3 after successful warehouse/main posting
+         */
+        function enableBtnPosted3() {
+            $('#btnPosted3').prop('disabled', false).css('opacity', '1');
+            $('#is_posted').val('1');
+            console.log('✅ btnPosted3 enabled');
+        }
+
+        /**
+         * 🔧 Restore btnPosted3 state on page load (for editing existing sales)
+         */
+        function restorePosted3StateIfExists() {
+            const bookingId = $('#booking_id').val();
+            const isFinalized = $('#is_finalized').val() === '1';
+
+            if (!bookingId) {
+                console.log('⏸️ New sale - btnPosted3 will be controlled by refreshPostedState()');
+                return;
+            }
+
+            if (isFinalized) {
+                $('#btnPosted3')
+                    .prop('disabled', true)
+                    .html('✓ Finalized')
+                    .addClass('btn-success')
+                    .removeClass('btn-outline-success');
+                console.log('✅ btnPosted3 shown as finalized');
+            }
+        }
+
+        // Restore on document ready
+        $(document).ready(function() {
+            setTimeout(function() {
+                restorePosted3StateIfExists();
+            }, 100);
+        });
     </script>
 @endsection

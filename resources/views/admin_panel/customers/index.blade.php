@@ -315,7 +315,11 @@
                     <table class="table table-bordered table-striped">
         <thead>
             <tr>
+                @if(Auth::check() && Auth::user()->hasRole('super admin'))
+                <th>Branch ID</th>
+                @endif
                 <th>Customer ID</th>
+                
                 <th>Name</th>
                 <th>Mobile</th>
                 <th>Zone</th>
@@ -331,6 +335,9 @@
         <tbody>
             @foreach($customers as $customer)
             <tr>
+                @if(Auth::check() && Auth::user()->hasRole('super admin'))
+                <td>{{ $customer->branch->name }}</td>
+                @endif
                 <td>{{ $customer->customer_id }}</td>
                 <td>{{ $customer->customer_name }}</td>
                 <td>{{ $customer->mobile }}</td>

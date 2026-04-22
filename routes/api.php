@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\StockRequestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -21,3 +22,6 @@ use Illuminate\Support\Facades\Route;
 // });
 // Route::get('sale/customers', [CustomerController::class, 'saleindex'])
 //     ->name('salecustomers.index');
+
+// ✅ ERP PROPER - Get branch products for dynamic dropdown
+Route::get('branch-products/{branchId}', [StockRequestController::class, 'getBranchProducts'])->name('api.branch-products');

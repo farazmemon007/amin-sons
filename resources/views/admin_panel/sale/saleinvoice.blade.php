@@ -93,6 +93,14 @@
                                             <td class="fw-bold text-primary h5">{{ number_format($sale->total_net, 2) }}</td>
                                         </tr>
                                         <tr>
+                                            <td colspan="8" class="text-end fw-bold">Received Amount</td>
+                                            <td class="fw-bold text-success">{{ number_format($receivedAmount, 2) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="8" class="text-end fw-bold">Balance Due</td>
+                                            <td class="fw-bold {{ $balanceDue > 0 ? 'text-danger' : 'text-success' }}">{{ number_format($balanceDue, 2) }}</td>
+                                        </tr>
+                                        <tr>
                                             <td colspan="4" class="text-start fw-bold">Cash: {{ number_format($sale->cash, 2) }}</td>
                                             <td colspan="5" class="text-end fw-bold">Change: {{ number_format($sale->change, 2) }}</td>
                                         </tr>

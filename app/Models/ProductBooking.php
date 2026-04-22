@@ -6,9 +6,13 @@ use App\Models\ProductBookingItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Productbooking extends Model
+class ProductBooking extends Model
 {
     use HasFactory;
+    
+    // ✅ Explicitly define table name to match migration
+    // Migration created: Schema::create('productbookings', ...)
+    protected $table = 'productbookings';
     
     protected $fillable = [
         'invoice_no',
@@ -24,6 +28,8 @@ class Productbooking extends Model
         'sub_total2',
         'discount_percent',
         'discount_amount',
+        'additional_discount',
+        'extra_charges',
         'previous_balance',
         'total_balance',
         'receipt1',
@@ -32,6 +38,7 @@ class Productbooking extends Model
         'final_balance2',
         'weight',
         'status',
+        'branch_id',
     ];
 
     // Relation to sale items

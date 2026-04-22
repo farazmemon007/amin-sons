@@ -8,10 +8,17 @@
             <div class="row">
                 <div class="col-lg-12">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h3>Purchase</h3>
-                        {{-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#purchaseModal" id="reset">Create</button> --}}
+                        <div>
+                            <h3>Purchase</h3>
+                            @if($isSuperAdmin)
+                                <small class="badge bg-success">Super Admin - All Branches</small>
+                            @elseif(!$showBranchColumn)
+                                <small class="text-muted d-block">Viewing your branch purchases</small>
+                            @else
+                                <small class="text-info d-block">Viewing multiple branches</small>
+                            @endif
+                        </div>
                         <a class="btn btn-primary" href="{{ route('add_purchase') }}">Add purchase</a>
-
                     </div>
 
                     <div class="border mt-1 shadow rounded" style="background-color: white;">
@@ -29,7 +36,9 @@
                                     <thead class="text-center" style="background:#add8e6">
                                         <tr>
                                             <th>ID</th>
-                                            <th>Branch</th>
+                                            @if($showBranchColumn)
+                                                <th style="background: #e8f4f8;">Branch</th>
+                                            @endif
                                             <th>Warehouse</th>
                                             <th>Vendor</th>
                                             <th>Invoice No</th>
@@ -41,6 +50,7 @@
                                             <th>Paid</th>
                                             <th>Due</th>
                                             <th>Purchase Date</th>
+                                            <th>Receipt Status</th>
                                             <th>Action</th>
                                         </tr>
                                     </thead>
@@ -48,10 +58,43 @@
                                         @foreach ($Purchase as $purchase)
                                         <tr>
                                             <td>{{ $purchase->id }}</td>
-                                            <td>{{ $purchase->branch->name ?? 'N/A' }}</td>
-                                            <td>{{ $purchase->warehouse->warehouse_name ?? 'N/A' }}</td>
+                                            @if($showBranchColumn)
+                                                <td style="background: #f0f8fc; font-weight: 500;">
+                                                    {{ $purchase->branch->name ?? 'N/A' }}
+                                                    @if($userBranchId !== $purchase->branch_id)
+                                                        <span class="badge bg-info">Cross-Branch</span>
+                                                    @endif
+                                                </td>
+                                            @endif
+                                            <td>
+                                                @php
+                                                    // ✅ ERP STANDARD: Show warehouse from items (per-line assignment)
+                                                    // If header warehouse exists, show it; otherwise show distinct warehouses from items
+                                                    if ($purchase->warehouse_id && $purchase->warehouse) {
+                                                        echo $purchase->warehouse->warehouse_name ?? 'N/A';
+                                                    } elseif ($purchase->items && count($purchase->items) > 0) {
+                                                        // Get distinct warehouse names from line items
+                                                        $warehouses = $purchase->items
+                                                            ->filter(fn($item) => $item->warehouse_id)
+                                                            ->map(fn($item) => $item->warehouse->warehouse_name ?? null)
+                                                            ->filter()
+                                                            ->unique()
+                                                            ->values();
+                                                        
+                                                        if ($warehouses->count() > 0) {
+                                                            echo implode(', ', $warehouses->toArray());
+                                                        } else {
+                                                            echo 'N/A';
+                                                        }
+                                                    } else {
+                                                        echo 'N/A';
+                                                    }
+                                                @endphp
+                                            </td>
                                             <td>{{ $purchase->vendor->name ?? 'N/A' }}</td>
-                                            <td>{{ $purchase->invoice_no }}</td>
+                                            <td>
+                                                <strong>{{ $purchase->formatted_invoice }}</strong>
+                                            </td>
                                             <td>{{ $purchase->note }}</td>
                                             <td>{{ $purchase->subtotal }}</td>
                                             <td>{{ $purchase->discount }}</td>
@@ -61,9 +104,30 @@
                                             <td>{{ $purchase->due_amount }}</td>
                                             <td>{{ $purchase->purchase_date }}</td>
                                             <td>
+                                                @if($purchase->receipt_status === 'pending')
+                                                    <span class="badge bg-warning text-dark">Awaiting Receipt</span>
+                                                @else
+                                                    <span class="badge bg-success">Received</span>
+                                                @endif
+                                            </td>
+                                            <td>
                                                 <div class="btn-group" role="group" aria-label="Actions">
+                                                    @can('purchase.view')
+                                                    @if($purchase->receipt_status === 'received')
+                                                        {{-- Details button hidden when fully received --}}
+                                                    @else
+                                                        <a href="{{ route('purchase.pending', $purchase->id) }}" class="btn btn-sm btn-info text-white" title="View Purchase Details">
+                                                            <i class="fa fa-eye"></i> Details
+                                                        </a>
+                                                    @endif
+                                                    @endcan
+
                                                     @can('purchase.edit')
                                                     <a href="{{ route('purchase.edit', $purchase->id) }}" class="btn btn-sm btn-primary">Edit</a>
+                                                    @endcan
+
+                                                    @can('inward.gatepass.create')
+                                                    <a href="{{ route('inward-gatepass.from-purchase', $purchase->id) }}" class="btn btn-sm btn-success">Receive</a>
                                                     @endcan
 
                                                     @can('purchase.return')
@@ -71,14 +135,14 @@
                                                     @endcan
 
                                                     @can('purchase.invoice')
-                                                    <a href="{{ route('purchase.invoice', $purchase->id) }}" class="btn btn-sm btn-info text-white">Invoice</a>
+                                                    <a href="{{ route('purchase.invoice', $purchase->id) }}" class="btn btn-sm btn-warning text-dark">Invoice</a>
                                                     @endcan
 
                                                     @can('purchase.delete')
                                                      <form action="{{ route('purchase.destroy', $purchase->id) }}" method="POST" class="d-inline delete-form">
-    @csrf
-    @method('DELETE')
-    <button type="button" class="btn btn-danger btn-sm delete-btn mb-1">Delete</button>
+    {{-- @csrf --}}
+    {{-- @method('DELETE') --}}
+    {{-- <button type="button" class="btn btn-danger btn-sm delete-btn mb-1">Delete</button> --}}
 </form>
                                                     @endcan
 

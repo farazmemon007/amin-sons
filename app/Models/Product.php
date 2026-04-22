@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Category;
 use App\Models\Subcategory;
 use App\Models\Stock;
+use App\Models\Branch;
 
 class Product extends Model
 {
@@ -23,6 +24,14 @@ class Product extends Model
     {
         return $this->belongsToMany(Warehouse::class, 'warehouse_stocks', 'product_id', 'warehouse_id')
                     ->withPivot('quantity', 'price', 'remarks');
+    }
+
+    /**
+     * Direct relationship to WarehouseStock (for branch-aware queries)
+     */
+    public function warehouseStocks()
+    {
+        return $this->hasMany(WarehouseStock::class, 'product_id', 'id');
     }
 
     // app/Models/Product.php
@@ -55,6 +64,11 @@ class Product extends Model
     {
         return $this->belongsTo(Brand::class, 'brand_id');
     }
+
+    public function type()
+    {
+        return $this->belongsTo(ProductType::class, 'type_id');
+    }
     // public function stock()
     // {
     //     return $this->hasOne(Stock::class);
@@ -81,5 +95,75 @@ public function stock()
   public function saleItems()
     {
         return $this->hasMany(SaleItem::class, 'product_id', 'id');
+    }
+
+    /**
+     * Product has many purchase items
+     */
+    public function purchaseItems()
+    {
+        return $this->hasMany(PurchaseItem::class, 'product_id', 'id');
+    }
+
+    /**
+     * Product belongs to a Branch
+     */
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id', 'id');
+    }
+
+    /**
+     * ✅ MULTI-BRANCH: Product branch codes (per branch item code)
+     */
+    public function branchProductCodes()
+    {
+        return $this->hasMany(BranchProductCode::class, 'product_id', 'id');
+    }
+
+    /**
+     * ✅ Get branch-specific item code
+     * Returns formatted code like "001", "002" for the given branch
+     */
+    public function getBranchItemCode($branchId)
+    {
+        $code = BranchProductCode::where('product_id', $this->id)
+            ->where('branch_id', $branchId)
+            ->first();
+        
+        return $code ? $code->item_code : null;
+    }
+
+    /**
+     * ✅ Check if product is PRIMARY for a branch
+     * PRIMARY: Has warehouse_stocks with quantity > 0
+     */
+    public function isPrimaryForBranch($branchId)
+    {
+        return $this->warehouseStocks()
+            ->where('branch_id', $branchId)
+            ->where('quantity', '>', 0)
+            ->exists();
+    }
+
+    /**
+     * ✅ Check if product is SECONDARY for a branch
+     * SECONDARY: No warehouse_stocks entry for this branch
+     */
+    public function isSecondaryForBranch($branchId)
+    {
+        return !$this->warehouseStocks()
+            ->where('branch_id', $branchId)
+            ->exists();
+    }
+
+    /**
+     * ✅ Get warehouse stocks for a specific branch
+     */
+    public function getStockForBranch($branchId)
+    {
+        return $this->warehouseStocks()
+            ->where('branch_id', $branchId)
+            ->sum('quantity');
     }
 }

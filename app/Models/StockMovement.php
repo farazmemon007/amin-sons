@@ -13,6 +13,10 @@ class StockMovement extends Model
     protected $guarded = [];
     
     public function product(){
-         return $this->belongsTo(Product::class);
-        }
+        return $this->belongsTo(Product::class);
+    }
+    
+    public function branch(){
+        return $this->belongsTo(Branch::class);
+    }
 }

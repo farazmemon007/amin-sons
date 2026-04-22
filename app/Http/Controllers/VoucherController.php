@@ -237,11 +237,17 @@ class VoucherController extends Controller
 
      public function getAccountsByHead($headId)
     {
-        $accounts = Account::where('head_id', $headId)->where('status', 1)->get();
-        // echo "<pre>";
-        // print_r($accounts);
-        // echo "</pre>";
-        // dd();
+        // ✅ BRANCH-AWARE ACCOUNTS: Simple users see only their branch's accounts
+        $isSuper = Auth::check() && Auth::user()->hasRole('super admin');
+        $branchId = Auth::check() ? Auth::user()->branch_id : null;
+        
+        $accounts = Account::where('head_id', $headId)
+            ->where('status', 1)
+            ->when(!$isSuper && $branchId, function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })
+            ->get();
+        
         return response()->json($accounts);
     }
 public function getOpeningBalance($type, $id)

@@ -173,7 +173,11 @@
                                 <tr>
                                     <td>{{ $booking->id }}</td>
                                     <!-- Customer Name from relation -->
-                                    <td>{{ $booking->customer->customer_name ?? 'N/A' }}</td>
+                                    @if($booking->party_type == 'credit'||$booking->party_type == 'cash')
+                                        <td>{{ $booking->customer->customer_name ?? 'N/A' }}</td>
+                                        @else
+                                        <td>{{ $booking->customer_name ?? 'N/A' }}</td>
+                                    @endif
                                     <td>{{ $booking->invoice_no }}</td>
                                     <td>{{ $booking->party_type }}</td>
                                     <td>{{ $booking->quantity ?? 0 }}</td>
@@ -196,10 +200,12 @@
 
 
                                     <td>
-                                        <a href="{{ route('sale.invoice', $booking->id) }}" target="_blank"
+                                        <a href="{{ route('booking.invoice', $booking->id) }}" target="_blank"
                                             class="btn btn-sm btn-outline-secondary">Receipt</a>
-                                        <a href="{{ route('sales.from.booking', $booking->id) }}"
-                                            class="btn btn-sm btn-success">Confirm</a>
+                                        @if(($booking->status ?? 'pending') == 'pending')
+                                            <a href="{{ route('sales.from.booking', $booking->id) }}"
+                                                class="btn btn-sm btn-success">Confirm</a>
+                                        @endif
                                     </td>
                                 </tr>
                             @endforeach

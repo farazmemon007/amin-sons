@@ -56,21 +56,31 @@
                                                     <label><i class="bi bi-file-earmark-text text-primary me-1"></i>
                                                         Company Inv #</label>
                                                     <input name="invoice_no" type="text"
-                                                        value="{{ $purchase->invoice_no }}" class="form-control">
+                                                        value="{{ $purchase->invoice_no }}" class="form-control" readonly>
                                                 </div>
 
+                                                @if($isSuperAdmin)
+                                                    {{-- ✅ ERP STANDARD: Super admin can change branch --}}
+                                                    <div class="col-xl-3 col-sm-6 mt-3">
+                                                        <label><i class="bi bi-building text-primary me-1"></i>
+                                                            Branch</label>
+                                                        <select name="branch_id" class="form-control">
+                                                            <option disabled>Select One</option>
+                                                            @foreach ($Branch as $item)
+                                                            <option value="{{ $item->id }}"
+                                                                {{ $item->id == $purchase->branch_id ? 'selected' : '' }}>
+                                                                {{ $item->name }}
+                                                            </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                @endif
+
                                                 <div class="col-xl-3 col-sm-6 mt-3">
-                                                    <label><i class="bi bi-building text-primary me-1"></i>
-                                                        Warehouse</label>
-                                                    <select name="warehouse_id" class="form-control">
-                                                        <option disabled>Select One</option>
-                                                        @foreach ($Warehouse as $item)
-                                                        <option value="{{ $item->id }}"
-                                                            {{ $item->id == $purchase->warehouse_id ? 'selected' : '' }}>
-                                                            {{ $item->warehouse_name }}
-                                                        </option>
-                                                        @endforeach
-                                                    </select>
+                                                    <label><i class="bi bi-truck text-primary me-1"></i>
+                                                        Transport Name</label>
+                                                    <input name="transport_name" type="text" value="{{ $purchase->transport_name ?? '' }}"
+                                                        class="form-control">
                                                 </div>
 
                                                 <div class="col-xl-6 col-sm-6 mt-3">
@@ -86,19 +96,35 @@
                                                 <table class="table mt-3 table-bordered">
                                                     <thead>
                                                         <tr class="text-center">
-                                                            <th>Product</th>
-                                                            <th>Item Code</th>
-                                                            <th>Brand</th>
-                                                            <th>Unit</th>
-                                                            <th>Price</th>
-                                                            <th>Discount</th>
-                                                            <th>Qty</th>
-                                                            <th>Total</th>
-                                                            <th>Action</th>
+                                                            <th style="min-width:120px;">Product</th>
+                                                            <th style="min-width:80px;">Item Code</th>
+                                                            <th style="min-width:90px;">Brand</th>
+                                                            <th style="min-width:70px;">Unit</th>
+                                                            <th style="min-width:120px;">Warehouse</th>
+                                                            <th style="min-width:90px;">Price</th>
+                                                            <th style="min-width:80px;">Discount</th>
+                                                            <th style="min-width:90px;">Ordered Qty</th>
+                                                            <th style="min-width:90px;">Edit Qty</th>
+                                                            <th style="min-width:90px;">Remaining</th>
+                                                            <th style="min-width:90px;">Total</th>
+                                                            <th style="min-width:60px;">Action</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="purchaseItems">
                                                         @foreach($purchase->items as $item)
+                                                        @php
+                                                            // ✅ Get vendor remaining data for this product (if exists)
+                                                            $remaining = $vendorRemaining[$item->product_id] ?? null;
+                                                            $receivedQty = $remaining ? $remaining->received_qty : 0;
+                                                            $remainingQty = $remaining ? $remaining->remaining_qty : 0;
+                                                            
+                                                            // ✅ ERP STANDARD: Qty validation rules
+                                                            // If no delivery yet (received_qty = 0): Fully editable, no max limit
+                                                            // If delivery exists (received_qty > 0): Cannot go below received, can increase
+                                                            $maxEditQty = $receivedQty > 0 ? ($receivedQty + $remainingQty) : null;
+                                                            $minEditQty = $receivedQty > 0 ? $receivedQty : 1;  // Min = received qty or 1
+                                                            $hasDelivery = $receivedQty > 0;
+                                                        @endphp
                                                         <tr>
                                                             <!-- Product -->
                                                             <td>
@@ -122,7 +148,20 @@
                                                             <!-- Unit -->
                                                             <td>
                                                                 <input type="text" name="unit[]" class="form-control"
-                                                                    value="{{ $item->unit ?? 'NULL' }}">
+                                                                    value="{{ $item->product->unit->name ?? $item->unit ?? 'NULL' }}" readonly>
+                                                            </td>
+
+                                                            <!-- Warehouse (Per-line assignment) -->
+                                                            <td>
+                                                                <select name="line_warehouse_id[]" class="form-select warehouse_select">
+                                                                    <option value="">Select Warehouse</option>
+                                                                    @foreach ($Warehouse as $w)
+                                                                        <option value="{{ $w->id }}" 
+                                                                            {{ $item->warehouse_id == $w->id ? 'selected' : '' }}>
+                                                                            {{ $w->warehouse_name }}
+                                                                        </option>
+                                                                    @endforeach
+                                                                </select>
                                                             </td>
 
                                                             <!-- Price -->
@@ -131,28 +170,52 @@
                                                                     value="{{ $item->price ?? 0 }}">
                                                             </td>
 
-                                                            <!-- Discount -->
+                                                            <!-- Discount (✅ FIXED: was name=price[]) -->
                                                             <td>
-                                                                <input type="number" step="0.01" name="price[]" class="form-control price"
-                                                                    value="{{ $item->price ?? 0 }}">
+                                                                <input type="number" step="0.01" name="item_discount[]" class="form-control discount"
+                                                                    value="{{ $item->item_discount ?? 0 }}">
                                                             </td>
 
-                                                            <!-- Qty -->
+                                                            <!-- Ordered Qty (readonly, original) -->
                                                             <td>
-                                                                <input type="number" name="qty[]" class="form-control quantity"
-                                                                    value="{{ $item->qty ?? 0 }}">
+                                                                <input type="text" class="form-control text-end" readonly
+                                                                    value="{{ $item->qty }}" title="Original ordered quantity">
                                                             </td>
 
+                                                            <!-- Edit Qty (✅ Can modify within limits) -->
+                                                            <td>
+                                                                @if($hasDelivery)
+                                                                    {{-- If delivery happened: min = received, max = received + remaining --}}
+                                                                    <input type="number" name="qty[]" class="form-control quantity text-end"
+                                                                        value="{{ $item->qty }}" 
+                                                                        min="{{ $minEditQty }}" max="{{ $maxEditQty }}"
+                                                                        title="Already received {{ $receivedQty }} units. Cannot reduce below this. Can increase up to {{ $maxEditQty }}.">
+                                                                    <small class="text-muted d-block">Received: {{ $receivedQty }}, Pending: {{ $remainingQty }}</small>
+                                                                @else
+                                                                    {{-- If NO delivery yet: Fully editable, no max limit --}}
+                                                                    <input type="number" name="qty[]" class="form-control quantity text-end"
+                                                                        value="{{ $item->qty }}" 
+                                                                        min="1"
+                                                                        title="No deliveries yet. You can change to any quantity.">
+                                                                @endif
+                                                            </td>
+
+                                                            <!-- Remaining Qty (from vendor_remaining) -->
+                                                            <td>
+                                                                <input type="text" class="form-control text-end" readonly
+                                                                    value="{{ $remainingQty }}" 
+                                                                    style="background: #f8f9fa;" 
+                                                                    title="Quantity still pending delivery">
+                                                            </td>
 
                                                             <!-- Total -->
                                                             <td>
-                                                                <input type="text" name="line_total[]" class="form-control row-total"
+                                                                <input type="text" name="line_total[]" class="form-control row-total text-end"
                                                                     value="{{ $item->line_total ?? 0 }}" readonly>
                                                             </td>
 
-
                                                             <!-- Action -->
-                                                            <td>
+                                                            <td class="text-center">
                                                                 <button type="button" class="btn btn-sm btn-danger remove-row">X</button>
                                                             </td>
                                                         </tr>
@@ -337,6 +400,14 @@
             <td class="item_code border"><input type="text" name="item_code[]" class="form-control" readonly></td>
             <td class="uom border"><input type="text" name="uom[]" class="form-control" readonly></td>
             <td class="unit border"><input type="text" name="unit[]" class="form-control" readonly></td>
+            <td>
+                <select name="line_warehouse_id[]" class="form-select warehouse_select">
+                    <option value="">Select Warehouse</option>
+                    @foreach ($Warehouse as $w)
+                        <option value="{{ $w->id }}">{{ $w->warehouse_name }}</option>
+                    @endforeach
+                </select>
+            </td>
             <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1"></td>
             <td><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value=""></td>
             <td class="qty"><input type="number" name="qty[]" class="form-control quantity" value="" min="1"></td>
@@ -346,11 +417,10 @@
                 $('#purchaseItems').append(newRow);
             }
 
-
-            // Edit form me bhi ek extra blank row ho, taake user new product search kare
-            if ($("#purchaseItems tr").length > 0) {
+            {{-- ❌ REMOVED: No blank row on edit form (only needed on add form) --}}
+            {{-- if ($("#purchaseItems tr").length > 0) {
                 appendBlankRow();
-            }
+            } --}}
 
             // ---------- Product Search (AJAX) ----------
             $(document).on('keyup', '.productSearch', function(e) {

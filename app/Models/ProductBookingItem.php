@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\Productbooking;
+use App\Models\ProductBooking;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -11,6 +11,7 @@ class ProductBookingItem extends Model
     use HasFactory;
     protected $fillable = [
         'booking_id',
+        'branch_id',
         'warehouse_id',
         'product_id',
         'stock',
@@ -20,16 +21,22 @@ class ProductBookingItem extends Model
         'retail_price',
         'discount_percent',
         'discount_amount',
+        'discount_type',
         'amount',
         'invoice_no',
         'customer_id',
         'items'
     ];
 
+    // include branch_id so items can carry branch context
+    protected $casts = [
+        // keep standard casts if needed later
+    ];
+
     // Relation to Sale
     public function booking()
     {
-        return $this->belongsTo(Productbooking::class);
+        return $this->belongsTo(ProductBooking::class);
     }
 
     // Relation to Warehouse (agar model hai)

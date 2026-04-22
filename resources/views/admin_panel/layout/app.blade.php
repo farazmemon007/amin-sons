@@ -10,6 +10,53 @@
 
 <head>
     <style>
+        /* Logo Styling - Beautiful Brand Header */
+        .nav_logo.rt_logo {
+            font-size: 1.5rem !important;
+            font-family: 'Segoe UI', 'Trebuchet MS', sans-serif !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.8px !important;
+            color: #1e3a5f !important;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            padding: 8px 16px !important;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            background: linear-gradient(135deg, rgba(30, 58, 95, 0.05), rgba(30, 58, 95, 0));
+            border-left: 4px solid #1e3a5f;
+            text-transform: uppercase !important;
+            letter-spacing: 1.2px !important;
+        }
+
+        .nav_logo.rt_logo:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 58, 95, 0.25);
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+        }
+
+        .nav_logo.rt_logo i {
+            font-size: 1.8rem !important;
+            color: #1e3a5f !important;
+            margin-right: 8px !important;
+            vertical-align: middle;
+            animation: fadeInScale 0.5s ease;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .rt_nav_wrapper {
+            min-height: 60px;
+        }
+
         /* ERP Mega Menu & Normal Submenu Compact Styling */
         .nav-item .submenu,
         .mega-menu .submenu {
@@ -63,6 +110,22 @@
             color: #2980b9;
             font-weight: 500;
         }
+
+        /* Make 5 columns distribute evenly across full width */
+        .col-group-wrapper.row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0;
+            margin-right: 0 !important;
+            margin-left: 0 !important;
+        }
+
+        .col-group {
+            flex: 1 1 20% !important;  /* Each column takes 20% (5 columns = 100%) */
+            margin-right: 0 !important;
+            margin-left: 0 !important;
+            min-width: 20%;
+        }
     </style>
     <!--=========================*
                 Met Data
@@ -71,6 +134,7 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Zare Bootstrap 4 Admin Template">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <!--=========================*
               Page Title
@@ -112,6 +176,33 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/brands.min.css" integrity="sha512-58P9Hy7II0YeXLv+iFiLCv1rtLW47xmiRpC1oFafeKNShp8V5bKV/ciVtYqbk2YfxXQMt58DjNfkXFOn62xE+g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Select2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    
+    <!-- ✅ Fix Scrollbar Jiggling & Layout Shift -->
+    <style>
+        html {
+            scrollbar-gutter: stable; /* Prevent layout shift when scrollbar appears/disappears */
+            overflow-y: scroll; /* Always show scrollbar space */
+        }
+        
+        body {
+            overflow-y: auto;
+        }
+        
+        /* Prevent body scroll when modal is open */
+        body.modal-open {
+            overflow: hidden;
+            padding-right: 0 !important; /* Bootstrap adds padding, remove it to avoid double-shift */
+        }
+        
+        /* Modal backdrop fix */
+        .modal-backdrop {
+            z-index: 1040;
+        }
+        
+        .modal.show {
+            z-index: 1050;
+        }
+    </style>
 
 </head>
 
@@ -135,7 +226,13 @@
                 *===========================-->
                     <div class="text-center rt_nav_wrapper d-flex align-items-center">
                         {{-- <a class="nav_logo rt_logo" href="index.html"><img  src="{{asset('assets/images/WIJDAN-removebg-preview.png')}}" alt="logo" /></a> --}}
-                        <a class="nav_logo rt_logo text-success" href="index.html">Ameen And Son's</a>
+                        <a class="nav_logo rt_logo text-success" href="index.html" style="font-size: 1.2rem; font-weight: 600; letter-spacing: 0.5px;">
+                            @if(Auth::user()->hasRole('super admin'))
+                                <i class="fas fa-crown" style="color: #1e3a5f; margin-right: 5px;"></i>Ameen & Sons
+                            @else
+                                <i class="fas fa-store" style="color: #1e3a5f; margin-right: 5px;"></i>{{ Auth::user()->branch->name ?? 'Branch' }}
+                            @endif
+                        </a>
                         {{-- <a class="nav_logo nav_logo_mob" href="index.html"><img src="{{asset('assets/images/WIJDAN-removebg-preview.png')}}" alt="logo"/></a> --}}
                     </div>
                     <!--=========================*
@@ -145,7 +242,7 @@
                         <ul class="navbar-nav navbar-nav-right mr-0 ml-auto">
                             <!-- Notification Icon -->
                             @include('components.notification-icon')
-                            
+
                             <li class="nav-item nav-profile dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
                                     <span class="profile_name">{{ Auth::user()->name }} <i class="feather ft-chevron-down"></i></span>
@@ -188,109 +285,171 @@
 
                         </li>
                         <!--=========================*
-                              Management Menu
+                         📦 Products Management
                     *===========================-->
                         @can('product.view')
-                        <li class="nav-item mega-menu">
+                        <li class="nav-item">
                             <a href="#" class="nav-link">
-                                <i class="menu_icon fas fa-cogs"></i>
-                                <span class="menu-title">Management</span>
+                                <i class="menu_icon fas fa-box"></i>
+                                <span class="menu-title">Products</span>
                                 <i class="menu-arrow"></i>
                             </a>
                             <div class="submenu">
-                                <div class="col-group-wrapper row">
-
-                                    <!-- Products & Categories -->
-                                    <div class="col-group col-md-3">
-                                        <p class="category-heading">Products & Categories</p>
-                                        <ul class="submenu-item">
-                                            @can('product.view')
-                                            <li><a href="{{route('product')}}"><i class="fas fa-box"></i> Products</a></li>
-                                            @endcan
-                                            @can('product.discount.view')
-                                            <li><a href="{{route('discount.index')}}"><i class="fas fa-tags"></i> Discount Products</a></li>
-                                            @endcan
-                                            @can('category.view')
-                                            <li><a href="{{route('Category.home')}}"><i class="fas fa-list"></i> Category</a></li>
-                                            @endcan
-                                            @can('subcategory.view')
-                                            <li><a href="{{route('subcategory.home')}}"><i class="fas fa-th-list"></i> Sub Category</a></li>
-                                            @endcan
-                                            @can('brand.view')
-                                            <li><a href="{{route('Brand.home')}}"><i class="fas fa-trademark"></i> Brands</a></li>
-                                            @endcan
-                                            @can('unit.view')
-                                            <li><a href="{{route('Unit.home')}}"><i class="fas fa-balance-scale"></i> Units</a></li>
-                                            @endcan
-                                            @can('stock.adjust')
-                                            <li><a href="{{ route('stock.adjust.form') }}"><i class="fas fa-sliders-h"></i> Parts Adjust</a></li>
-                                            @endcan
-                                        </ul>
-                                    </div>
-
-                                    <!-- Purchase & Inventory -->
-                                    <div class="col-group col-md-3">
-                                        <p class="category-heading">Purchase & Inventory</p>
-                                        <ul class="submenu-item">
-                                            @can('inward.gatepass.view')
-                                            <li><a href="{{route('InwardGatepass.home')}}"><i class="fas fa-shopping-cart"></i> Inward Gatepass </a></li>
-                                            <li><a href="{{route('add_inwardgatepass')}}"><i class="fas fa-shopping-cart"></i> Add Inward Gatepass </a></li>
-                                            @endcan
-                                            @can('purchase.view')
-                                            <li><a href="{{route('Purchase.home')}}"><i class="fas fa-shopping-cart"></i> Purchase</a></li>
-                                            @endcan
-                                            @can('vendor.view')
-                                            <li><a href="{{url('vendor')}}"><i class="fas fa-truck"></i> Vendor</a></li>
-                                            @endcan
-                                        </ul>
-                                    </div>
-
-                                    <!-- Accounts -->
-                                    <div class="col-group col-md-3">
-                                        <p class="category-heading">Accounts</p>
-                                        <ul class="submenu-item">
-                                            @can('warehouse.view')
-                                            <li><a href="{{url('warehouse')}}"><i class="fas fa-warehouse"></i> Warehouse</a></li>
-                                            @endcan
-                                            @can('warehouse.stock.view')
-                                            <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stock</a></li>
-                                            @endcan
-                                            @can('stock.transfer.view')
-                                            <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfer</a></li>
-                                            @endcan
-                                        </ul>
-                                    </div>
-                                    <!-- Customers & Sales -->
-                                    <div class="col-group col-md-3">
-                                        <p class="category-heading">Sales & Customers</p>
-                                        <ul class="submenu-item">
-                                            @can('sale.view')
-                                            <li><a href="{{url('sale')}}"><i class="fas fa-receipt"></i> Sales</a></li>
-                                            @endcan
-                                            @can('customer.view')
-                                            <li><a href="{{url('customers')}}"><i class="fas fa-user"></i> Customer</a></li>
-                                            @endcan
-                                            @can('sales.officer.view')
-                                            <li><a href="{{url('sales-officers')}}"><i class="fas fa-user-tie"></i> Sales Officer</a></li>
-                                            @endcan
-                                            @can('zone.view')
-                                            <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zone</a></li>
-                                            @endcan
-                                        </ul>
-                                    </div>
-
-                                    <!-- Notifications & Alerts -->
-                                    <div class="col-group col-md-3">
-                                        <p class="category-heading">Notifications & Alerts</p>
-                                        <ul class="submenu-item">
-                                            <li><a href="{{route('notifications.index')}}"><i class="fas fa-bell"></i> All Notifications</a></li>
-                                        </ul>
-                                    </div>
-
-                                </div>
+                                <ul class="submenu-item">
+                                    @can('product.view')
+                                    <li><a href="{{route('product')}}"><i class="fas fa-box"></i> All Products</a></li>
+                                    {{-- ✅ Phase 2: Opening Stocks Link --}}
+                                    <li><a href="{{route('product.incomplete')}}"><i class="fas fa-hourglass-half" style="color: #ffc107;"></i> ⏳ Opening Stocks <span class="badge badge-warning badge-pill" id="incomplete-count" style="display: none;"></span></a></li>
+                                    @endcan
+                                    @can('category.view')
+                                    <li><a href="{{route('Category.home')}}"><i class="fas fa-list"></i> Categories</a></li>
+                                    @endcan
+                                    @can('subcategory.view')
+                                    <li><a href="{{route('subcategory.home')}}"><i class="fas fa-th-list"></i> Sub Categories</a></li>
+                                    @endcan
+                                    @can('brand.view')
+                                    <li><a href="{{route('Brand.home')}}"><i class="fas fa-trademark"></i> Brands</a></li>
+                                    @endcan
+                                    @can('unit.view')
+                                    <li><a href="{{route('Unit.home')}}"><i class="fas fa-balance-scale"></i> Units</a></li>
+                                    @endcan
+                                </ul>
                             </div>
                         </li>
                         @endcan
+
+                        <!--=========================*
+                         � Purchase & Inventory
+                    *===========================-->
+                      @can('purchase.view')
+<li class="nav-item">
+    <a href="#" class="nav-link">
+        <i class="menu_icon fas fa-boxes"></i>
+        <span class="menu-title">Purchase & Stock</span>
+        <i class="menu-arrow"></i>
+    </a>
+    <div class="submenu">
+        <ul class="submenu-item" style="display: flex; flex-direction: row; gap: 20px; list-style: none;">
+            
+            <li style="flex: 1;">
+                <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
+                    <i class="fas fa-shopping-cart"></i> Purchase Orders
+                </a>
+                <ul style="list-style: none; padding: 0;">
+                    @can('inward.gatepass.view')
+                    <li><a href="{{route('InwardGatepass.home')}}"><i class="fas fa-door-open"></i> Inward Gatepasses</a></li>
+                    {{-- <li><a href="{{route('add_inwardgatepass')}}"><i class="fas fa-plus-circle"></i> Add Inward Gatepass</a></li> --}}
+                    @endcan
+                    @can('purchase.view')
+                    <li><a href="{{route('Purchase.home')}}"><i class="fas fa-file-invoice"></i> Purchase Invoice</a></li>
+                    @endcan
+                    @can('vendor.view')
+                    <li><a href="{{url('vendorlist')}}"><i class="fas fa-truck"></i> Vendors</a></li>
+                    @endcan
+                </ul>
+            </li>
+
+            <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
+                <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
+                    <i class="fas fa-warehouse"></i> Warehouese Managment
+                </a>
+                <ul style="list-style: none; padding: 0;">
+                    @can('warehouse.view')
+                    <li><a href="{{url('warehouse')}}"><i class="fas fa-building"></i> Warehouses</a></li>
+                    @endcan
+                    @if(Auth::user()->can('warehouse.manage') || Auth::user()->hasRole('super admin'))
+                    <li><a href="{{ url('/admin/branch-warehouse') }}"><i class="fas fa-sitemap"></i> WH Assignments</a></li>
+                    @endif
+                    {{-- @can('warehouse.stock.view')
+                    <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stocks</a></li>
+                    @endcan --}}
+                    @can('stock.transfer.view')
+                    <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfers</a></li>
+                    @endcan
+                    @can('warehouse.orders.view')
+                    <li><a href="{{url('warehouse_orders')}}"><i class="fas fa-file-alt"></i> Warehouse Orders</a></li>
+                    @endcan
+                    {{-- <li><a href="{{url('inter-branch/stock-requests')}}"><i class="fas fa-random"></i> Inter-Branch Transfers</a></li> --}}
+                </ul>
+            </li>
+            <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
+                <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
+                    <i class="fas fa-warehouse"></i> Inventory Management
+                </a>
+                <ul style="list-style: none; padding: 0;">
+                    {{-- @can('warehouse.view')
+                    <li><a href="{{url('warehouse')}}"><i class="fas fa-building"></i> Warehouses</a></li>
+                    @endcan --}}
+                    {{-- @if(Auth::user()->can('warehouse.manage') || Auth::user()->hasRole('super admin'))
+                    <li><a href="{{ url('/admin/branch-warehouse') }}"><i class="fas fa-sitemap"></i> WH Assignments</a></li>
+                    @endif --}}
+                    @can('warehouse.stock.view')
+                    <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stocks</a></li>
+                    @endcan
+                    @can('stock.transfer.view')
+                    <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfers</a></li>
+                    @endcan
+                    {{-- @can('warehouse.orders.view')
+                    <li><a href="{{url('warehouse_orders')}}"><i class="fas fa-file-alt"></i> Warehouse Orders</a></li>
+                    @endcan --}}
+                    <li><a href="{{url('inter-branch/stock-requests')}}"><i class="fas fa-random"></i> Inter-Branch Transfers</a></li>
+                </ul>
+            </li>
+
+        </ul>
+    </div>
+</li>
+@endcan
+
+                        <!--=========================*
+                         💰 Sales & Customers
+                    *===========================-->
+                        @can('sale.view')
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="menu_icon fas fa-receipt"></i>
+                                <span class="menu-title">Sales & Customers</span>
+                                <i class="menu-arrow"></i>
+                            </a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    <!-- Sales Section -->
+                                    <li><a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;"><i class="fas fa-shopping-cart"></i> Sales Orders</a></li>
+                                    @can('sale.view')
+                                    <li><a href="{{url('sale')}}"><i class="fas fa-file-invoice"></i> Sales Invoices</a></li>
+                                    @endcan
+                                    @can('generate Dc.view')
+                                    <li><a href="{{url('OutwardGatepass')}}"><i class="fas fa-file-pdf"></i> Create Delivery Challan</a></li>
+                                    @endcan
+                                    <li><a href="{{url("OutwardGatepass/list")}}"><i class="fas fa-list"></i>Outward Gate Pass</a></li>
+                                    @can('zone.view')
+                                    <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zones</a></li>
+                                    @endcan
+                                    
+                                    <li style="border-top: 1px solid #eee; margin: 4px 0; padding: 0;"></li>
+                                    
+                                    <!-- Customers Section -->
+                                    <li><a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;"><i class="fas fa-users"></i> Customers</a></li>
+                                    @can('customer.view')
+                                    <li><a href="{{url('customers')}}"><i class="fas fa-user"></i> All Customers</a></li>
+                                    @endcan
+                                    @can('customerremainingproducts.view')
+                                    <li><a href="{{url('customer-remaining')}}"><i class="fas fa-box-open"></i> Remaining Products</a></li>
+                                    @endcan
+                                </ul>
+                            </div>
+                        </li>
+                        @endcan
+
+                        <!--=========================*
+                         🔔 Notifications
+                    *===========================-->
+                        <li class="nav-item">
+                            <a href="{{route('notifications.index')}}" class="nav-link">
+                                <i class="menu_icon fas fa-bell"></i>
+                                <span class="menu-title">Notifications</span>
+                            </a>
+                        </li>
 
                         <!-- Vouchers Menu -->
                         @can('voucher.view')
@@ -347,11 +506,22 @@
                                     @can('report.customer.ledger.view')
                                     <li><a href="{{ route('report.customer.ledger') }}"><i class="fa-solid fa-users"></i> Customer Ledger</a></li>
                                     @endcan
+                                    @can('branch.ledger.view')
+                                    @if(Auth::user()->hasRole('super admin'))
+                                        <li><a href="{{ route('branch_ledger_all_branches') }}"><i class="fa-solid fa-book"></i> All Branches Ledger</a></li>
+                                    @else
+                                        <li><a href="{{ route('branch_ledger_view_branch', Auth::user()->branch_id) }}"><i class="fa-solid fa-book"></i> Branch Ledger</a></li>
+                                    @endif
+                                    @endcan
+                                    
                                     @can('report.assembly.view')
                                     <li><a href="{{route('assembly.report')}}"><i class="fas fa-cogs"></i> Assembly Report</a></li>
                                     @endcan
                                     @can('report.inventory.onhand.view')
                                     <li><a href="{{ route('reports.onhand') }}"><i class="fas fa-warehouse"></i> Inventory On-Hand</a></li>
+                                    @endcan
+                                    @can('report.stock.hold.view')
+                                    <li><a href="{{ route('report.stock.hold.audit') }}"><i class="fas fa-boxes"></i> Stock Hold Audit</a></li>
                                     @endcan
                                 </ul>
                             </div>

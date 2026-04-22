@@ -1,8 +1,8 @@
  @extends('admin_panel.layout.app')
  @section('content')
  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-@php
-$msg = 'Data saved successfully';
+{{-- @php
+
 
 if ($msg) {
     echo "<script>
@@ -13,7 +13,7 @@ if ($msg) {
         });
     </script>";
 }
-@endphp
+@endphp --}}
 
 
  <div class="main-content">
@@ -80,7 +80,7 @@ if ($msg) {
                  <h5 class="modal-title" id="exampleModalLabel">Add category</h5>
              </div>
              <div class="modal-body">
-                 <form class="myform" action="{{ route('store.category') }}" method="POST">
+                 <form class="myform" action="{{ route('store.categorybypage') }}" method="POST">
                      @csrf
                      <input type="hidden" name="edit_id" id="id" />
                      <div class="mb-3">

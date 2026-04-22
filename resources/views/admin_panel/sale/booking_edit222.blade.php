@@ -480,20 +480,21 @@
                         </div>
 
                         {{-- Type toggle --}}
-         <div class="mb-2">
-    <label class="form-label fw-bold mb-1 d-block">Type</label>
-    <div class="btn-group" role="group" id="partyTypeGroup">
+                        <div class="mb-2">
+                            <label class="form-label fw-bold mb-1 d-block">Type</label>
+                            <div class="btn-group" role="group" id="partyTypeGroup">
+                                <input type="radio" class="btn-check" name="partyType" id="typeCustomers"
+                                    value="credit" {{ $booking->party_type === 'credit' ? 'checked' : '' }}>
+                                <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Credit</label>
 
-        <input type="radio" class="btn-check" name="partyType" id="typeCustomers"
-            value="Main Customer">
-        <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Customers</label>
+                                <input type="radio" class="btn-check" name="partyType" id="typeWalkin"
+                                    value="cash" {{ $booking->party_type === 'cash' ? 'checked' : '' }}>
+                                <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Cash</label>
 
-        <input type="radio" class="btn-check" name="partyType" id="typeWalkin"
-            value="Walking Customer">
-        <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Walk-in</label>
-
-    </div>
-</div>
+                                <input type="radio" class="btn-check" name="partyType" id="typewalking" value="walking" {{ $booking->party_type === 'walking' ? 'checked' : '' }}>
+                                <label class="btn btn-outline-primary btn-sm" for="typewalking">Walking</label>
+                            </div>
+                        </div>
 
 
                         <!-- CUSTOMER SELECT -->
@@ -529,13 +530,19 @@
                             <textarea class="form-control" id="remarks" name="remarks"></textarea>
                         </div>
 
-                        <div class="mb-2 d-flex justify-content-between">
-                            <span>Previous Balance</span>
-                            <input type="text" class="form-control w-25 text-end" id="previousBalance" value="0">
-                        </div>
-                        <div class="mb-2 d-flex justify-content-between">
-                            <span>Credit Limit</span>
-                            <input type="text" class="form-control w-25 text-end" id="creditLimit" value="0">
+                        <div id="balanceFieldsContainer">
+                            <div class="mb-2 d-flex justify-content-between">
+                                <span>Previous Balance</span>
+                                <input type="text" class="form-control text-end" id="previousBalance" value="0" style="width: 180px;">
+                            </div>
+                            <div class="mb-2 d-flex justify-content-between align-items-center">
+                                <span>Credit Limit</span>
+                                <div class="d-flex flex-column align-items-end">
+                                    <input type="text" class="form-control text-end" id="creditLimit" value="0" style="width: 180px;">
+                                    <small id="noCreditLimitMsg" class="text-success fw-bold" style="display:none;">Infinite Credit Limit</small>
+                                </div>
+                            </div>
+                            <input type="hidden" id="noCreditLimit" value="0">
                         </div>
 
                         <div class="text-end mt-3">
@@ -638,7 +645,24 @@
                                 <div class="col-7 text-muted">Aditional Discount Rs</div>
                                 <div class="col-5 text-end"><span id="tOrderDisc">0.00</span></div>
                             </div>
-                            <div class="row py-1">
+                            {{-- <div class="row py-1">
+                                <div class="col-7">Extra Additional Discount</div>
+                                <div class="col-5 text-end d-flex justify-content-end align-items-center">
+                                    <input type="text" class="form-control text-end" name="additional_discount"
+                                        id="additional_discount" value="0" style="max-width:120px;">
+                                </div>
+                            </div> --}}
+                              <div class="row py-1">
+                                <div class="col-7">Extra Charges (Fread charges)</div>
+                                <div class="col-5 text-end d-flex justify-content-end align-items-center">
+                                    <input type="text" class="form-control text-end " name="extra_charges" id="echarges"
+                                        value="0" style="max-width:120px;">
+                                    {{-- <button type="button" id="orderDiscountToggle" class="btn btn-outline-secondary btn-sm"
+                                        data-type="pkr">PKR</button> --}}
+                                </div>
+                            </div>
+
+                            <div class="row py-1" id="prevBalanceDisplay">
                                 <div class="col-7 text-danger">Previous Balance</div>
                                 <div class="col-5 text-end text-danger"><span id="tPrev">0.00</span></div>
                             </div>
@@ -651,7 +675,7 @@
                             <div class="row py-2 border-top mt-2">
                                 <div class="col-7 text-muted medium">Notify Me (Days - Optional)</div>
                                 <div class="col-5">
-                                    <input type="number" name="notify_me" id="notify_me"  class="form-control form-control-sm" 
+                                    <input type="number" name="notify_me" id="notify_me"  class="form-control form-control-sm"
                                            placeholder="Enter payment Expected days" min="0" max="365" value="">
                                 </div>
                             </div>
@@ -667,14 +691,16 @@
 
                 {{-- Buttons --}}
                 <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-                    <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button>
-                    <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button>
+                    {{-- <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button> --}}
+                    {{-- <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button> --}}
 
-                    <button type="button" class="btn btn-sm btn-success" id="btnSave">Save</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="faraz()" id="btnPosted"
-                        disabled>Posted</button>
+                    {{-- <button type="button" class="btn btn-sm btn-success" id="btnSave"></button> --}}
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted"
+                        disabled>warehouse sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted2"
+                        disabled>Sale</button>
 
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">Print</button>
+                    {{-- <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">DC </button> --}}
                     <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Print-2</button>
                     <button type="button" class="btn btn-sm btn-secondary" id="btnDCPrint">DC Print</button>
 
@@ -743,27 +769,6 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-{{-- /////////////////////////////////////// --}}
-<script>
-    let bookingCustomer = @json($booking_customer); // Laravel se JS
-
-document.addEventListener('DOMContentLoaded', function () {
-
-    if (bookingCustomer && bookingCustomer.customer_type) {
-
-        let type = bookingCustomer.customer_type;
-
-        document
-            .querySelector(`input[name="partyType"][value="${type}"]`)
-            ?.setAttribute('checked', true);
-    }
-});
-
-</script>
-{{-- ///////////////////////// --}}
-
-
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -886,14 +891,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-     
 
 
 
 
 
 
-       
+
+
 
 
 
@@ -1010,24 +1015,58 @@ document.addEventListener('DOMContentLoaded', function () {
             // 🔹 SET PARTY TYPE & CUSTOMER
             if (booking.party_type) {
                 $(`input[name="partyType"][value="${booking.party_type}"]`).prop('checked', true);
+                
+                // Handle customer type-specific fields
+                if (booking.party_type === 'walking' && customer) {
+                    // For walking customers, show the name in customerDisplay as editable text
+                    $('#customerDisplay').val(customer.customer_name || '');
+                    $('#customer').val(customer.customer_name || '');
+                    // allow editing address/phone/remarks for walk-ins
+                    $('#customerDisplay').prop('readonly', false);
+                    $('#address').val(customer.address || '');
+                    $('#tel').val(customer.mobile || '');
+                    $('#remarks').val(customer.remarks || booking.remarks || customer.status || '');
+                } else if (booking.party_type === 'cash' || booking.party_type === 'credit') {
+                    // For credit/cash customers, set their ID in select
+                    if (customer && customer.id) {
+                        $('#customerSelect').val(customer.id);
+                        $('#customer_id').val(customer.id);
+                        $('#customer').val(customer.id);
+                    }
+                }
             }
 
             if (customer && customer.id) {
-                // Set customer select and trigger change event to load customer details
-                $('#customer_id').val(customer.id);
-                $('#customer').val(customer.id);
-                $('#customerSelect').val(customer.id);
-                
                 // Set customer display
                 $('#customerDisplay').val((customer.customer_name || '') + ' — ' + (customer.customer_id || ''));
-                
+
                 // 🔥 Manually populate customer details since we already have them
                 $('#address').val(customer.address || '');
                 $('#tel').val(customer.mobile || '');
-                $('#remarks').val(customer.remarks || customer.status || '');
+                $('#remarks').val(customer.remarks || booking.remarks || customer.status || '');
                 // Use closing_balance if available, otherwise fall back to opening_balance
                 const prevBalance = parseFloat(customer.closing_balance || customer.opening_balance || 0);
                 $('#previousBalance').val(prevBalance.toFixed(2));
+                $('#creditLimit').val(parseFloat(customer.credit_limit || 0).toFixed(2));
+                
+                // 🔹 Check for no_credit_limit
+                if (customer.no_credit_limit == 1) {
+                    $('#creditLimit').prop('disabled', true);
+                    $('#noCreditLimitMsg').show();
+                    $('#noCreditLimit').val(1);
+                } else {
+                    $('#creditLimit').prop('disabled', false);
+                    $('#noCreditLimitMsg').hide();
+                    $('#noCreditLimit').val(0);
+                }
+            }
+
+            // If customer object exists but has no id (walking), still populate address/tel/remarks
+            else if (customer && !customer.id) {
+                $('#address').val(customer.address || '');
+                $('#tel').val(customer.mobile || '');
+                $('#remarks').val(customer.remarks || booking.remarks || customer.status || '');
+                $('#previousBalance').val(parseFloat(customer.closing_balance || customer.opening_balance || 0).toFixed(2));
                 $('#creditLimit').val(parseFloat(customer.credit_limit || 0).toFixed(2));
             }
 
@@ -1036,13 +1075,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // 🔹 SET DISCOUNT & TOTALS
             $('#discountPercent').val(parseFloat(booking.discount_percent || 0).toFixed(2));
+            $('#discountPercent').val(parseFloat(booking.additional_discount || 0).toFixed(2));
+            $('#echarges').val(parseFloat(booking.extra_charges || 0).toFixed(2));
             $('#notify_me').val(booking.notify_me || 0);
 
             // 🔹 POPULATE ITEMS TABLE
             if (items && items.length > 0) {
                 // Clear existing rows first
                 $('#salesTableBody').html('');
-                
+
                 items.forEach((item, idx) => {
                     // Create row
                     const $row = $(`
@@ -1066,12 +1107,13 @@ document.addEventListener('DOMContentLoaded', function () {
                             </td>
                             <td class="large-col">
                                 <div class="discount-wrapper">
-                                    <input type="text" class="form-control discount-value text-end" name="discount_percentage[]" value="${parseFloat(item.discount || 0).toFixed(2)}">
-                                    <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="percent">%</button>
+                                    <input type="text" class="form-control discount-value text-end" name="discount_percentage[]" value="${parseFloat(item.discount_percent || item.discount || 0).toFixed(2)}">
+                                    <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="${item.discount_type || 'percent'}">
+                                    <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="${item.discount_type || 'percent'}">${item.discount_type === 'pkr' ? 'PKR' : '%'}</button>
                                 </div>
                             </td>
                             <td class="medium-col">
-                                <input type="text" class="form-control discount-amount text-end" name="discount_amount[]" value="${(parseFloat(item.price || 0) * parseFloat(item.qty || 0) * parseFloat(item.discount || 0) / 100).toFixed(2)}">
+                                <input type="text" class="form-control discount-amount text-end" name="discount_amount[]" value="${parseFloat(item.discount || 0).toFixed(2)}">
                             </td>
                             <td class="medium-col">
                                 <input type="text" class="form-control sales-amount text-end input-readonly" name="sales_amount[]" readonly value="${parseFloat(item.total || 0).toFixed(2)}">
@@ -1109,8 +1151,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         $(document).ready(function () {
             function init() {
+                // Load initial customer type
+                const initialType = $('input[name="partyType"]:checked').val() || 'credit';
+                handleCustomerTypeChange(initialType);
+                
                 addNewRow();
-                loadCustomersByType('Main Customer', function() {
+                loadCustomersByType(initialType, function() {
                     // After customers are loaded, populate booking data if it exists
                     if (window.BOOKING_DATA && window.BOOKING_DATA.booking && window.BOOKING_DATA.booking.id) {
                         populateBookingData();
@@ -1122,22 +1168,38 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             init();
-            // 🔹 Load customers on page load
-            // loadCustomersByType('customer');
 
             // 🔹 Change customer type (radio)
             $(document).on('change', 'input[name="partyType"]', function () {
                 $('#customerSelect').val('');
-
                 $('#address,#tel,#remarks').val('');
                 $('#previousBalance').val('0');
                 $('#creditLimit').val('0');
-                loadCustomersByType(this.value);
+                $('#customer_id').val('');
+                $('#customer').val('');
+
+                handleCustomerTypeChange($(this).val());
+            });
+
+            // 🔹 When walking customer types their name, copy to hidden field for ajaxsave
+            $(document).on('input', '#customerDisplay', function() {
+                if ($('input[name="partyType"]:checked').val() === 'walking') {
+                    $('#customer').val($(this).val());
+                }
             });
 
             // 🔹 Load customers list
             function loadCustomersByType(type, callback) {
-                //alert('loadCustomersByType CALLED → ' + type);
+                // For walking customers, don't load from API (no pre-defined customers)
+                if (type === 'walking') {
+                    $('#customerSelect').html('<option selected disabled>N/A</option>')
+                        .prop('disabled', true);
+                    if (callback && typeof callback === 'function') {
+                        callback();
+                    }
+                    return;
+                }
+
                 $('#customerSelect')
                     .prop('disabled', true)
                     .html('<option selected disabled>Loading…</option>');
@@ -1159,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
 
                     $('#customerSelect').html(html).prop('disabled', false);
-                    
+
                     // 🔥 Call callback after loading is complete
                     if (callback && typeof callback === 'function') {
                         callback();
@@ -1168,34 +1230,44 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // 🔹 When customer selected → load detail
-        $(document).on('change', '#customerSelect', function () {
-    const id = $(this).val();
-    $('#customer_id').val(id);
-    $('#customer').val(id);
-    if (!id) return;
+            $(document).on('change', '#customerSelect', function () {
+                const id = $(this).val();
+                $('#customer_id').val(id);
+                $('#customer').val(id);
+                if (!id) return;
 
-    $.get(
-        '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
-        function (d) {
+                $.get(
+                    '{{ route("salecustomers.show", "__ID__") }}'.replace('__ID__', id),
+                    function (d) {
+                        // basic customer info
+                        $('#address').val(d.address || '');
+                        $('#tel').val(d.mobile || '');
+                        $('#remarks').val(d.remarks || d.status || '');
+                        $('#creditLimit').val(d.credit_limit || '0');
 
-            // basic customer info
-            $('#address').val(d.address || '');
-            $('#tel').val(d.mobile || '');
-            $('#remarks').val(d.remarks || d.status || '');
-            $('#creditLimit').val(d.credit_limit || '0');
+                        // Display selected customer's id + name in the visible field
+                        $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
 
-            // Display selected customer's id + name in the visible field
-            $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
+                        // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
+                        // Fallback to opening_balance if no closing_balance exists
+                        let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
 
-            // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
-            // Fallback to opening_balance if no closing_balance exists
-            let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
-            
-            // show balance (positive / negative as-it-is)
-            $('#previousBalance').val(previousBalance.toFixed(2));
-        }
-    );
-});
+                        // show balance (positive / negative as-it-is)
+                        $('#previousBalance').val(previousBalance.toFixed(2));
+
+                        // 🔹 Check for no_credit_limit
+                        if (d.no_credit_limit == 1) {
+                            $('#creditLimit').prop('disabled', true);
+                            $('#noCreditLimitMsg').show();
+                            $('#noCreditLimit').val(1);
+                        } else {
+                            $('#creditLimit').prop('disabled', false);
+                            $('#noCreditLimitMsg').hide();
+                            $('#noCreditLimit').val(0);
+                        }
+                    }
+                );
+            });
 
             // 🔹 Clear button
             $('#clearCustomerData').on('click', function () {
@@ -1204,6 +1276,32 @@ document.addEventListener('DOMContentLoaded', function () {
                 $('#address,#tel,#remarks').val('');
                 $('#previousBalance').val('0');
             });
+
+            // 🔹 Helper function to handle customer type changes
+            function handleCustomerTypeChange(type) {
+                if (type === 'cash') {
+                    // CASH CUSTOMER: Same as credit but NO balance fields
+                    $('#balanceFieldsContainer').hide();
+                    $('#prevBalanceDisplay').hide();
+                    $('#customerSelect').show();
+                    $('#customerDisplay').val('').prop('readonly', true);
+                    loadCustomersByType(type);
+                } else if (type === 'walking') {
+                    // WALKING CUSTOMER: Manual entry, no balance fields
+                    $('#balanceFieldsContainer').hide();
+                    $('#prevBalanceDisplay').hide();
+                    $('#customerSelect').hide();
+                    $('#customerDisplay').val('').prop('readonly', false);
+                    loadCustomersByType('walking');
+                } else {
+                    // CREDIT CUSTOMER: Full details with balance fields
+                    $('#balanceFieldsContainer').show();
+                    $('#prevBalanceDisplay').show();
+                    $('#customerSelect').show();
+                    $('#customerDisplay').val('').prop('readonly', true);
+                    loadCustomersByType(type);
+                }
+            }
 
         });
     </script>
@@ -1284,7 +1382,7 @@ document.addEventListener('DOMContentLoaded', function () {
       </div>
     </td>
 
- 
+
 
 
 
@@ -1314,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <input type="text"
                class="form-control discount-value text-end"
                placeholder="" name="discount_percentage[]" >
-
+        <input type="hidden" class="discount-type-hidden" name="discount_type[]" value="percent">
         <button type="button"
                 class="btn btn-outline-secondary discount-toggle"
                 data-type="percent">%</button>
@@ -1365,7 +1463,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 //         const $row = $(this).closest('tr');
 //         // Use the actual <option> element for data attributes
-            
+
 //             const $option = $(e.params.data.element);
 //             // console.log("option",$option);
 //            // console.log("row",$row);
@@ -1384,7 +1482,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 //                     let option = new Option(p.item_name, p.id, false, false);
 //                     // Attach data attributes for later use
-                    
+
 //                     $(option).attr({
 //                         'data-id': p.id,
 //                         'data-name': p.item_name,
@@ -1406,7 +1504,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     //     const $row = $(this).closest('tr');
     //     // Use the actual <option> element for data attributes
-            
+
     //         const $option = $(e.params.data.element);
     //         console.log("option",$option);
     //         console.log("row",$row);
@@ -1421,7 +1519,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-       
+
 
         // let test = document.querySelectorAll('.product_field');
         // console.log(test);
@@ -1453,7 +1551,7 @@ document.addEventListener('DOMContentLoaded', function () {
 //             });
 //             // Save last_id for next fetch
 //             selectEl.dataset.lastId = res.last_id;
-            
+
 //             // Mark as loaded if no more
 //             if (!res.has_more) {
 //                 selectEl.dataset.loaded = "1";
@@ -1488,8 +1586,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (currentType === 'percent') {
                 $btn.data('type', 'pkr').text('PKR');
+                $btn.closest('.discount-wrapper').find('.discount-type-hidden').val('pkr');
             } else {
                 $btn.data('type', 'percent').text('%');
+                $btn.closest('.discount-wrapper').find('.discount-type-hidden').val('percent');
             }
 
             // re-calc row
@@ -1520,7 +1620,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function refreshPostedState() {
             const state = canPost();
-            $('#btnPosted, #btnHeaderPosted').prop('disabled', !state);
+            // Enable both warehouse sale and branch sale buttons when ready
+            $('#btnPosted, #btnHeaderPosted, #btnPosted2').prop('disabled', !state);
         }
 
         /* ---------- SAVE/POST ---------- */
@@ -1694,6 +1795,178 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
 
+        /* ---------- Quick post to Main Store (btnPosted2) ---------- */
+        $('#btnPosted2').on('click', function() {
+            cleanupEmptyRows();
+            updateGrandTotals();
+            refreshPostedState();
+            
+            const partyType = $('input[name="partyType"]:checked').val();
+
+            console.log('Sale button clicked (booking to main store), partyType:', partyType);
+
+            if (!['cash','walking','credit'].includes(partyType?.toLowerCase())) {
+                showAlert('danger', 'Sale posting is allowed only for Cash, Walking or Credit customers');
+                return;
+            }
+
+            if (!canPost()) {
+                showAlert('danger', 'Please add at least one product with quantity before posting');
+                return;
+            }
+
+            // 🔴 VALIDATION: Cash/Walking customers MUST have at least 1 receipt amount
+            if (['cash', 'walking'].includes(partyType?.toLowerCase())) {
+                let hasValidReceipt = false;
+                $('.rv-amount').each(function(i) {
+                    const amt = toNum($(this).val());
+                    if (amt > 0) {
+                        hasValidReceipt = true;
+                        return false; // break
+                    }
+                });
+                
+                if (!hasValidReceipt) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Required',
+                        text: 'Amount required in at least 1 bank account for ' + partyType + ' customer',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+
+            // Validate credit limit before proceeding
+            const partyTypeVal = $('input[name="partyType"]:checked').val();
+            let cust = null;
+
+            if (partyTypeVal === 'walking') {
+                cust = $('#customerDisplay').val();
+            } else {
+                cust = $('#customerSelect').val();
+            }
+
+            const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+            // For walking customers, skip credit check and proceed directly
+            if (partyTypeVal === 'walking') {
+                ensureSaved().then(function(bookingId) {
+                    postNowBranch();
+                }).catch(function(err) {
+                    showAlert('danger', 'Failed to save booking: ' + err);
+                });
+            } else if (cust) {
+                $.get('/get-customer/' + cust)
+                    .done(function(res) {
+                        const credit = parseFloat(res.credit_limit || 0) || 0;
+                        if (credit > 0 && payable > credit) {
+                            console.log('❌ CREDIT LIMIT EXCEEDED');
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit limit exceeded',
+                                html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
+                            });
+                            return;
+                        }
+                        // OK: Credit limit sufficient, save and post to branch
+                        ensureSaved().then(function(bookingId) {
+                            postNowBranch();
+                        }).catch(function(err) {
+                            showAlert('danger', 'Failed to save booking: ' + err);
+                        });
+                    })
+                    .fail(function() {
+                        showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+                    });
+            } else {
+                showAlert('danger', 'Please select a customer before posting');
+                return;
+            }
+        });
+
+        // Post to main store (branch stock) - without warehouse selection
+        function postNowBranch() {
+            // 🔴 MUST CALL ensureSaved() FIRST to save all discounts/charges before posting
+            ensureSaved().then(function(bookingId) {
+                console.log('Booking saved, proceeding with direct post:', bookingId);
+                
+                // Get party type and customer info
+                const partyType = $('input[name="partyType"]:checked').val();
+                
+                if (!['cash','walking','credit'].includes(partyType?.toLowerCase())) {
+                    showAlert('danger', 'Sale posting is allowed only for Cash, Walking or Credit customers');
+                    return;
+                }
+
+                // Collect receipt data if any
+                let receiptAccountIds = [];
+                let receiptAmounts = [];
+                $('.rv-account').each(function(i) {
+                    let acc = $(this).val();
+                    let amt = toNum($('.rv-amount').eq(i).val());
+                    if (acc && amt > 0) {
+                        receiptAccountIds.push(acc);
+                        receiptAmounts.push(amt);
+                    }
+                });
+
+                // Build form data for mainstore endpoint (POST)
+                let formData = {
+                    _token: '{{ csrf_token() }}',
+                    booking_id: bookingId,
+                    partyType: partyType,
+                    receipt_account_id: receiptAccountIds,
+                    receipt_amount: receiptAmounts
+                };
+
+                console.log('Direct sale (branch stock) - Form data:', formData);
+
+                // POST to mainstore endpoint (branch stock only, no warehouse modal)
+                $.ajax({
+                    url: '{{ route("sale.ajax.post-mainstore") }}',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    data: formData,
+                    dataType: 'json',
+                    success: function(res) {
+                        console.log('Sale post response:', res);
+                        if (res && res.ok) {
+                            showAlert('success', 'Sold successfully from Branch Stock');
+                            $('#btnPosted, #btnPosted2').prop('disabled', true);
+                            
+                            if (res.invoice_url) {
+                                window.open(res.invoice_url, '_blank');
+                            }
+                        } else {
+                            $('#btnPosted, #btnPosted2').prop('disabled', false);
+                            showAlert('danger', (res && res.error) ? res.error : 'Post failed');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Sale post error:', xhr);
+                        $('#btnPosted, #btnPosted2').prop('disabled', false);
+                        
+                        let msg = 'Server error while posting';
+                        try {
+                            const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
+                            msg = (json && (json.error || json.message)) || msg;
+                        } catch (err) {
+                            if (xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message)) {
+                                msg = xhr.responseJSON.error || xhr.responseJSON.message;
+                            }
+                        }
+                        showAlert('danger', msg);
+                    }
+                });
+            }).catch(function(err) {
+                console.error('ensureSaved failed', err);
+                showAlert('danger', 'Failed to save booking with discounts: ' + (err.msg || err));
+            });
+        }
+
         /* ---------- Events top buttons ---------- */
         $('#btnAdd').on('click', addNewRow);
         $('#btnEdit').on('click', () => alert('Edit mode activated'));
@@ -1725,7 +1998,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // alert(id); // ✅ ab zaroor chalega
 
-                window.open('{{ url("booking/dc") }}/' + id, '_blank');
+                window.open('{{ url("sale/dc") }}/' + id, '_blank');
 
             }).catch(function () {
                 alert('Save failed');
@@ -1757,9 +2030,9 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
     const qty = toNum($row.find('.sales-qty').val());
 // console.log("qty:",qty);
 
-    // 🔹 Safe discount value (never negative)
+    // 🔹 Safe discount value (never negative) - PROPERLY CONVERT TO NUMBER
     const $discInput = $row.find('.discount-value');
-    const rawDisc = Math.max(0, $discInput.val());
+    const rawDisc = Math.max(0, toNum($discInput.val()));
     let discValue = rawDisc;
 
     const discType = $row.find('.discount-toggle').data('type'); // percent | pkr
@@ -1773,21 +2046,21 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
     if (discValue > 0) {
 
         if (discType === 'percent') {
-           
+
             // If user entered >100%, mark invalid and show helper text
             const $help = $row.find('.discount-help');
-                if (rawDisc > 101) {
+                if (rawDisc > 100) {
                 markInvalid($discInput);
                 const $wrapper = $row.find('.discount-wrapper');
                 if ($wrapper.find('.discount-help').length === 0) {
-                    $wrapper.append('<div class="discount-help">Discount never be <= 100%</div>');
+                    $wrapper.append('<div class="discount-help">Discount cannot exceed 100%</div>');
                 } else {
-                    $wrapper.find('.discount-help').text('Discount must be <= 100%');
+                    $wrapper.find('.discount-help').text('Discount cannot exceed 100%');
                 }
                 // use 100 for calculation but keep visual warning
                 discValue = 100;
             } else {
-                
+
                 clearInvalid($discInput);
                 $row.find('.discount-help').remove();
                 discValue = Math.min(discValue, 100);
@@ -1901,10 +2174,10 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 tQty += qty;
                 tGross += gross;
                 tLineDisc += dam;
-                tNet += net;   // ✅ NET TOTAL
+                tNet += net;   // ✅ NET TOTAL (after line discounts)
             });
 
-            // ===== ORDER LEVEL =====
+            // ===== ORDER LEVEL DISCOUNT (Additional Discount) =====
             const orderRaw = toNum($('#discountPercent').val());
             const orderType = $('#orderDiscountToggle').data('type') || 'percent'; // percent | pkr
             let orderDisc = 0;
@@ -1915,10 +2188,17 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 orderDisc = orderRaw;
             }
 
-            const prev = toNum($('#previousBalance').val());
+            // 🔹 Extra charges (freight, packing, etc.)
+            const extraCharges = toNum($('#echarges').val());
+
+            // 🔹 For cash & walking customers: NO previous balance (they don't have ledger)
+            const partyType = $('input[name="partyType"]:checked').val();
+            const isCashOrWalking = (partyType === 'cash' || partyType === 'walking');
+            const prev = isCashOrWalking ? 0 : toNum($('#previousBalance').val());
             const receipts = toNum($('#receiptsTotal').text());
 
-            const payable = Math.max(0, tNet - orderDisc + prev - receipts);
+            // ✅ CORRECT FORMULA: SubTotal - AdditionalDiscount + ExtraCharges + PreviousBalance - Receipts
+            const payable = Math.max(0, tNet - orderDisc + extraCharges + prev - receipts);
 
             // ===== UI UPDATE =====
             $('#tQty').text(tQty.toFixed(0));
@@ -1939,8 +2219,8 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             $('#totalBalance').val(payable.toFixed(2));
         }
 
-        // recalc when discount/toggle/previous balance change
-        $(document).on('input', '#previousBalance, #discountPercent', updateGrandTotals);
+        // recalc when discount/toggle/previous balance/extra charges change
+        $(document).on('input', '#previousBalance, #discountPercent, #echarges', updateGrandTotals);
         $(document).on('click', '#orderDiscountToggle', function () {
             const $btn = $(this);
             const current = $btn.data('type');
@@ -2295,10 +2575,22 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             }
 
             // CHECK CREDIT LIMIT BEFORE SAVING
-            const cust = $('#customerSelect').val();
+            const partyType = $('input[name="partyType"]:checked').val();
+            let cust = null;
+            
+            // Walking customers use manual name input, others use dropdown
+            if (partyType === 'walking') {
+                cust = $('#customerDisplay').val();
+            } else {
+                cust = $('#customerSelect').val();
+            }
+            
             const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
 
-            if (cust) {
+            // For walking customers, skip credit check and save directly
+            if (partyType === 'walking') {
+                ensureSaved();
+            } else if (cust) {
                 $.get('/get-customer/' + cust)
                     .done(function (res) {
                         const credit = parseFloat(res.credit_limit || 0) || 0;
@@ -2323,7 +2615,7 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
         });
 
 
-        // override Post buttons to validate first
+        // override Post buttons to validate first AND CHECK CREDIT LIMIT
         $('#btnHeaderPosted, #btnPosted').off('click').on('click', function () {
             cleanupEmptyRows();
             updateGrandTotals();
@@ -2344,10 +2636,72 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 return;
             }
 
-            ensureSaved().then(function () {
-                console.log('✅ ensureSaved resolved');
-                //postNow();
-            });
+            // 🔴 VALIDATION: Cash/Walking customers MUST have at least 1 receipt amount (for warehouse sales too)
+            const partyType = $('input[name="partyType"]:checked').val();
+            if (['cash', 'walking'].includes(partyType?.toLowerCase())) {
+                let hasValidReceipt = false;
+                $('.rv-amount').each(function(i) {
+                    const amt = toNum($(this).val());
+                    if (amt > 0) {
+                        hasValidReceipt = true;
+                        return false; // break
+                    }
+                });
+                
+                if (!hasValidReceipt) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Payment Required',
+                        text: 'Amount required in at least 1 bank account for ' + partyType + ' customer',
+                        confirmButtonText: 'OK'
+                    });
+                    return;
+                }
+            }
+
+            // ✅ CHECK CREDIT LIMIT BEFORE POSTING (SAME AS SAVE BUTTON)
+            let cust = null;
+            
+            // Walking customers use manual name input, others use dropdown
+            if (partyType === 'walking') {
+                cust = $('#customerDisplay').val();
+            } else {
+                cust = $('#customerSelect').val();
+            }
+            
+            const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
+
+            // For walking customers, skip credit check and proceed directly
+            if (partyType === 'walking') {
+                faraz();  // Open warehouse modal immediately
+            } else if (cust) {
+                $.get('/get-customer/' + cust)
+                    .done(function (res) {
+                        const credit = parseFloat(res.credit_limit || 0) || 0;
+                        // ✅ BLOCK: If credit limit exceeded, show alert and DO NOT save
+                        if (credit > 0 && payable > credit) {
+                            console.log('❌ CREDIT LIMIT EXCEEDED - BLOCKING SAVE');
+                            console.log('Credit Limit:', credit, 'Payable:', payable);
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Credit limit exceeded',
+                                html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
+                            });
+                            return;  // STOP HERE - DO NOT SAVE
+                        }
+                        // ✅ OK: Credit limit is sufficient, proceed to warehouse selection
+                        console.log('✅ CREDIT LIMIT OK - OPENING WAREHOUSE MODAL');
+                        faraz();  // Open warehouse modal only after credit limit is verified
+                    })
+                    .fail(function () {
+                        // If customer lookup fails, do NOT proceed - require customer to exist
+                        console.log('❌ Customer lookup failed - blocking save');
+                        showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+                    });
+            } else {
+                showAlert('danger', 'Please select a customer before posting');
+                return;
+            }
         });
 
 

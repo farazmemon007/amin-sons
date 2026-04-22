@@ -45,6 +45,19 @@ class UnitController extends Controller
         $Company->name = $request->name;
         $Company->save();
 
+        // RESPONSE FOR ALERT
+       if ($request->page === 'product_edit') {
+        return redirect()
+            ->route('products.edit', $request->product_id)
+            ->with('success', 'Unit added successfully');
+
+    }else if($request->page === 'product_page'){
+
+    
+    return redirect()
+        ->route('store')
+        ->with('success', 'Unit added successfully');
+}
         return response()->json($msg);
     }
 
@@ -62,5 +75,11 @@ class UnitController extends Controller
             $msg = ['error' => 'Unit Not Found'];
         }
         return response()->json($msg);
+    }
+
+    public function getUnits()
+    {
+        $units = Unit::select('id', 'name')->get();
+        return response()->json($units);
     }
 }

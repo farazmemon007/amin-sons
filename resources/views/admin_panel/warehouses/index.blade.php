@@ -36,6 +36,7 @@
                                         data-name="{{ $w->warehouse_name }}"
                                         data-location="{{ $w->location }}"
                                         data-remarks="{{ $w->remarks }}"
+                                        data-branches="{{ $w->branches->pluck('id')->implode(',') }}"
                                         data-bs-toggle="modal"
                                         data-bs-target="#warehouseModal">
                                         Edit
@@ -57,7 +58,7 @@
     </div>
 </div>
 
-<div class="modal fade" id="warehouseModal">
+                    <div class="modal fade" id="warehouseModal">
     <div class="modal-dialog">
         <form action="{{ url('warehouse/store') }}" method="POST">
             @csrf
@@ -65,6 +66,19 @@
             <div class="modal-content">
                 <div class="modal-header"><h5 class="modal-title">Add/Edit Warehouse</h5></div>
                 <div class="modal-body">
+                    @if(Auth::check() && Auth::user()->hasRole('super admin'))
+                        <div class="mb-2">
+                            <label>Branch</label>
+                            <select name="branch_id" id="branch_id" class="form-control">
+                                <option value="">-- Select Branch --</option>
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}">{{ $b->name ?? 'Branch '.$b->id }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @else
+                        <input type="hidden" name="branch_id" id="branch_id" value="{{ Auth::user()->branch_id }}">
+                    @endif
                     <div class="mb-2"><input class="form-control" name="warehouse_name" id="warehouse_name" placeholder="Name" required></div>
                     <div class="mb-2 d-none"><input class="form-control" name="creater_id" id="" value="{{ Auth()->user()->id }}" placeholder="Name" required></div>
                     <div class="mb-2"><input class="form-control" name="location" id="location" placeholder="Location"></div>
@@ -99,6 +113,21 @@
             $('#warehouse_name').val($(this).data('name'));
             $('#location').val($(this).data('location'));
             $('#remarks').val($(this).data('remarks'));
+            // set branch selection (if present)
+            var branches = $(this).data('branches') || '';
+            if ($('#branch_id').length) {
+                if (branches) {
+                    // pick first associated branch
+                    var first = String(branches).split(',')[0];
+                    $('#branch_id').val(first);
+                } else {
+                    // if no branches attached, clear for super admin
+                    $('#branch_id').val('');
+                }
+            } else {
+                // hidden input for non-super user — set value to user's branch (no-op)
+                // nothing to do
+            }
         });
 
 

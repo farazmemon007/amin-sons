@@ -533,6 +533,32 @@
             color: #94a3b8;
         }
 
+        /* Make Select2 fit visually with the search input */
+        .perm-search-box .select2-container--default .select2-selection--single {
+            height: 44px;
+            padding-left: 44px;
+            border: 2px solid var(--role-border);
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+        }
+
+        .perm-search-box .select2-selection__rendered {
+            padding-left: 0;
+        }
+
+        .perm-search-box .select2-selection__arrow {
+            right: 12px;
+        }
+
+        .perm-search-box .select2-container--open .select2-selection--single {
+            border-color: var(--role-primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
         .perm-actions-wrapper {
             display: flex;
             align-items: center;
@@ -948,13 +974,22 @@
                         <input type="hidden" name="name" id="permRoleNameInput">
 
                         <!-- Search and Controls -->
-                        <div class="perm-controls-bar">
-                            <div class="perm-search-wrapper">
+                        <div class="perm-controls-bar d-flex align-items-center" style="gap:12px;">
+                            <div style="min-width:260px;">
+                                <label class="form-label small mb-1">Module</label>
+                                <div class="perm-search-box">
+                                    <i class="fa fa-th-large"></i>
+                                    <select id="permModuleSelect" class="form-control" style="width:100%"></select>
+                                </div>
+                            </div>
+
+                            <div class="perm-search-wrapper flex-grow-1">
                                 <div class="perm-search-box">
                                     <i class="fa fa-search"></i>
                                     <input type="search" id="permSearch" placeholder="Search permissions...">
                                 </div>
                             </div>
+
                             <div class="perm-actions-wrapper">
                                 <label class="select-all-toggle">
                                     <input type="checkbox" id="selectAllPerms">
@@ -989,11 +1024,97 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Select2 for module selector -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
         const allPermissions = @json($allPermissions);
 
         $(document).ready(function() {
+            // Initialize module select2 and load modules from server
+            // Title overrides for certain module keys to show friendly headings
+            var moduleTitleMap = {
+                'productbranch.view': 'Branch Wise Product View',
+                'branch.wise.product.view': 'Branch Wise Product View'
+            };
+            function loadModulesIntoSelect() {
+                var $sel = $('#permModuleSelect');
+                if (!$sel.length) return;
+                // init select2
+                if (!$sel.hasClass('select2-hidden-accessible')) {
+                    $sel.select2({ placeholder: 'Type to search modules', allowClear: true, width: 'resolve', dropdownParent: $('#permissionModal') });
+                }
+                $sel.empty();
+
+                // Derive module headings from available permissions so dropdown matches permission group headings
+                var modulesMap = {};
+                allPermissions.forEach(function(p) {
+                    var parts = p.name.split('.');
+                    var module;
+                    if (parts.length > 1) {
+                        parts.pop();
+                        module = parts.join('.');
+                    } else {
+                        module = 'General';
+                    }
+                    modulesMap[module] = true;
+                });
+
+                // Also attempt to include server-side modules if available
+                try {
+                    // If route exists and returns JSON, merge it
+                    $.getJSON('{{ route('modules.list') }}')
+                        .done(function(res) {
+                            (res || []).forEach(function(m) { modulesMap[m] = true; });
+                            appendModuleOptions();
+                        })
+                        .fail(function() {
+                            appendModuleOptions();
+                        });
+                } catch (e) {
+                    appendModuleOptions();
+                }
+
+                function appendModuleOptions() {
+                    var list = Object.keys(modulesMap).sort();
+                    list.forEach(function(m) {
+                        var title = moduleTitleMap[m] || String(m).replace(/\./g, ' ').replace(/\b\w/g, function(l){ return l.toUpperCase(); });
+                        title = title.replace('Hr ', 'HR ');
+                        var option = new Option(title, m, false, false);
+                        $sel.append(option);
+                    });
+                    $sel.trigger('change');
+                }
+            }
+            loadModulesIntoSelect();
+
+            // Ensure Select2 dropdown attaches inside the modal when shown
+            $('#permissionModal').on('shown.bs.modal', function() {
+                var $sel = $('#permModuleSelect');
+                if (!$sel.length) return;
+                if ($sel.hasClass('select2-hidden-accessible')) {
+                    try { $sel.select2('destroy'); } catch (e) { /* ignore */ }
+                }
+                $sel.select2({ placeholder: 'Type to search modules', allowClear: true, width: 'resolve', dropdownParent: $('#permissionModal') });
+            });
+
+            // When module selection changes, show/hide permission groups
+            $(document).on('change', '#permModuleSelect', function() {
+                var selected = $(this).val() || [];
+                if (!selected || selected.length === 0) {
+                    $('.permission-group').show();
+                } else {
+                    // normalize to array
+                    if (!Array.isArray(selected)) selected = [selected];
+                    $('.permission-group').each(function() {
+                        var module = $(this).data('module');
+                        $(this).toggle(selected.includes(module));
+                    });
+                }
+                $('#permSearch').trigger('input');
+            });
+
             // Create Role Button
             $('#createRoleBtn').click(function() {
                 $('#roleEditId').val('');
@@ -1064,6 +1185,12 @@
                 $('#permEditId').val(id);
                 $('#permRoleName').text('Role: ' + name);
                 $('#permRoleNameInput').val(name);
+
+                // Clear module select so it does not show a prefilled module
+                var $moduleSel = $('#permModuleSelect');
+                if ($moduleSel.length) {
+                    $moduleSel.val(null).trigger('change');
+                }
 
                 buildPermissionGroups(assignedPerms);
                 $('#permissionModal').modal('show');

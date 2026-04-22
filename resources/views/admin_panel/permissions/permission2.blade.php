@@ -550,7 +550,7 @@
                     </div>
                     <div class="stat-card success">
                         <div class="stat-icon"><i class="fa fa-layer-group"></i></div>
-                        <div class="stat-value">{{ $groupedPerms->count() }}</div>
+                        <div class="stat-value">{{ $modules->count() }}</div>
                         <div class="stat-label">Modules</div>
                     </div>
                     <div class="stat-card warning">

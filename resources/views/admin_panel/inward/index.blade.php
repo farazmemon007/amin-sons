@@ -23,8 +23,9 @@
                                             <th style="text-align: center">Vendor</th>
                                             <th style="text-align: center">Date</th>
                                             <th style="text-align: center">Note</th>
-                                            <th style="text-align: center">Status</th> <!-- Added Status Column -->
-                                            <th style="text-align: center">Action</th> <!-- Added Action Column -->
+                                            <th style="text-align: center">Status</th>
+                                            <th style="text-align: center; background: #ffe0b2;">Remaining Units</th>
+                                            <th style="text-align: center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody class="text-center">
@@ -37,22 +38,31 @@
                                                 <td>{{ $gp->gatepass_date }}</td>
                                                 <td>{{ $gp->note ?? 'N/A' }}</td>
                                                 <td>
-                                                    @if ($gp->status == 'pending')
+                                                    @if ($gp->display_status == 'pending')
                                                         <span class="badge bg-warning">Pending</span>
-                                                    @elseif($gp->status == 'linked')
-                                                        <span class="badge bg-success">Linked</span>
-                                                    @elseif($gp->status == 'cancelled')
+                                                    @elseif($gp->display_status == 'completed')
+                                                        <span class="badge bg-success">✓ Completed</span>
+                                                    @elseif($gp->display_status == 'linked')
+                                                        <span class="badge bg-info">Linked</span>
+                                                    @elseif($gp->display_status == 'cancelled')
                                                         <span class="badge bg-danger">Cancelled</span>
+                                                    @else
+                                                        <span class="badge bg-secondary">{{ $gp->display_status }}</span>
+                                                    @endif
+                                                </td>
+                                                {{-- Remaining Units Column (ERP Standard) --}}
+                                                <td style="background: {{ $gp->pending_count > 0 ? '#fff3cd' : '#f0f0f0' }};">
+                                                    @if($gp->pending_count > 0)
+                                                        <a href="{{ route('vendor-remaining.index') }}?purchase={{ $gp->purchase_id ?? '' }}" 
+                                                           class="badge bg-warning text-dark" style="font-size: 0.95em; cursor: pointer;">
+                                                            {{ $gp->pending_count }} units ⏳
+                                                        </a>
+                                                    @else
+                                                        <span class="text-muted">—</span>
                                                     @endif
                                                 </td>
                                                 <td>
                                                     <a href="{{ route('InwardGatepass.show', $gp->id) }}" class="btn btn-sm btn-info mb-1">View</a>
-
-                                                    @if ($gp->status == 'pending')
-                                                        <a href="{{ route('add_bill', $gp->id) }}" class="btn btn-sm btn-info mb-1">Add Bill</a>
-                                                    @elseif($gp->status == 'linked')
-                                                        <a href="{{ route('InwardGatepass.show', $gp->purchase_id) }}" class="btn btn-sm btn-success mb-1">View Bill</a>
-                                                    @endif
 
                                                     <a href="{{ route('InwardGatepass.edit', $gp->id) }}" class="btn btn-sm mb-1" style="background:#add8e6">Edit</a>
 

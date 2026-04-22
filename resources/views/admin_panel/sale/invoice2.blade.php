@@ -126,6 +126,14 @@ table tbody td{
     font-size:14px;
 }
 
+.invoice-title{
+    text-align:center;
+    font-size:24px;
+    font-weight:700;
+    color:#333;
+    margin:15px 0;
+}
+
 @media print{
     .no-print{display:none!important;}
     body{background:#fff;}
@@ -143,7 +151,10 @@ table tbody td{
     {{-- PRINT BUTTON --}}
     <div class="text-end mb-3 no-print">
         <button onclick="window.print()" class="btn btn-dark">
-            Print Invoice
+            🖨️ Print Invoice
+        </button>
+        <button onclick="window.open('{{ url('booking/print2') }}/{{ $booking->id }}', '_blank')" class="btn btn-primary ms-2">
+            🧾 Thermal Print
         </button>
     </div>
 
@@ -167,12 +178,19 @@ table tbody td{
             </div>
         </div>
 
+        {{-- BOOKING INVOICE HEADING --}}
+        <div class="invoice-title">📋 Sale Order</div>
+
         <hr>
 
         {{-- CUSTOMER INFO --}}
         <div class="info-grid">
             <div class="info-box">
+                @if($booking->party_type == 'credit'||$booking->party_type == 'cash')
                 <div><strong>Customer Name:</strong> {{ $booking->customer->customer_name }}</div>
+                    @else
+                    <div><strong>Customer Name:</strong> {{ $booking->customer_name }}</div>
+                @endif
                 <div><strong>Customer Type:</strong> {{ $booking->party_type }}</div>
                 <div><strong>Mobile:</strong> {{ $booking->customer->mobile_2 ?? '-' }}</div>
             </div>
@@ -196,14 +214,24 @@ table tbody td{
                 </tr>
             </thead>
             <tbody>
-                @foreach($booking->items as $index => $item)
+                @php
+                    // Support both relationship-based and join-based item loading
+                    $itemsToDisplay = isset($items) ? $items : $booking->items;
+                @endphp
+                @foreach($itemsToDisplay as $index => $item)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $item->product->item_name }}</td>
-                    <td class="text-end">{{ number_format($item->sales_qty, 2) }}</td>
-                    <td class="text-end">{{ number_format($item->retail_price, 2) }}</td>
-                    <td class="text-end">{{ number_format(data_get($item, 'discount_amount', 0), 2) }}</td>
-                    <td class="text-end">{{ number_format($item->amount, 2) }}</td>
+                    <td>
+                        @if($item->item_name ?? null)
+                            {{ $item->item_name }}
+                        @elseif($item->product ?? null)
+                            {{ $item->product->item_name }}
+                        @endif
+                    </td>
+                    <td class="text-end">{{ number_format($item->sales_qty ?? $item->qty ?? 0, 2) }}</td>
+                    <td class="text-end">{{ number_format($item->retail_price ?? $item->price ?? 0, 2) }}</td>
+                    <td class="text-end">{{ number_format($item->discount_amount ?? $item->discount ?? 0, 2) }}</td>
+                    <td class="text-end">{{ number_format($item->amount ?? $item->total ?? 0, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -218,37 +246,103 @@ table tbody td{
         {{-- SUMMARY --}}
         <div class="summary-box">
             <table width="100%">
-                <tr>
-                    <td>Sub Total</td>
-                    <td class="text-end">{{ number_format($booking->sub_total1,2) }}</td>
-                </tr>
-                <tr>
-                    <td>Discount</td>
-                    <td class="text-end">{{ number_format($booking->discount_amount,2) }}</td>
-                </tr>
-                {{-- @php
-                    echo "<pre>";
-                    print_r($booking->toArray());
-                    echo "</pre>";
-                    dd();
-                @endphp --}}
                 @php
-                    $latestLedger = null;
-                    if(isset($booking->customer) && isset($booking->customer->ledgers)){
-                        $ledgers = collect($booking->customer->ledgers);
-                        $latestLedger = $ledgers->sortByDesc('id')->first();
+                    // 🔹 BUSINESS LOGIC - DISPLAY TOTALS FROM BOOKING & CUSTOMER LEDGER
+                    
+                    // Step 1: Get base amounts from booking
+                    $subTotal = (float)($item->amount ?? 0);              // Base amount
+                    $saleLineTotal = ($booking->sub_total2 ?? 0);         // Subtotal
+                    
+                     
+                    $orderLevelDiscount = ($booking->additional_discount ?? 0); // Add: discount
+                    //  echo "Debug: orderLevelDiscount = " . $orderLevelDiscount;
+                    $extraCharges = ($booking->extra_charges ?? 0);       // Extra charges
+                    $salePayableAmount = $subTotal - $orderLevelDiscount + $extraCharges;
+                    
+                    // Step 2: Calculate Net Total
+                    $netTotal = $saleLineTotal - $orderLevelDiscount;
+                    $payableAmount = $salePayableAmount;
+                    
+                    // Step 3: Get receipts from receipt vouchers
+                    $totalReceived = 0;
+                    if(isset($booking) && isset($booking->invoice_no)){
+                        $receipts = \App\Models\ReceiptsVoucher::where('reference_no', $booking->invoice_no)
+                            ->where('type', 'SALE_RECEIPT')
+                            ->get();
+                        $totalReceived = $receipts->sum('amount');
                     }
-                    $displayPrevious = $latestLedger->previous_balance ?? $booking->previous_balance ?? $booking->customer->opening_balance ?? 0;
-                    $displayClosing = $latestLedger->closing_balance ?? $booking->total_balance ?? 0;
+                    
+                    // Step 4: Get customer ledger data (the source of truth for closing balance)
+                    $ledgerData = null;
+                    $displayPrevious = 0;
+                    $closingBalance = 0;
+                    $isCreditCustomer = ($booking->party_type ?? '') === 'credit';
+                    
+                    if($isCreditCustomer && isset($booking->customer)){
+                        // Get the LATEST ledger entry for this customer
+                        $ledgerData = \App\Models\CustomerLedger::where('customer_id', $booking->customer->id)
+                            ->latest('id')
+                            ->first();
+                        
+                        if($ledgerData){
+                            $displayPrevious = floatval($ledgerData->previous_balance ?? 0);
+                            $closingBalance = floatval($ledgerData->closing_balance ?? 0);  // Use ledger's closing balance
+                        } else {
+                            // Fallback: no ledger yet, calculate on the fly
+                            $displayPrevious = floatval($booking->customer->opening_balance ?? 0);
+                            $closingBalance = $payableAmount - $totalReceived + $displayPrevious;
+                        }
+                    } else {
+                        // Cash customer: calculate on the fly
+                        $closingBalance = $payableAmount - $totalReceived + $displayPrevious;
+                    }
                 @endphp
+                
+                <tr style="font-weight: bold;">
+                    <td>Total</td>
+                    <td class="text-end">{{ number_format($subTotal, 2) }}</td>
+                </tr>
+                
+                <tr style="background-color: #f5f5f5; font-weight: bold;">
+                    <td>Add Discount</td>
+                    <td class="text-end">{{ number_format($booking->additional_discount, 2) }}</td>
+                </tr>
+                <tr style="background-color: #f5f5f5; font-weight: bold;">
+                    <td>Extra Charges</td>
+                    <td class="text-end">{{ number_format($booking->extra_charges, 2) }}</td>
+                </tr>
+                <tr style="background-color: #f5f5f5; font-weight: bold;">
+                    <td>Net Total</td>
+                    <td class="text-end">{{ number_format($netTotal, 2) }}</td>
+                </tr>
+                @php
+// echo "<pre>";
+// print_r($booking->toArray());
+// echo "</pre>";
+// exit;
+@endphp
+                <tr class="summary-total" style="border-top: 2px solid #ddd; padding-top: 8px; margin-top: 8px; background-color: #fff3e0;">
+                    <td style="color: #e65100; font-weight: bold; font-size: 16px;">💰 TOTAL PAYABLE</td>
+                    <td class="text-end" style="color: #e65100; font-weight: bold; font-size: 16px;">{{ number_format($payableAmount, 2) }}</td>
+                </tr>
+                @if($booking->party_type === 'credit')
+                @if($totalReceived > 0)
+                <tr style="background-color: #e8f5e9; margin-top: 8px;">
+                    <td style="color: #388e3c; font-weight: bold;">Less: Received Amount</td>
+                    <td class="text-end" style="color: #388e3c; font-weight: bold;">-{{ number_format($totalReceived, 2) }}</td>
+                </tr>
+                @endif
+                
                 <tr>
-                    <td>Previous Balance</td>
-                    <td class="text-end">{{ number_format($displayPrevious,2) }}</td>
+                    <td><strong>Previous Balance</strong></td>
+                    <td class="text-end"><strong>{{ number_format($displayPrevious, 2) }}</strong></td>
                 </tr>
-                <tr class="summary-total">
-                    <td>Closing Balance</td>
-                    <td class="text-end">{{ number_format($displayClosing,2) }}</td>
+                
+                <tr class="summary-total" style="border-top: 2px solid #ddd; padding-top: 8px; margin-top: 8px; background-color: #f5f5f5;">
+                    <td style="color: #d32f2f;"><strong>Closing Balance</strong></td>
+                    <td class="text-end" style="color: #d32f2f;"><strong>{{ number_format($closingBalance, 2) }}</strong></td>
                 </tr>
+                @endif
             </table>
         </div>
 

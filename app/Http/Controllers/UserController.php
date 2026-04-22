@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Branch;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -13,9 +15,33 @@ class UserController extends Controller
         public function index()
     {
         // dd("ok");
-        $users = User::where('email', '!=', 'admin@admin.com')->get();
-        $allRoles  = Role::all();
-        return view('admin_panel.users.users', compact(['users', 'allRoles'])); 
+            $allowedBranchIds = [];
+            if (Auth::check()) {
+                $u = Auth::user();
+                if ($u->hasRole('super admin')) {
+                    $allowedBranchIds = Branch::pluck('id')->toArray();
+                } else {
+                    $allowedBranchIds[] = $u->branch_id;
+                    $branchIds = Branch::pluck('id');
+                    foreach ($branchIds as $bid) {
+                        if ($u->can('branch.view.' . $bid)) {
+                            $allowedBranchIds[] = $bid;
+                        }
+                    }
+                    $allowedBranchIds = array_unique($allowedBranchIds);
+                }
+            }
+
+            if (!empty($allowedBranchIds)) {
+                $users = User::whereIn('branch_id', $allowedBranchIds)->where('email', '!=', 'admin@admin.com')->get();
+            } else {
+                // no branches allowed => empty collection
+                $users = collect();
+            }
+
+            $allRoles = Role::all();
+
+            return view('admin_panel.users.users', compact(['users', 'allRoles', 'allowedBranchIds']));
     }
 
     public function store(Request $request)
@@ -25,31 +51,18 @@ class UserController extends Controller
          $validator = Validator::make($request->all(), [
             'name' => 'required',
             'email' => 'required|unique:users,email,'.$request->edit_id,
-            'password' => 'required'
+            'password' => 'required',
+            'branch_id' => 'required',
         ]);
 
         if ($validator->fails()) {
             return ['errors' => $validator->errors()];
         }
 
-
       
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()]);
         }
-
-        // Step 2: Check for user_id uniqueness (exclude self in edit)
-        // $userExists = Branch::where('user_id', $request->user_id)
-        //     ->when($editId, fn($q) => $q->where('id', '!=', $editId))
-        //     ->exists();
-
-        // if ($userExists) {
-        //     return response()->json([
-        //         'errors' => [
-        //             'user_id' => ['This user is already assigned to another branch.']
-        //         ]
-        //     ]);
-        // }
 
         // Step 3: Save or update logic
         if (!empty($editId)) {
@@ -69,7 +82,13 @@ class UserController extends Controller
         $user->name = $request->name;
         $user->email = $request->email;
         $user->password = Hash::make($request->password);
+        $user->branch_id = $request->branch_id;
         $user->save();
+
+        // Assign roles if provided
+        if ($request->has('roles') && is_array($request->roles)) {
+            $user->syncRoles($request->roles);
+        }
 
         return response()->json($msg);
         
@@ -97,6 +116,17 @@ class UserController extends Controller
 
     // Assign new roles (by name)
     $user->syncRoles($request->roles ?? []);
+
+    // If request is AJAX or expects JSON, return JSON so frontend JS (myAjax)
+    // can handle response without a full redirect/HTML page returned.
+    if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+            'success' => 'User roles updated successfully!',
+            // let frontend decide to reload or not; sending 'reload' true
+            // will trigger the existing myAjax handler to reload the page.
+            'reload' => true
+        ]);
+    }
 
     return back()->with('success', 'User roles updated successfully!');
 }

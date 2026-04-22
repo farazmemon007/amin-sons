@@ -17,4 +17,7 @@ class PurchaseItem extends Model
     
     public function purchase() { return $this->belongsTo(Purchase::class); }
     public function product()  { return $this->belongsTo(Product::class); }
+    
+    // ✅ ERP STANDARD: Per-line warehouse assignment
+    public function warehouse() { return $this->belongsTo(Warehouse::class); }
 }

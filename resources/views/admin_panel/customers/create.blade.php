@@ -7,33 +7,51 @@
                 <form action="{{ route('customers.store') }}" method="POST">
                     @csrf
 
+                    @php
+                        $branchesList = $branches ?? \App\Models\Branch::all();
+                    @endphp
 
 
-                    <div class="row mb-3">
-                        <div class="col-md-3 mb-3">
+
+                    <div class="row mb-1">
+                        <div class="col-md-2 mb-3">
                             <label><strong>Customer ID:</strong></label>
                             <input type="text" class="form-control" name="customer_id" readonly value="{{ $latestId }}">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label><strong>Customer Type :</strong></label>
                             <select class="form-control" name="customer_type">
-                                <option>Main Customer</option>
-                                <option>Walking Customer</option>
+                                <option>Credit</option>
+                                <option>Cash</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+
+                        @if(auth()->user() && auth()->user()->hasRole('super admin'))
+                            <div class="col-md-2">
+                                <label><strong>Branch:</strong></label>
+                                <select class="form-control" name="branch_id" id="branch_id_select">
+                                    <option value="">Select Branch</option>
+                                    @foreach($branchesList as $b)
+                                        <option value="{{ $b->id }}" {{ old('branch_id') == $b->id ? 'selected' : '' }}>{{ $b->name ?? $b->branch_name ?? 'Branch '. $b->id }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @else
+                            <input type="hidden" name="branch_id" value="{{ auth()->user()->branch_id ?? 0 }}">
+                        @endif
+                        <div class="col-md-2">
                             <label><strong>Customer:</strong></label>
                             <input type="text" class="form-control" name="customer_name"
                                 value="{{ old('customer_name') }}">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label>NTN / CNIC no:</label>
                             <input type="text" class="form-control" name="cnic" value="{{ old('cnic') }}">
 
                         </div>
 
 
-                        <div class="row mb-3">
+                        <div class="row mb-2">
 
                             <div class="col-md-3 ">
                                 <label>Filer Type:</label>
@@ -104,6 +122,13 @@
                                    step="0.01" min="0" required>
                             <small class="form-text text-muted">Maximum credit amount you can provide to the customer</small>
                         </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="no_credit_limit" name="no_credit_limit">
+                            <label class="form-check-label" for="no_credit_limit">
+                                No Credit Limit (Infinite)
+                            </label>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="$('#openingBalanceModal').modal('hide')">Cancel</button>
@@ -121,6 +146,7 @@
             const mainForm = $('form[method="POST"]');
             const balanceForm = $('#balanceForm');
             const modal = $('#openingBalanceModal');
+            const customerTypeSelect = $('select[name="customer_type"]');
 
             // Save Customer button click
             $('#saveCustomerBtn').click(function(e) {
@@ -133,7 +159,34 @@
                     return;
                 }
 
-                // Show modal
+                // ✅ CHECK CUSTOMER TYPE
+                const customerType = customerTypeSelect.val();
+                console.log('Customer Type:', customerType);
+
+                // ✅ IF Cash: Skip modal and submit directly
+                if (customerType === 'Cash') {
+                    console.log('✅ Cash - Skipping balance/credit modal');
+
+                    // Add default values for walking customers
+                    $('<input>').attr({
+                        type: 'hidden',
+                        name: 'opening_balance',
+                        value: '0'
+                    }).appendTo(mainForm);
+
+                    $('<input>').attr({
+                        type: 'hidden',
+                        name: 'credit_limit',
+                        value: '0'
+                    }).appendTo(mainForm);
+
+                    // Submit form directly without modal
+                    mainForm.submit();
+                    return;
+                }
+
+                // ✅ IF MAIN CUSTOMER: Show modal for balance/credit setup
+                console.log('📋 Main Customer - Showing balance modal');
                 modal.modal('show');
             });
 
@@ -141,6 +194,15 @@
             $('#openingBalanceModal').on('hidden.bs.modal', function() {
                 // Modal closed
                 balanceForm[0].reset();
+            });
+
+            // Handle no credit limit checkbox
+            $('#no_credit_limit').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                $('#credit_limit').prop('disabled', isChecked);
+                if (isChecked) {
+                    $('#credit_limit').val('');
+                }
             });
 
             // Balance form submission
@@ -151,15 +213,22 @@
                     // Get values
                     const opening_balance = $('#opening_balance').val();
                     const credit_limit = $('#credit_limit').val();
+                    const no_credit_limit = $('#no_credit_limit').is(':checked');
 
-                    // Validate
-                    if (!opening_balance || !credit_limit) {
-                        alert('Please fill all fields in the form');
+                    // Validate opening balance (always required)
+                    if (!opening_balance) {
+                        alert('Please enter opening balance');
+                        return;
+                    }
+
+                    // Validate credit limit (only if no credit limit is not checked)
+                    if (!no_credit_limit && !credit_limit) {
+                        alert('Please enter credit limit or check "No Credit Limit"');
                         return;
                     }
 
                     // Validate numeric values
-                    if (isNaN(opening_balance) || isNaN(credit_limit)) {
+                    if (isNaN(opening_balance) || (!no_credit_limit && isNaN(credit_limit))) {
                         alert('Please enter valid numbers');
                         return;
                     }
@@ -171,10 +240,19 @@
                         value: opening_balance
                     }).appendTo(mainForm);
 
+                    // Only add credit_limit if no_credit_limit is not checked
+                    if (!no_credit_limit) {
+                        $('<input>').attr({
+                            type: 'hidden',
+                            name: 'credit_limit',
+                            value: credit_limit
+                        }).appendTo(mainForm);
+                    }
+
                     $('<input>').attr({
                         type: 'hidden',
-                        name: 'credit_limit',
-                        value: credit_limit
+                        name: 'no_credit_limit',
+                        value: no_credit_limit ? '1' : '0'
                     }).appendTo(mainForm);
 
                     // Close modal and submit

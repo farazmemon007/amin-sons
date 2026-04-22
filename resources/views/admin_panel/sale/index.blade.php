@@ -34,6 +34,7 @@
     .card-body {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        position: relative;
     }
 
     .table {
@@ -57,8 +58,7 @@
     }
 
     .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+        position: relative;
     }
 
     .btn {
@@ -96,6 +96,36 @@
     .action-dropdown .dropdown-item:hover {
         background: linear-gradient(90deg, #f8f9fa, #eef1f5);
         transform: translateX(4px);
+    }
+
+    /* Fix dropdown overflow - make sure it doesn't get hidden */
+    .btn-group {
+        position: relative;
+    }
+
+    .dropdown-menu {
+        position: fixed !important;
+        z-index: 10000 !important;
+        max-height: 300px;
+        overflow-y: auto;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    /* Ensure table doesn't clip dropdown */
+    .table td {
+        position: relative;
+    }
+
+    /* Higher z-index for card to sit above footer */
+    .card {
+        position: relative;
+        z-index: 10;
+    }
+
+    .container-fluid {
+        position: relative;
+        z-index: 1;
     }
 
     /* Mobile Responsive */
@@ -191,7 +221,7 @@
             <h5 class="mb-0">Sales Records</h5>
             <div>
                 <a href="{{ route('sale.add') }}" class="btn btn-primary me-2">Add Sale</a>
-                <a href="{{ url('bookings') }}" class="btn btn-primary">All Bookings</a>
+                <a href="{{ url('bookings') }}" class="btn btn-primary">All Sale Orders</a>
             </div>
         </div>
 
@@ -201,6 +231,9 @@
                 <thead>
                     <tr>
                         <th>#ID</th>
+                        @if(Auth::check() && Auth::user()->hasRole('super admin'))
+                        <th>branch</th>
+                        @endif
                         <th>Invoice No</th>
                         <th>Customer Type</th>
                         <th>Customer name</th>
@@ -217,10 +250,13 @@
                 <tbody>@foreach($sales as $sale)
 <tr>
     <td>{{ $sale->id }}</td>
+    @if(Auth::check() && Auth::user()->hasRole('super admin'))
+    <td>{{ $sale->branch->name ?? optional($sale->customer->branch)->name ?? 'N/A' }}</td>
+    @endif
     <td>{{ $sale->invoice_no }}</td>
     <td>{{ $sale->party_type }}</td>
-    <!-- Customer Name from relation -->
-    <td>{{ $sale->customer->customer_name ?? 'N/A' }}</td>
+    <!-- Customer Name: prefer linked customer, otherwise show sub_customer (walking) -->
+    <td>{{ optional($sale->customer)->customer_name ?? $sale->sub_customer ?? 'N/A' }}</td>
     {{-- <td>{{ $sale->quantity ?? 0 }}</td> --}}
     <td>{{ number_format($sale->sub_total1, 2) }}</td>
     <td>
@@ -243,12 +279,12 @@
             {{ number_format($sale->discount_amount, 2) }}
         @endif
     </td>
-    <td>{{ number_format($sale->total_balance, 2) }}</td>
+    <td>{{ number_format(($sale->party_type== 'credit')?($sale->total_balance):($sale->total_net), 2) }}</td>
     {{-- <td>{{ number_format($sale->receipt1 + $sale->receipt2, 2) }}</td> --}}
     <td>{{ \Carbon\Carbon::parse($sale->created_at)->format('d-m-Y') }}</td>
     <td class="text-center">
         <!-- PRIMARY ACTION -->
-        <a href="{{ route('booking.dc', $sale->id) }}" class="btn btn-sm btn-info text-white me-1" title="View Invoice">
+        <a href="{{ route('sale.invoice', $sale->id) }}" class="btn btn-sm btn-info text-white me-1" title="View Invoice">
             <i class="fas fa-file-invoice"></i> Invoice
         </a>
 
@@ -270,14 +306,32 @@
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('sales.recepit', $sale->id) }}">
+                    <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('sale.invoice', $sale->id) }}">
                         <i class="fas fa-receipt text-danger"></i> Receipt
                     </a>
                 </li>
                 <li>
-                    <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('booking.dc', $sale->id) }}">
-                        <i class="fas fa-truck text-success"></i> Delivery Challan
-                    </a>
+                    @php
+                        // ✅ Check if DC already exists for this sale
+                        $dcExists = \App\Models\WarehouseOrder::where('sale_id', $sale->id)->exists();
+                        
+                        // ✅ Check if sale is in draft_posted mode AND no DC created yet
+                        $draftBooking = $sale;
+                        $isDraftPosted = $draftBooking && $draftBooking->status === 'draft_posted';
+                        $needsWarehouseSelection = $isDraftPosted && !$dcExists;
+                    @endphp
+
+                    @if($needsWarehouseSelection)
+                        {{-- 🎯 DRAFT MODE (First Time): Show warehouse selection before DC --}}
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('sale.warehouse.select', $sale->id) }}" title="Select warehouse for delivery">
+                            <i class="fas fa-warehouse text-warning"></i> Select Warehouse
+                        </a>
+                    @else
+                        {{-- 📦 REGULAR MODE OR DC EXISTS: Direct DC generation/display --}}
+                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('sale.dc', $sale->id) }}" title="Generate or display delivery challan">
+                            <i class="fas fa-truck text-success"></i> Delivery Challan
+                        </a>
+                    @endif
                 </li>
             </ul>
         </div>

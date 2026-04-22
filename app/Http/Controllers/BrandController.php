@@ -55,17 +55,19 @@ class BrandController extends Controller
     $brand->name = $request->name;
     $brand->save();
 
-    // PRODUCT PAGE RESPONSE
-    if ($request->page === 'product_page') {
-        
-        $msg = 'Brand Created Successfully';
-         return redirect()->route('store')->with('success',$msg);
-        //response()->json([
-        //     'status' => 'success',
-        //     'message' => $message,
-        //     'redirect' => route('store')
-        // ]);
-    }
+    // RESPONSE FOR ALERT
+       if ($request->page === 'product_edit') {
+        return redirect()
+            ->route('products.edit', $request->product_id)
+            ->with('success', 'Brand added successfully');
+
+    }else if($request->page === 'product_page'){
+
+    
+    return redirect()
+        ->route('store')
+        ->with('success', 'Brand added successfully');
+}
 
     // NORMAL RESPONSE
     return response()->json([

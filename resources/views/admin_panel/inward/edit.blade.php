@@ -65,16 +65,22 @@
                                         <input type="date" name="gatepass_date" class="form-control"
                                             value="{{ old('gatepass_date',$gatepass->gatepass_date) }}">
                                     </div>
-                                    <div class="col-md-3">
-                                        <label>Branch</label>
-                                        <select name="branch_id" class="form-control select2">
-                                            @foreach ($branches as $item)
-                                                <option value="{{ $item->id }}" {{ $gatepass->branch_id==$item->id ? 'selected' : '' }}>
-                                                    {{ $item->name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
+                                    @if($isSuperAdmin)
+                                        {{-- ✅ ERP STANDARD: Super admin can change branch --}}
+                                        <div class="col-md-3">
+                                            <label>Branch</label>
+                                            <select name="branch_id" class="form-control select2">
+                                                @foreach ($branches as $item)
+                                                    <option value="{{ $item->id }}" {{ $gatepass->branch_id==$item->id ? 'selected' : '' }}>
+                                                        {{ $item->name }}
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    @else
+                                        {{-- ✅ CRITICAL: Hidden branch_id for simple users (locked to their branch) --}}
+                                        <input type="hidden" name="branch_id" value="{{ Auth::user()->branch_id ?? 1 }}">
+                                    @endif
                                     <div class="col-md-3">
                                         <label>Warehouse</label>
                                         <select name="warehouse_id" class="form-control select2">
@@ -132,7 +138,7 @@
                                                 </td>
                                                 <td><input type="text" name="item_code[]" class="form-control" value="{{ $item->product->item_code }}" readonly></td>
                                                 <td><input type="text" name="brand[]" class="form-control" value="{{ $item->product->brand->name ?? '' }}" readonly></td>
-                                                <td><input type="text" name="unit[]" class="form-control" value="{{ $item->product->unit_id ?? '' }}" readonly></td>
+                                                <td><input type="text" name="unit[]" class="form-control" value="{{ $item->product->unit->name ?? $item->unit ?? 'NULL' }}" readonly></td>
                                                 <td><input type="number" name="qty[]" class="form-control quantity" min="1" value="{{ $item->qty }}"></td>
                                                 <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
                                             </tr>

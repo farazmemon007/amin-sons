@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Artisan;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
 use App\Models\Account;
-use App\Models\Productbooking;
+use App\Models\ProductBooking;
 use App\Models\ProductBookingItem;
 use App\Models\ReceiptsVoucher;
 use Illuminate\Support\Facades\DB;
@@ -42,7 +42,7 @@ class SimulateSale extends Command
             }
 
             // Create a booking (1200 total_net)
-            $booking = new Productbooking();
+            $booking = new ProductBooking();
             $booking->invoice_no = 'SIM-INV-' . time();
             $booking->customer_id = $customer->id;
             $booking->sub_total2 = 1200;

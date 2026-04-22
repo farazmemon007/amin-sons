@@ -14,14 +14,18 @@ class Customer extends Model
     
     // app/Models/Customer.php
     protected $fillable = [
-        'customer_id', 'customer_name', 'customer_name_ur', 'cnic', 'filer_type', 'zone',
+        'branch_id','customer_id', 'customer_name', 'customer_name_ur', 'cnic', 'filer_type', 'zone',
         'contact_person', 'mobile', 'email_address', 'contact_person_2', 'mobile_2',
-        'email_address_2', 'opening_balance', 'credit_upto', 'credit_limit', 'address' , 'status','customer_type'
+        'email_address_2', 'opening_balance', 'credit_upto', 'credit_limit', 'address' , 'status','customer_type', 'no_credit_limit'
     ];
 
     public function ledgers()
     {
         return $this->hasMany(CustomerLedger::class, 'customer_id');
+    }
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 
     // Get the latest ledger entry

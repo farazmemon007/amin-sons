@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\CustomerLedger;
 use App\Models\CustomerPayment;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
 {
@@ -15,15 +16,49 @@ class CustomerController extends Controller
   // 🔹 Load customers list by type
  public function saleindex(Request $request)
 {
-    // For the sales UI we prefer returning active customers with key fields.
-    // The UI has used different labels historically ("Main Customer" vs "customer").
-    // To avoid mismatches return active customers and include `customer_type`.
-    $customers = Customer::where('status', 'active')
-        ->select('id', 'customer_id', 'customer_name', 'mobile', 'address', 'opening_balance', 'customer_type')
-        ->orderBy('customer_name')
-        ->get();
+    try {
+        // Get type parameter and optional branch filter from request
+        $type = $request->query('type');
+        $branchParam = $request->query('branch_id');
 
-    return response()->json($customers);
+        // Build base query - select ONLY actual database columns
+        // closing_balance is an accessor (virtual attribute), not a real column
+        $query = Customer::where('status', 'active')
+            ->select('id', 'customer_id', 'customer_name', 'mobile', 'address', 'opening_balance', 'credit_limit', 'customer_type')
+            ->orderBy('customer_name');
+
+        $isSuper = Auth::check() && Auth::user()->hasRole('super admin');
+
+        // Super-admin: require explicit branch selection — otherwise return empty
+        if ($isSuper) {
+            if (!empty($branchParam)) {
+                $query->where('branch_id', (int)$branchParam);
+            } else {
+                return response()->json([]);
+            }
+        } else {
+            // Restrict to branch for non-super-admin users
+            if (Auth::check()) {
+                $branchId = Auth::user()->branch_id ?? 0;
+                $query->where('branch_id', $branchId);
+            } else {
+                return response()->json([]);
+            }
+        }
+
+        // Filter by type if provided
+        if (!empty($type)) {
+            $query->where('customer_type', '=', $type);
+        }
+
+        // Get customers and append closing_balance accessor
+        $customers = $query->get();
+
+        return response()->json($customers);
+    } catch (\Exception $e) {
+        \Log::error('Error in saleindex', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        return response()->json(['error' => 'Error loading customers: ' . $e->getMessage()], 500);
+    }
 }
 
     // 🔹 Single customer detail
@@ -41,7 +76,17 @@ class CustomerController extends Controller
 
     public function index()
     {
-        $customers = Customer::with('latestLedger')->latest()->get();
+        $query = Customer::with(['latestLedger', 'branch'])->latest();
+
+        // If the current user is not super admin, restrict to their branch
+        if (Auth::check() && !Auth::user()->hasRole('super admin')) {
+            $branchId = Auth::user()->branch_id ?? 0;
+            $query->where('branch_id', $branchId);
+        }
+
+        $customers = $query->get();
+
+        // return response()->json(['customers' => $customers]);
         return view('admin_panel.customers.index', compact('customers'));
     }
 
@@ -87,7 +132,11 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        // return $request->all();
+        // dd();
+
         $data = $request->validate([
+            'branch_id'        => 'required',
             'customer_id'        => 'required|unique:customers',
             'customer_name'      => 'nullable',
             'customer_name_ur'   => 'nullable',
@@ -105,7 +154,16 @@ class CustomerController extends Controller
             'credit_limit'       => 'nullable|numeric|min:0',
             'address'            => 'nullable',
             'customer_type'      => 'nullable',
+            'no_credit_limit'    => 'nullable|boolean',
         ]);
+
+        // Business logic: if no_credit_limit is true, set credit_limit to null
+        // if credit_limit is provided, set no_credit_limit to false
+        if ($request->boolean('no_credit_limit')) {
+            $data['credit_limit'] = null;
+        } elseif ($request->has('credit_limit') && $request->credit_limit !== null) {
+            $data['no_credit_limit'] = false;
+        }
 
         // Customer create
         $customer = Customer::create($data);
@@ -136,9 +194,10 @@ class CustomerController extends Controller
     public function update(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
-        
+
         // Validate the input
         $data = $request->validate([
+            'branch_id'      => 'nullable|integer',
             'customer_name'      => 'nullable|string',
             'customer_name_ur'   => 'nullable|string',
             'customer_type'      => 'nullable|string',
@@ -150,11 +209,20 @@ class CustomerController extends Controller
             'opening_balance'    => 'nullable|numeric|min:0',
             'credit_limit'       => 'nullable|numeric|min:0',
             'closing_balance'    => 'nullable|numeric',
+            'no_credit_limit'    => 'nullable|boolean',
         ]);
+
+        // Business logic: if no_credit_limit is true, set credit_limit to null
+        // if credit_limit is provided, set no_credit_limit to false
+        if ($request->boolean('no_credit_limit')) {
+            $data['credit_limit'] = null;
+        } elseif ($request->has('credit_limit') && $request->credit_limit !== null) {
+            $data['no_credit_limit'] = false;
+        }
 
         // Update customer
         $customer->update($data);
-        
+
         return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
     }
 
@@ -173,10 +241,18 @@ class CustomerController extends Controller
     {
         if (Auth::check()) {
             $userId = Auth::id();
-            $CustomerLedgers = CustomerLedger::with('customer')
-                ->where('admin_or_user_id', $userId)
-                ->orderBy('id','desc')
-                ->get();
+            $query = CustomerLedger::with('customer');
+                // ->where('admin_or_user_id', $userId);
+
+            // If current user is not super admin, show only ledgers for customers in user's branch
+            if (!Auth::user()->hasRole('super admin')) {
+                $branchId = Auth::user()->branch_id ?? 0;
+                $query->whereHas('customer', function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId);
+                });
+            }
+
+            $CustomerLedgers = $query->orderBy('id', 'desc')->get();
             //     echo "<pre>";
             // print_r($CustomerLedgers);
             //     dd();

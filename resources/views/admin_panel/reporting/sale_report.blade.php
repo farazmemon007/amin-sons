@@ -16,11 +16,11 @@
                     <form id="SaleFilterForm" class="row g-2 align-items-end">
                         <div class="col-md-3">
                             <label class="form-label">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control">
+                            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ $startDate ?? '' }}">
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">End Date</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control">
+                            <input type="date" name="end_date" id="end_date" class="form-control" value="{{ $endDate ?? '' }}">
                         </div>
                         <div class="col-md-2">
                             <button type="button" id="btnSearch" class="btn btn-primary w-100">Search</button>
@@ -40,23 +40,58 @@
 
                     <div class="table-responsive">
                         <div class="table-responsive mt-3">
-                            <table class="table table-bordered" id="saleReport">
+                            <table class="table table-bordered table-sm" id="saleReport">
                                 <thead class="bg-gray">
                                     <tr>
                                         <th>#</th>
                                         <th>Date</th>
+                                        @php
+                                            $showBranch = false;
+                                            if (Auth::check()) {
+                                                $user = Auth::user();
+                                                if ($user->hasRole('super admin')) {
+                                                    $showBranch = true;
+                                                } elseif ($user->can('report.sale.branch.view')) {
+                                                    $showBranch = true;
+                                                } else {
+                                                    // Check per-branch grant permissions like report.sale.branch.view.{id}
+                                                    if (isset($branches) && $branches->count() > 0) {
+                                                        foreach ($branches as $b) {
+                                                            if ($user->can('report.sale.branch.view.' . $b->id)) {
+                                                                $showBranch = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        @endphp
+                                        @if($showBranch)
+                                            <th>Branch</th>
+                                        @endif
                                         <th>Invoice</th>
                                         <th>Customer</th>
-                                        <th>Reference</th>
                                         <th>Products</th>
                                         <th>Qty</th>
                                         <th>Price</th>
-                                        <th>Total</th>
-                                        <th>Net</th>
+                                        <th>Discount</th>
+                                        <th>Amount</th>
+                                        <th>Total Net</th>
                                         <th>Returns</th>
                                     </tr>
                                 </thead>
                                 <tbody id="saleBody"></tbody>
+                                <tfoot>
+                                    <tr class="fw-bold bg-light">
+                                        <td colspan="5" class="text-end">Grand Total:</td>
+                                        <td id="grandQty">0.00</td>
+                                        <td>-</td>
+                                        <td id="grandDiscount">0.00</td>
+                                        <td id="grandAmount">0.00</td>
+                                        <td id="grandNet">0.00</td>
+                                        <td id="grandReturn">0.00</td>
+                                    </tr>
+                                </tfoot>
                             </table>
                         </div>
 
@@ -88,62 +123,83 @@
                 $("#loader").hide();
                 let html = "";
                 let grandQty = 0,
-                    grandTotal = 0,
+                    grandAmount = 0,
                     grandNet = 0,
-                    grandReturn = 0;
+                    grandReturn = 0,
+                    grandDiscount = 0;
 
-                res.forEach((s, i) => {
-                    let products = s.product.split(',').join('<br>');
-                    let qtyArr = s.qty.split(',');
-                    let price = s.per_price.split(',').join('<br>');
-                    let total = s.per_total.split(',').join('<br>');
+                res.forEach((sale, i) => {
+                    let rowQty = 0;
+                    let rowAmount = 0;
+                    let rowDiscount = 0;
+                    let productsHtml = "";
 
-                    // qty total per row
-                    let rowQty = qtyArr.reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
-                    grandQty += rowQty;
-
-                    // calculate totals
-                    let rowTotal = s.per_total.split(',').reduce((a, b) => parseFloat(a) + parseFloat(b), 0);
-                    grandTotal += parseFloat(rowTotal);
-                    grandNet += parseFloat(s.total_net);
-
-                    // returns
-                    let returnHtml = "";
-                    let returnTotal = 0;
-                    if (s.returns && s.returns.length > 0) {
-                        s.returns.forEach(r => {
-                            returnHtml += `${r.product} (${r.qty}) - ${r.per_total}<br>`;
-                            returnTotal += parseFloat(r.per_total);
+                    // ============= SALE ITEMS BREAKDOWN =============
+                    if (sale.items && sale.items.length > 0) {
+                        sale.items.forEach((item, idx) => {
+                            productsHtml += `<strong>${item.product_name}</strong> (Code: ${item.product_code})<br>`;
+                            productsHtml += `&nbsp;&nbsp;Qty: ${item.qty.toFixed(2)} | Price: ${item.price.toFixed(2)} | Amount: ${item.amount.toFixed(2)}<br>`;
+                            if (item.discount_amount > 0) {
+                                productsHtml += `&nbsp;&nbsp;Discount: ${item.discount_amount.toFixed(2)}<br>`;
+                            }
                         });
-                    }
-                    grandReturn += returnTotal;
 
+                        rowQty = sale.total_qty;
+                        rowAmount = sale.total_items_amount;
+                        rowDiscount = sale.discount_amount;
+                    }
+
+                    // ============= SALES RETURNS BREAKDOWN =============
+                    let returnHtml = "";
+                    if (sale.returns && sale.returns.length > 0) {
+                        sale.returns.forEach(r => {
+                            returnHtml += `${r.product} (Qty: ${r.qty})<br>Amount: ${parseFloat(r.total_net).toFixed(2)}<br>`;
+                        });
+                        grandReturn += sale.total_returns_amount;
+                    } else {
+                        returnHtml = "-";
+                    }
+
+                    // ============= ADD ROW TO TABLE =============
                     html += `<tr>
-                    <td>${i+1}</td>
-                    <td>${s.created_at.split(" ")[0]}</td>
-                    <td>INVSLE-${s.id}</td>
-                    <td>${s.customer_name ?? '-'}</td>
-                    <td>${s.reference}</td>
-                    <td>${products}</td>
-                    <td>${qtyArr.join('<br>')}</td>
-                    <td>${price}</td>
-                    <td>${total}</td>
-                    <td>${parseFloat(s.total_net).toFixed(2)}</td>
-                    <td>${returnHtml || '-'}</td>
-                </tr>`;
+                        <td>${i+1}</td>
+                        <td>${new Date(sale.created_at).toLocaleDateString('en-GB')}</td>
+                        <td><strong>${sale.branch_name}</strong></td>
+                        <td><strong>${sale.invoice_no}</strong></td>
+                        <td>
+                            <strong>${sale.customer_name}</strong><br>
+                            <small>${sale.address ?? '-'}</small><br>
+                            <small>${sale.tel ?? '-'}</small>
+                        </td>
+                        <td>${productsHtml}</td>
+                        <td class="text-end">${rowQty.toFixed(2)}</td>
+                        <td class="text-end">-</td>
+                        <td class="text-end">${rowDiscount.toFixed(2)}</td>
+                        <td class="text-end">${rowAmount.toFixed(2)}</td>
+                        <td class="text-end"><strong>${sale.total_net.toFixed(2)}</strong></td>
+                        <td>
+                            <small>${returnHtml}</small>
+                        </td>
+                    </tr>`;
+
+                    // ============= ACCUMULATE TOTALS =============
+                    grandQty += rowQty;
+                    grandAmount += rowAmount;
+                    grandDiscount += rowDiscount;
+                    grandNet += parseFloat(sale.total_net);
                 });
 
-                // Grand total row
-                html += `<tr class="fw-bold">
-                <td colspan="6" class="text-end">Grand Total:</td>
-                <td>${grandQty.toFixed(2)}</td>
-                <td>-</td>
-                <td>${grandTotal.toFixed(2)}</td>
-                <td>${grandNet.toFixed(2)}</td>
-                <td>${grandReturn.toFixed(2)}</td>
-            </tr>`;
-
+                // ============= POPULATE TABLE & TOTALS =============
                 $('#saleBody').html(html);
+                $('#grandQty').text(grandQty.toFixed(2));
+                $('#grandDiscount').text(grandDiscount.toFixed(2));
+                $('#grandAmount').text(grandAmount.toFixed(2));
+                $('#grandNet').text(grandNet.toFixed(2));
+                $('#grandReturn').text(grandReturn.toFixed(2));
+            },
+            error: function(xhr, status, error) {
+                $("#loader").hide();
+                alert('Error loading report: ' + error);
             }
         });
     });
@@ -151,27 +207,46 @@
 
     // Ensure DOM is loaded
     $(document).ready(function() {
+        // ✅ ERP STANDARD: Auto-fetch report on page load with default date range
+        $('#btnSearch').trigger('click');
+        
         // CSV export
         $(document).on('click', '#btnExportCsv', function() {
-            alert('ok'); // test ho jana chahiye
-
             let csv = [];
-            $("#saleReport tr").each(function() {
-                let row = [];
-                $(this).find('th,td').each(function() {
-                    let cellHtml = $(this).html();
+            
+            // Add headers
+            let headers = [];
+            $("#saleReport thead th").each(function() {
+                headers.push('"' + $(this).text().trim() + '"');
+            });
+            csv.push(headers.join(","));
 
-                    // <br> ko "|" ya comma se replace kardo
+            // Add rows
+            $("#saleReport tbody tr").each(function() {
+                let row = [];
+                $(this).find('td').each(function() {
+                    let cellHtml = $(this).html();
                     let cellText = cellHtml
                         .replace(/<br\s*\/?>/gi, " | ")
+                        .replace(/<strong\s*\/?>/gi, "")
+                        .replace(/<\/strong>/gi, "")
+                        .replace(/<small\s*\/?>/gi, "")
+                        .replace(/<\/small>/gi, "")
                         .replace(/&nbsp;/gi, " ")
                         .replace(/<[^>]*>/g, "")
                         .trim();
-
                     row.push('"' + cellText.replace(/"/g, '""') + '"');
                 });
                 csv.push(row.join(","));
             });
+
+            // Add grand totals
+            let totalRow = [];
+            $("#saleReport tfoot tr td").each(function() {
+                let cellText = $(this).text().trim();
+                totalRow.push('"' + cellText.replace(/"/g, '""') + '"');
+            });
+            csv.push(totalRow.join(","));
 
             let csvString = csv.join("\n");
             let blob = new Blob([csvString], {
@@ -182,7 +257,7 @@
             if (link.download !== undefined) {
                 let url = URL.createObjectURL(blob);
                 link.setAttribute("href", url);
-                link.setAttribute("download", "sale_report.csv");
+                link.setAttribute("download", "sale_report_" + new Date().toISOString().split('T')[0] + ".csv");
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);

@@ -19,5 +19,10 @@ public function products() {
                 ->withPivot('stock');
 }
 
+public function branches()
+{
+    return $this->belongsToMany(Branch::class, 'branch_warehouse');
+}
+
 
 }

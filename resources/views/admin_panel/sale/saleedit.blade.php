@@ -470,6 +470,24 @@
                             <input type="text" class="form-control" name="manual_invoice" placeholder="Manual invoice" value="{{ $sale->manual_invoice }}">
                         </div>
 
+                        {{-- ✅ Type toggle (Credit/Cash/Walking) --}}
+                        <div class="mb-2">
+                            <label class="form-label fw-bold mb-1 d-block">Type</label>
+                            <div class="btn-group" role="group" id="partyTypeGroup">
+                                <input type="radio" class="btn-check" name="partyType" id="typeCustomers"
+                                    value="credit" {{ $partyType === 'credit' ? 'checked' : '' }}>
+                                <label class="btn btn-outline-primary btn-sm" for="typeCustomers">Credit</label>
+
+                                <input type="radio" class="btn-check" name="partyType" id="typeWalkin"
+                                    value="cash" {{ $partyType === 'cash' ? 'checked' : '' }}>
+                                <label class="btn btn-outline-primary btn-sm" for="typeWalkin">Cash</label>
+
+                                <input type="radio" class="btn-check" name="partyType" id="typewalking" 
+                                    value="walking" {{ $partyType === 'walking' ? 'checked' : '' }}>
+                                <label class="btn btn-outline-primary btn-sm" for="typewalking">Walking</label>
+                            </div>
+                        </div>
+
                         <!-- CUSTOMER SELECT -->
                         <div class="mb-2">
                             <label class="form-label fw-bold mb-1">Select Customer</label>
@@ -610,6 +628,10 @@
                                 <div class="col-7 text-danger">Previous Balance</div>
                                 <div class="col-5 text-end text-danger"><span id="tPrev">0.00</span></div>
                             </div>
+                            <div class="row py-1" id="receiptDeductRow" style="display:none;">
+                                <div class="col-7 text-success">Customer Receipt (Advance)</div>
+                                <div class="col-5 text-end text-success"><span id="tReceipt">0.00</span></div>
+                            </div>
                             <div class="row py-2">
                                 <div class="col-7 fw-bold text-primary">Payable / Total Balance</div>
                                 <div class="col-5 text-end fw-bold text-primary"><span id="tPayable">0.00</span></div>
@@ -633,6 +655,25 @@
                     <button type="button" class="btn btn-sm btn-dark" id="btnExit">Exit</button>
                 </div>
             </form>
+
+            {{-- ===== WAREHOUSE SELECTION MODAL ===== --}}
+            <div class="modal fade" id="warehouseModal" tabindex="-1" aria-labelledby="warehouseModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-light">
+                            <h5 class="modal-title" id="warehouseModalLabel">Select Warehouse</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="warehouseModalContent"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btnConfirmWarehouse">Confirm</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -640,6 +681,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -813,7 +855,16 @@
         }
 
         const tPrev = toNum($('#previousBalance').val());
-        const tPayable = tSub - tOrderDisc + tPrev;
+
+        // Calculate receipt voucher total (advance payment)
+        let tReceipt = 0;
+        $('#rvWrapper .rv-amount').each(function() {
+            let val = parseFloat($(this).val()) || 0;
+            if (val > 0) tReceipt += val;
+        });
+
+        // Payable = Sub-Total - Order Discount + Previous Balance - Customer Receipt
+        const tPayable = tSub - tOrderDisc + tPrev - tReceipt;
 
         $('#tQty').text(tQty.toFixed(0));
         $('#tGross').text(tGross.toFixed(2));
@@ -821,6 +872,16 @@
         $('#tSub').text(tSub.toFixed(2));
         $('#tOrderDisc').text(tOrderDisc.toFixed(2));
         $('#tPrev').text(tPrev.toFixed(2));
+
+        // Show/hide receipt deduction row
+        if (tReceipt > 0) {
+            $('#receiptDeductRow').show();
+            $('#tReceipt').text(tReceipt.toFixed(2));
+        } else {
+            $('#receiptDeductRow').hide();
+            $('#tReceipt').text('0.00');
+        }
+
         $('#tPayable').text(tPayable.toFixed(2));
         $('#totalAmount').text(tSub.toFixed(2));
 
@@ -830,6 +891,45 @@
         $('#discountAmount').val(tOrderDisc.toFixed(2));
         $('#totalBalance').val(tPayable.toFixed(2));
     }
+
+let originalData = [];
+let originalReceiptData = [];
+
+function storeOriginalData() {
+    originalData = [];
+    $('#salesTableBody tr').each(function(idx) {
+        const $row = $(this);
+        originalData.push({
+            product_id: $row.find('.product-id').val(),
+            product_name: $row.find('.product-search').val(),
+            qty: toNum($row.find('.sales-qty').val()),
+            retail_price: toNum($row.find('.retail-price').val()),
+            discount_percentage: toNum($row.find('[name="discount_percentage[]"]').val()),
+            discount_amount: toNum($row.find('[name="discount_amount[]"]').val()),
+            sales_amount: toNum($row.find('.sales-amount').val())
+        });
+    });
+}
+
+function storeOriginalReceiptData() {
+    originalReceiptData = [];
+    $('#rvWrapper .rv-row').each(function(idx) {
+        const $row = $(this);
+        const accountId = $row.find('.rv-account').val();
+        const amount = toNum($row.find('.rv-amount').val());
+        
+        if (accountId) {
+            originalReceiptData.push({
+                receipt_account_id: accountId,
+                receipt_amount: amount
+            });
+        }
+    });
+}
+
+
+
+
 
     $(document).ready(function () {
         function init() {
@@ -888,6 +988,7 @@
         // ✅ Receipt amount input - update total
         $(document).on('input', '.rv-amount', function () {
             recalcReceiptTotal();
+            updateGrandTotals(); // Update payable amount when receipt changes
         });
 
         // Delete row
@@ -923,7 +1024,9 @@
                     $('#creditLimit').val(d.credit_limit || '0');
                     $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
                     let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
-                    $('#previousBalance').val(previousBalance.toFixed(2));
+                    let subTotal = parseFloat($('#subTotal2').val()) || 0;
+                    let adjustedBalance = previousBalance - subTotal;
+                    $('#previousBalance').val(adjustedBalance.toFixed(2));
                     updateGrandTotals();
                 }
             );
@@ -950,6 +1053,284 @@
             location.reload();
         });
 
+        // ✅ TRACK ORIGINAL QUANTITIES FOR CHANGE DETECTION
+        let originalQtys = {};
+
+        function storeOriginalQuantities() {
+            originalQtys = {};
+            $('#salesTableBody tr').each(function(idx) {
+                const productId = $(this).find('.product-id').val();
+                const qty = toNum($(this).find('.sales-qty').val());
+                originalQtys[idx] = { productId, qty };
+            });
+        }
+
+        // Store on init
+        storeOriginalQuantities();
+
+        // ✅ WAREHOUSE SELECTION ON SAVE - SIMPLIFIED
+        $('#btnSave').on('click', function(e) {
+            e.preventDefault();
+
+            // Collect all products from the sales table
+            let products = [];
+            $('#salesTableBody tr').each(function(idx) {
+                const $row = $(this);
+                const productId = $row.find('.product-id').val();
+                const productName = $row.find('.product-search').val();
+                const qty = toNum($row.find('.sales-qty').val());
+
+                if (productId && qty > 0) {
+                    products.push({
+                        index: idx,
+                        productId: productId,
+                        productName: productName,
+                        qty: qty,
+                        $row: $row
+                    });
+                }
+            });
+
+            // Show warehouse selection modal for all products
+            if (products.length > 0) {
+                showWarehouseSelectionModal(products);
+            } else {
+                showAlert('warning', 'Please add at least one item to the sale');
+            }
+        });
+
+        // ✅ SHOW WAREHOUSE SELECTION MODAL
+        function showWarehouseSelectionModal(products) {
+            let html = `<div class="alert alert-info mb-3">
+                <strong>Select Warehouse for Each Item</strong><br>
+                Please select a warehouse for each product:
+            </div>`;
+
+            products.forEach((product, idx) => {
+                html += `
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <strong>${product.productName}</strong>
+                        <span class="badge bg-primary float-end">
+                            Qty: ${product.qty}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div id="warehouses-${idx}" class="warehouses-container">
+                            Loading warehouses...
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            $('#warehouseModalContent').html(html);
+
+            // Load warehouse options for each product
+            products.forEach((product, idx) => {
+                fetchWarehouseOptions(product.productId, idx);
+            });
+
+            // Store products for confirmation
+            window.selectedProducts = products;
+
+            // Store modal instance globally so we can close it later
+            const modalElement = document.getElementById('warehouseModal');
+            window.warehouseModal = new bootstrap.Modal(modalElement);
+            window.warehouseModal.show();
+        }
+
+        // ✅ FETCH WAREHOUSE OPTIONS FOR PRODUCT
+        function fetchWarehouseOptions(productId, productIdx) {
+            $.ajax({
+                url: '{{ route("products.warehouses") }}',
+                type: 'GET',
+                data: { product_id: productId },
+                success: function(data) {
+                    if (!data || !data.warehouses) {
+                        $('#warehouses-' + productIdx).html('<p class="text-danger">No warehouses found</p>');
+                        return;
+                    }
+
+                    let warehouseHtml = `
+                        <label class="form-label fw-bold">Select Warehouse</label>
+                        <select class="form-select warehouse-select-${productIdx}"
+                                id="warehouse-select-${productIdx}"
+                                data-product-idx="${productIdx}"
+                                style="max-width: 400px;">
+                            <option value="">-- Select Warehouse --</option>
+                    `;
+
+                    data.warehouses.forEach((wh, idx) => {
+                        const available = parseFloat(wh.quantity) || 0;
+                        warehouseHtml += `
+                            <option value="${wh.warehouse_id}" data-warehouse-name="${wh.warehouse_name}">
+                                ${wh.warehouse_name} (Available: ${available})
+                            </option>
+                        `;
+                    });
+
+                    warehouseHtml += `</select>`;
+
+                    $('#warehouses-' + productIdx).html(warehouseHtml);
+                },
+                error: function() {
+                    $('#warehouses-' + productIdx).html('<p class="text-danger">Error loading warehouses</p>');
+                }
+            });
+        }
+
+        // ✅ CALCULATE TOTAL SELECTED UNITS IN REAL-TIME
+        function calculateTotalSelected(changeIdx, neededQty) {
+            let total = 0;
+
+            // Sum all selected quantities
+            $(`.warehouse-pick-qty-${changeIdx}`).each(function() {
+                const qty = parseFloat($(this).val()) || 0;
+                total += qty;
+            });
+
+            // Update display
+            $(`#total-selected-${changeIdx}`).text(total);
+
+            // Validation message
+            const validationMsg = $(`#validation-msg-${changeIdx}`);
+            if (total < neededQty) {
+                validationMsg.html(`<span style="color: #dc3545;">⚠️ Need ${neededQty - total} more unit(s)</span>`);
+            } else if (total > neededQty) {
+                validationMsg.html(`<span style="color: #dc3545;">⚠️ You selected ${total - neededQty} extra unit(s)</span>`);
+            } else {
+                validationMsg.html(`<span style="color: #28a745;">✓ Perfect selection!</span>`);
+            }
+        }
+
+        // ✅ CONFIRM WAREHOUSE SELECTION - SIMPLIFIED
+        $(document).on('click', '#btnConfirmWarehouse', function(e) {
+            e.preventDefault();
+            console.log('Confirm warehouse button clicked');
+
+            // Validate that we have products selected
+            if (!window.selectedProducts || window.selectedProducts.length === 0) {
+                showAlert('error', 'No items to process');
+                return false;
+            }
+
+            // Collect warehouse selections for each product
+            const warehouseSelections = {};
+            let validationPassed = true;
+            let validationMessage = '';
+
+            window.selectedProducts.forEach((product, idx) => {
+                const warehouseId = $(`#warehouse-select-${idx}`).val();
+                const warehouseName = $(`#warehouse-select-${idx} option:selected`).data('warehouse-name');
+
+                console.log(`Product ${idx}: Warehouse ID = ${warehouseId}, Name = ${warehouseName}`);
+
+                if (!warehouseId) {
+                    validationPassed = false;
+                    validationMessage = `Please select a warehouse for "${product.productName}"`;
+                    return false;
+                }
+
+                warehouseSelections[product.productId] = {
+                    warehouse_id: warehouseId,
+                    warehouse_name: warehouseName
+                };
+
+                // Update the row's warehouse-id hidden input
+                product.$row.find('.warehouse-id').val(warehouseId);
+            });
+
+            // If validation failed, show error
+            if (!validationPassed) {
+                showAlert('error', validationMessage);
+                return false;
+            }
+
+            // ✅ COLLECT OLD & NEW DATA BEFORE SUBMIT
+            let newData = [];
+            $('#salesTableBody tr').each(function(idx) {
+                const $row = $(this);
+                newData.push({
+                    product_id: $row.find('.product-id').val(),
+                    product_name: $row.find('.product-search').val(),
+                    qty: toNum($row.find('.sales-qty').val()),
+                    retail_price: toNum($row.find('.retail-price').val()),
+                    discount_percentage: toNum($row.find('[name="discount_percentage[]"]').val()),
+                    discount_amount: toNum($row.find('[name="discount_amount[]"]').val()),
+                    sales_amount: toNum($row.find('.sales-amount').val())
+                });
+            });
+
+            // ✅ COLLECT OLD & NEW RECEIPT DATA
+            let newReceiptData = [];
+            $('#rvWrapper .rv-row').each(function(idx) {
+                const $row = $(this);
+                const accountId = $row.find('.rv-account').val();
+                const amount = toNum($row.find('.rv-amount').val());
+                
+                if (accountId) {
+                    newReceiptData.push({
+                        receipt_account_id: accountId,
+                        receipt_amount: amount
+                    });
+                }
+            });
+
+            console.log('=== DATA BEING SENT ===');
+            console.log('Warehouse Selections:', warehouseSelections);
+            console.log('Old Data:', originalData);
+            console.log('New Data:', newData);
+            console.log('Old Receipt Data:', originalReceiptData);
+            console.log('New Receipt Data:', newReceiptData);
+            console.log('=======================');
+
+            // Close modal using stored global instance
+            if (window.warehouseModal) {
+                window.warehouseModal.hide();
+            }
+
+            // ✅ ADD DATA TO HIDDEN INPUTS AND SUBMIT FORM VIA POST
+            let formElement = document.getElementById('saleForm');
+            
+            // Create hidden inputs for additional data
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'warehouse_selections',
+                value: JSON.stringify(warehouseSelections)
+            }).appendTo(formElement);
+            
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'old_data',
+                value: JSON.stringify(originalData)
+            }).appendTo(formElement);
+            
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'new_data',
+                value: JSON.stringify(newData)
+            }).appendTo(formElement);
+
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'old_receipt_data',
+                value: JSON.stringify(originalReceiptData)
+            }).appendTo(formElement);
+            
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'new_receipt_data',
+                value: JSON.stringify(newReceiptData)
+            }).appendTo(formElement);
+
+            // Submit form directly via POST
+            setTimeout(() => {
+                formElement.submit();
+            }, 300);
+
+            return false;
+        });
+
         // Delete button
         $('#btnDelete').on('click', function () {
             if (confirm('Are you sure you want to delete this sale?')) {
@@ -961,23 +1342,26 @@
         });
     });
 
-    function loadSaleItems() {
-        const saleItems = @json($saleItems);
-        saleItems.forEach(item => {
-            addNewRow();
-            const $row = $('#salesTableBody tr:last');
-            $row.find('.product-id').val(item.product_id);
-            $row.find('.product-search').val(item.item_name);
-            $row.find('.stock').val(item.onhand_qty || '0');
-            $row.find('.sales-qty').val(item.qty);
-            $row.find('.retail-price').val(item.price.toFixed(2));
-            $row.find('[name="discount_percentage[]"]').val(item.discount_percent || '0');
-            $row.find('[name="discount_amount[]"]').val(item.discount_amount || '0');
-            $row.find('.sales-amount').val(item.total.toFixed(2));
-            computeRow($row);
-        });
-        updateGrandTotals();
-    }
+  function loadSaleItems() {
+    const saleItems = @json($saleItems);
+    saleItems.forEach(item => {
+        addNewRow();
+        const $row = $('#salesTableBody tr:last');
+        $row.find('.product-id').val(item.product_id);
+        $row.find('.product-search').val(item.item_name);
+        $row.find('.stock').val(item.onhand_qty || '0');
+        $row.find('.sales-qty').val(item.qty);
+        $row.find('.retail-price').val(item.price.toFixed(2));
+        $row.find('[name="discount_percentage[]"]').val(item.discount_percent || '0');
+        $row.find('[name="discount_amount[]"]').val(item.discount_amount || '0');
+        $row.find('.sales-amount').val(item.total.toFixed(2));
+        computeRow($row);
+    });
+    updateGrandTotals();
+
+    // ✅ yahan storeOriginalData call karein
+    storeOriginalData();
+}
 
     function loadReceipts() {
         const receipts = @json($receipts ?? []);
@@ -985,10 +1369,10 @@
 
         // Clear existing rows except first one
         $('#rvWrapper .rv-row:not(:first)').remove();
-        
+
         // Keep track of which account+amount combinations we've added
         let rowIndex = 0;
-        
+
         receipts.forEach(rv => {
             // Get the account ID - it's stored as a number or JSON
             let accountId = rv.row_account_id;
@@ -1029,6 +1413,9 @@
         });
 
         recalcReceiptTotal();
+        
+        // ✅ Store original receipt data
+        storeOriginalReceiptData();
     }
 
     function recalcReceiptTotal() {
@@ -1038,6 +1425,7 @@
             if (val > 0) total += val;
         });
         $('#receiptsTotal').text(total.toFixed(2));
+        updateGrandTotals(); // Update payable amount when receipt total changes
     }
 
     function loadCustomerData() {
@@ -1053,7 +1441,9 @@
                 $('#remarks').val(d.remarks || '');
                 $('#creditLimit').val(d.credit_limit || '0');
                 let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
-                $('#previousBalance').val(previousBalance.toFixed(2));
+                let subTotal = parseFloat($('#subTotal2').val()) || 0;
+                let adjustedBalance = previousBalance - subTotal;
+                $('#previousBalance').val(adjustedBalance.toFixed(2));
             }
         );
 
@@ -1070,393 +1460,6 @@
         });
     }
 </script>
-                            id="extraDiscount" value="0"></td>
-                    <td><input type="text" name="total_net" class="form-control form-control-sm text-center"
-                            id="netAmount" readonly></td>
-                    <td><input type="number" name="cash" class="form-control form-control-sm text-center"
-                            id="cash" value="0"></td>
-                    <td><input type="number" name="card" class="form-control form-control-sm text-center"
-                            id="card" value="0"></td>
-                    <td><input type="text" name="change" class="form-control form-control-sm text-center"
-                            id="change" readonly></td>
-                </tr>
-            </table>
 
-            {{-- Buttons --}}
-            <div class="d-flex justify-content-between align-items-center mt-4">
-                <div>
-                    <strong>TOTAL PIECES : </strong> <span id="totalPieces">0</span>
-                </div>
-                <div>
-                    <button type="submit" class="btn btn-success">Save</button>
-                    <button type="button" class="btn btn-secondary">Close</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script>
-    $(document).ready(function() {
-        // Helper
-        function num(n) {
-            return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
-        }
-
-        function numberToWords(num) {
-            const a = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
-                "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen",
-                "Eighteen", "Nineteen"
-            ];
-            const b = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-            if ((num = num.toString()).length > 9) return "Overflow";
-            const n = ("000000000" + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{3})$/);
-            if (!n) return;
-            let str = "";
-            str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + " Crore " : "";
-            str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + " Lakh " : "";
-            str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + " Thousand " : "";
-            str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + " " : "";
-            return str.trim() + " Rupees Only";
-        }
-
-        function recalcRow($row) {
-            const qty = num($row.find('.quantity').val());
-            const price = num($row.find('.price').val());
-            const disc = num($row.find('.item_disc').val()); // per item discount (not total)
-
-            // total = (qty × price) – (qty × disc)
-            let total = (qty * price) - (qty * disc);
-            if (total < 0) total = 0;
-
-            $row.find('.row-total').val(total.toFixed(2));
-        }
-
-
-        function recalcSummary() {
-            let billAmount = 0; // sum of all row totals
-            let itemDiscount = 0; // total of (qty × disc) from all rows
-            let totalQty = 0;
-
-            $('#saleItems tr').each(function() {
-                const qty = num($(this).find('.quantity').val());
-                const price = num($(this).find('.price').val());
-                const disc = num($(this).find('.item_disc').val());
-
-                billAmount += (qty * price);
-                itemDiscount += (qty * disc);
-                totalQty += qty;
-            });
-
-            const extraDiscount = num($('#extraDiscount').val());
-            const cash = num($('#cash').val());
-            const card = num($('#card').val());
-
-            const net = billAmount - itemDiscount - extraDiscount;
-            const change = (cash + card) - net;
-
-            $('#billAmount').val(billAmount.toFixed(2));
-            $('#itemDiscount').val(itemDiscount.toFixed(2));
-            $('#netAmount').val(net.toFixed(2));
-            $('#change').val(change.toFixed(2));
-            $('#amountInWords').val(numberToWords(Math.round(net)));
-
-            $('#totalPieces').text(totalQty);
-        }
-
-
-        // Events
-        // Row inputs change → recalc
-        $(document).on('input', '#saleItems .quantity, #saleItems .price, #saleItems .item_disc', function() {
-            const $row = $(this).closest('tr');
-            recalcRow($row);
-            recalcSummary();
-        });
-        // Initialize
-        // Remove row
-        $(document).on('click', '#saleItems .remove-row', function() {
-            $(this).closest('tr').remove();
-            recalcSummary();
-        });
-
-        // Extra discount, cash, card change
-        $('#extraDiscount, #cash, #card').on('input', function() {
-            recalcSummary();
-        });
-
-        // Init on page load
-        $('#saleItems tr').each(function() {
-            recalcRow($(this));
-        });
-        recalcSummary();
-    });
-</script>
-<script>
-    $(document).ready(function() {
-        // Prevent Enter key from submitting form in product search
-        $(document).on('keydown', '.productSearch', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // stops form submission
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const cancelBtn = document.getElementById('cancelBtn');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', function() {
-                    Swal.fire({
-                        title: 'Are you sure?',
-                        text: 'This will cancel your changes!',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: 'Yes, go back!'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = '';
-                        }
-                    });
-                });
-            }
-        });
-
-        $(document).ready(function() {
-
-            // Helper
-            function num(n) {
-                return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
-            }
-
-            // Row calculation
-            function recalcRow($row) {
-                const qty = num($row.find('.quantity').val());
-                const price = num($row.find('.price').val());
-                const disc = num($row.find('.item_disc').val()); // per item discount
-
-                let total = (qty * price) - (qty * disc);
-                if (total < 0) total = 0;
-
-                $row.find('.row-total').val(total.toFixed(2));
-            }
-
-            function recalcSummary() {
-                let billAmount = 0;
-                let itemDiscount = 0;
-                let totalQty = 0;
-
-                $('#saleItems tr').each(function() {
-                    const qty = num($(this).find('.quantity').val());
-                    const price = num($(this).find('.price').val());
-                    const disc = num($(this).find('.item_disc').val());
-
-                    billAmount += qty * price;
-                    itemDiscount += qty * disc;
-                    totalQty += qty;
-                });
-
-                const extraDiscount = num($('#extraDiscount').val());
-                const cash = num($('#cash').val());
-                const card = num($('#card').val());
-
-                const net = billAmount - itemDiscount - extraDiscount;
-                const change = (cash + card) - net;
-
-                $('#billAmount').val(billAmount.toFixed(2));
-                $('#itemDiscount').val(itemDiscount.toFixed(2));
-                $('#netAmount').val(net.toFixed(2));
-                $('#change').val(change.toFixed(2));
-                $('#amountInWords').val(numberToWords(Math.round(net)));
-
-                $('#totalPieces').text(totalQty);
-            }
-
-            function numberToWords(num) {
-                if (num === 0) return "Zero Rupees Only";
-                return num + " Rupees Only"; // aap apna full converter rakh sakte ho
-            }
-
-
-            $('#overallDiscount, #extraCost, #paidAmount').on('input', function() {
-                recalcSummary();
-            });
-
-
-
-            function appendBlankRow() {
-                const newRow = `
-    <tr>
-        <td>
-            <input type="hidden" name="product_id[]" class="product_id">
-            <input type="text" class="form-control productSearch" placeholder="Enter product name..." autocomplete="off">
-            <ul class="searchResults list-group mt-1"></ul>
-        </td>
-        <td><input type="text" name="item_code[]" class="form-control item_code" readonly></td>
-        <td>
-            <select name="color[new][]" class="form-control select2-color" multiple></select>
-        </td>
-        <td><input type="text" name="brand[]" class="form-control brand" readonly></td>
-        <td><input type="text" name="unit[]" class="form-control unit" readonly></td>
-        <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1"></td>
-        <td><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value="0"></td>
-        <td><input type="number" name="qty[]" class="form-control quantity" value="1" min="1"></td>
-        <td><input type="text" name="total[]" class="form-control row-total" readonly></td>
-        <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
-    </tr>`;
-                $('#saleItems').append(newRow);
-            }
-
-            // Edit form me bhi ek default blank row ho
-            if ($("#saleItems tr").length > 0) {
-                appendBlankRow();
-            }
-
-
-            // ---------- Product Search (AJAX) ----------
-            $(document).on('keyup', '.productSearch', function(e) {
-                const $input = $(this);
-                const q = $input.val().trim();
-                const $row = $input.closest('tr');
-                const $box = $row.find('.searchResults');
-
-                // Keyboard navigation (Arrow Up/Down + Enter)
-                const isNavKey = ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key);
-                if (isNavKey && $box.children('.search-result-item').length) {
-                    const $items = $box.children('.search-result-item');
-                    let idx = $items.index($items.filter('.active'));
-                    if (e.key === 'ArrowDown') {
-                        idx = (idx + 1) % $items.length;
-                        $items.removeClass('active');
-                        $items.eq(idx).addClass('active');
-                        e.preventDefault();
-                        return;
-                    }
-                    if (e.key === 'ArrowUp') {
-                        idx = (idx <= 0 ? $items.length - 1 : idx - 1);
-                        $items.removeClass('active');
-                        $items.eq(idx).addClass('active');
-                        e.preventDefault();
-                        return;
-                    }
-                    if (e.key === 'Enter') {
-                        if (idx >= 0) {
-                            $items.eq(idx).trigger('click');
-                        } else if ($items.length === 1) {
-                            $items.eq(0).trigger('click');
-                        }
-                        e.preventDefault();
-                        return;
-                    }
-                }
-
-                // Normal fetch
-                if (q.length === 0) {
-                    $box.empty();
-                    return;
-                }
-
-                $.ajax({
-                    url: "{{ route('search-products') }}",
-                    type: 'GET',
-                    data: {
-                        q
-                    },
-                    success: function(data) {
-                        let html = '';
-                        (data || []).forEach(p => {
-                            const brand = (p.brand && p.brand.name) ? p.brand.name : '';
-                            const unit = (p.unit_id ?? '');
-                            const price = (p.wholesale_price ?? 0);
-                            const code = (p.item_code ?? '');
-                            const name = (p.item_name ?? '');
-                            const id = (p.id ?? '');
-                            html += `
-<li class="list-group-item search-result-item"
-    tabindex="0"
-    data-product-id="${id}"
-    data-product-name="${name}"
-    data-product-brand="${brand}"
-    data-product-unit="${unit}"
-    data-product-code="${code}"
-    data-price="${price}">
-    ${name} - ${code} - Rs. ${price}
-</li>`;
-                        });
-                        $box.html(html);
-
-                        // first item active for quick Enter
-                        $box.children('.search-result-item').first().addClass('active');
-                    },
-                    error: function() {
-                        $box.empty();
-                    }
-                });
-            });
-
-            // Click/Enter on suggestion
-            $(document).on('click', '.search-result-item', function() {
-                const $li = $(this);
-                const $row = $li.closest('tr');
-
-                $row.find('.productSearch').val($li.data('product-name'));
-                $row.find('.item_code').val($li.data('product-code'));
-                $row.find('.brand').val($li.data('product-brand'));
-                $row.find('.unit').val($li.data('product-unit'));
-                $row.find('.price').val($li.data('price'));
-                $row.find('.product_id').val($li.data('product-id'));
-
-                $row.find('.product_id').val($li.data('product-id'));
-
-                // reset qty & discount for fresh calc
-                $row.find('.quantity').val(1);
-                $row.find('.item_disc').val(0);
-
-                recalcRow($row);
-                recalcSummary();
-
-                // clear results
-                $row.find('.searchResults').empty();
-
-                // append new blank row and focus its search
-                appendBlankRow();
-                $('#saleItems tr:last .productSearch').focus();
-            });
-
-            // Also allow keyboard Enter selection when list focused
-            $(document).on('keydown', '.searchResults .search-result-item', function(e) {
-                if (e.key === 'Enter') {
-                    $(this).trigger('click');
-                }
-            });
-
-            // Row calculations
-            $('#purchaseItems').on('input', '.quantity, .price, .item_disc', function() {
-                const $row = $(this).closest('tr');
-                recalcRow($row);
-                recalcSummary();
-            });
-
-            // Remove row
-            $('#purchaseItems').on('click', '.remove-row', function() {
-                $(this).closest('tr').remove();
-                recalcSummary();
-            });
-
-            // Summary inputs
-            $('#overallDiscount, #extraCost').on('input', function() {
-                recalcSummary();
-            });
-
-            // init first row values
-            recalcRow($('#purchaseItems tr:first'));
-            recalcSummary();
-        });
-
-
-
-
-    });
-</script>
 
 @endsection

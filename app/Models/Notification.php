@@ -34,7 +34,7 @@ class Notification extends Model
     // Relationships
     public function booking()
     {
-        return $this->belongsTo(Productbooking::class, 'booking_id');
+        return $this->belongsTo(ProductBooking::class, 'booking_id');
     }
 
     public function sale()
@@ -55,6 +55,11 @@ class Notification extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class, 'warehouse_id');
+    }
+
+    public function warehouseOrder()
+    {
+        return $this->belongsTo(\App\Models\WarehouseOrder::class, 'warehouse_order_id');
     }
 
     public function createdBy()

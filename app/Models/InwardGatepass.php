@@ -11,7 +11,7 @@ class InwardGatepass extends Model
      protected $fillable = [
         'branch_id','warehouse_id','vendor_id',
         'purchase_id','gatepass_date','gatepass_no',
-        'remarks','status','created_by'
+        'remarks','status','created_by','note','transport_name','bilty_no'
     ];
     public function items()
     {
@@ -34,5 +34,13 @@ class InwardGatepass extends Model
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
+    }
+
+    /**
+     * Get vendor remaining items for this gatepass
+     */
+    public function vendorRemainings()
+    {
+        return $this->belongsToMany(VendorRemaining::class, 'inward_gatepass_remaining', 'inward_gatepass_id', 'vendor_remaining_id');
     }
 }

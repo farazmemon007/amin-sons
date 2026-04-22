@@ -1,10 +1,10 @@
-@php
+{{-- @php
 echo "<pre>";
     print_r($sale);
 echo "</pre>";
 dd();
 
-@endphp
+@endphp --}}
 @extends('admin_panel.layout.app')
 
 @section('content')

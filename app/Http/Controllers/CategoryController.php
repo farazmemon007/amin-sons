@@ -10,7 +10,40 @@ class CategoryController extends Controller
 
     public function index()
     {
+    $category = Category::get();
+      
+      return  view("admin_panel.category.index",compact('category'));
+    }
+    function catagorystore(Request $request)
+    {
+        // Validate input
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255'
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => $validator->errors()->first()
+            ], 422);
+        }
+
+        // Check if category already exists
+        $exists = Category::where('name', $request->name)->exists();
+        
+        if ($exists) {
+            return response()->json([
+                'error' => 'Category name already exists'
+            ], 409);
+        }
+
+        // Create new category
+        $category = new Category();
+        $category->name = $request->name;
+        $category->save();
+
+        return response()->json([
+            'success' => 'Category Inserted Successfully'
+        ]);
     }
 
     public function store(Request $request)
@@ -54,10 +87,19 @@ class CategoryController extends Controller
      * IF REQUEST FROM PRODUCT PAGE
      */
     $obj = Category::all();
-    if ($request->page === 'product_page') {
+       // RESPONSE FOR ALERT
+       if ($request->page === 'product_edit') {
+        return redirect()
+            ->route('products.edit', $request->product_id)
+            ->with('success', 'Category added successfully');
 
-       return redirect()->route('store')->with('success', 'Category saved successfully');
-    }
+    }else if($request->page === 'product_page'){
+
+    
+    return redirect()
+        ->route('store')
+        ->with('success', 'Category added successfully');
+}
 
     /**
      * NORMAL FLOW

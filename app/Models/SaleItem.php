@@ -12,8 +12,11 @@ class SaleItem extends Model
     protected $table = 'sale_items';
 
     protected $fillable = [
+        'invoice_no',
         'sale_id',
         'warehouse_id',
+        'branch_id',
+        'delivery_location_type',
         'product_id',
         'stock',
         'price_level',

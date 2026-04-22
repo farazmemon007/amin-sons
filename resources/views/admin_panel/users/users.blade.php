@@ -579,32 +579,34 @@
                         @forelse($users as $user)
                             <div class="user-card" data-user-id="{{ $user->id }}"
                                 data-name="{{ strtolower($user->name) }}" data-email="{{ strtolower($user->email) }}"
-                                data-roles="{{ json_encode($user->getRoleNames()) }}">
+                                data-roles="{{ json_encode($user->getRoleNames()) }}"
+                                data-branch="{{ $user->branch_id ?? 0 }}">
                                 <div class="user-card-header">
                                     <div class="d-flex align-items-center">
                                         <div class="user-avatar">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
                                         <div class="user-info">
                                             <h4 class="user-name">{{ $user->name }}</h4>
                                             <div class="user-email">{{ $user->email }}</div>
+                                            <div class="user-email">branch Id: {{ $user->branch_id }}</div>
                                             <div class="user-meta">ID: {{ $user->id }} • Joined
                                                 {{ $user->created_at?->diffForHumans() ?? 'N/A' }}</div>
                                         </div>
                                     </div>
                                     <div class="user-actions">
-                                        @can('users.edit')
+                                        {{-- @can('users.edit') --}}
                                             <button class="btn btn-roles edit-role-btn" title="Edit Roles">
                                                 <i class="fa fa-key"></i>
                                             </button>
                                             <button class="btn btn-edit edit-user-btn" title="Edit User">
                                                 <i class="fa fa-pen"></i>
                                             </button>
-                                        @endcan
-                                        @can('users.delete')
+                                        {{-- @endcan --}}
+                                        {{-- @can('users.delete') --}}
                                             <button class="btn btn-delete delete-user-btn" data-id="{{ $user->id }}"
                                                 title="Delete User">
                                                 <i class="fa fa-trash"></i>
                                             </button>
-                                        @endcan
+                                        {{-- @endcan --}}
                                     </div>
                                 </div>
                                 <div class="roles-section">
@@ -680,6 +682,30 @@
                                     </div>
                                 </div>
                             </div>
+                            @php
+                                // Ensure branches are available to the view; controller may pass $branches
+                                if (!isset($branches)) {
+                                    $branches = \App\Models\Branch::all();
+                                }
+                            @endphp
+
+                            @if(auth()->user()->hasRole('super admin'))
+                                <div class="col-md-6" >
+                                    <div class="form-group-modern">
+                                        <label class="form-label">
+                                            <i class="fa fa-sitemap"></i> Branch
+                                        </label>
+                                        <select name="branch_id" id="branchSelect" class="form-control" style="height:50px">
+                                            <option value="">Select Branch</option>
+                                            @foreach($branches as $branch)
+                                                <option value="{{ $branch->id }}">{{ $branch->branch_name ?? $branch->name ?? 'Branch '.$branch->id }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                            @else
+                                <input type="hidden" name="branch_id" id="branchHidden" value="{{ auth()->user()->branch_id ?? 0 }}">
+                            @endif
                             <div class="col-md-12">
                                 <div class="form-group-modern">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -760,12 +786,16 @@
 
     <script>
         const allRoles = @json($allRoles);
+        const currentUserIsSuperAdmin = @json(Auth::check() && Auth::user()->hasRole('super admin'));
 
         function buildRolesCheckboxes(container, assignedRoles) {
             var $container = $(container);
             $container.empty();
 
             (allRoles || []).forEach(function(r) {
+                // Prevent non-super-admins from seeing/assigning the 'super admin' role
+                if (!currentUserIsSuperAdmin && r.name === 'super admin') return;
+
                 var checked = (assignedRoles || []).includes(r.name);
                 var id = 'role_' + r.name.replace(/[^a-z0-9]/gi, '_');
                 var $item = $(`
@@ -803,6 +833,7 @@
                 var name = card.find('.user-name').text();
                 var email = card.find('.user-email').text();
                 var roles = card.data('roles') || [];
+                var branch = card.data('branch') || 0;
 
                 $('#userEditId').val(id);
                 $('#userName').val(name);
@@ -812,6 +843,13 @@
                 $('#userSaveText').text('Save Changes');
                 buildRolesCheckboxes('#rolesContainer', roles);
                 $('#selectAllRoles').prop('checked', false);
+                // populate branch select or hidden input
+                if ($('#branchSelect').length) {
+                    $('#branchSelect').val(branch);
+                }
+                if ($('#branchHidden').length) {
+                    $('#branchHidden').val(branch || $('#branchHidden').val());
+                }
                 $('#userModal').modal('show');
             });
 

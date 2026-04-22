@@ -7,13 +7,27 @@ use App\Models\Product;
 use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class ProductBookingController extends Controller
 {
     public function index()
     {
-        $bookings = ProductBooking::with('customer','items')->latest()->get();
-        // return response()->json(['bookings'=>$bookings]);
+        $query = ProductBooking::with('customer','items')->latest();
+
+        // For non-super-admin users, show bookings that belong to their branch.
+        // Include bookings where `customer` is null (walking customers) by checking booking.branch_id
+        if (!auth()->user() || !auth()->user()->hasRole('super admin')) {
+            $branchId = auth()->user()->branch_id ?? 0;
+            $query->where(function($q) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->orWhereHas('customer', function ($q2) use ($branchId) {
+                      $q2->where('branch_id', $branchId);
+                  });
+            });
+        }
+
+        $bookings = $query->get();
         return view('admin_panel.booking.index', compact('bookings'));
     }
     public function receipt($id)

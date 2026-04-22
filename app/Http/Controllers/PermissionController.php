@@ -14,9 +14,12 @@ class PermissionController extends Controller
 {
          public function index()
     {
-            $permissions = Permission::all();
+            
+    $modules = module::all();
+    $permissions = Permission::all();
+            // return response()->json(['permissions' => $permissions]);
 
-            return view('admin_panel.permissions.permission2', compact('permissions'));
+            return view('admin_panel.permissions.permission2', compact('permissions', 'modules'));
     }
 
     public function store(Request $request)
@@ -101,17 +104,17 @@ class PermissionController extends Controller
         }
 
         // Fallback: derive modules from permission names
-        if (empty($modules)) {
-            $permissions = Permission::all();
-            $modules = $permissions->map(function ($p) {
-                $parts = explode('.', $p->name);
-                if (count($parts) > 1) {
-                    array_pop($parts);
-                    return implode('.', $parts);
-                }
-                return 'general';
-            })->unique()->values()->sort()->all();
-        }
+        // if (empty($modules)) {
+        //     $permissions = Permission::all();
+        //     $modules = $permissions->map(function ($p) {
+        //         $parts = explode('.', $p->name);
+        //         if (count($parts) > 1) {
+        //             array_pop($parts);
+        //             return implode('.', $parts);
+        //         }
+        //         return 'general';
+        //     })->unique()->values()->sort()->all();
+        // }
 
         return response()->json($modules);
     }

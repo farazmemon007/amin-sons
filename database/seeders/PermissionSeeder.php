@@ -30,6 +30,12 @@ class PermissionSeeder extends Seeder
         $permissions = [
             // Dashboard
             'view dashboard',
+            // Management
+            'management.view',
+            //dc 
+            'generate Dc.view',
+            'find Dc.view',
+        
 
             // Product Management
             'product.view',
@@ -84,21 +90,51 @@ class PermissionSeeder extends Seeder
             'inward.gatepass.create',
             'inward.gatepass.edit',
             'inward.gatepass.delete',
+            
+            // Outward Gatepass
+            'outward.gatepass.view',
+            'outward.gatepass.create',
+            'outward.gatepass.edit',
+            'outward.gatepass.delete',
+            'outward.gatepass.print',
 
-            // Warehouse & Stock
+            // Warehouse & Stock & order
             'warehouse.view',
             'warehouse.create',
             'warehouse.edit',
             'warehouse.delete',
+            'warehouse.manage',
             'warehouse.stock.view',
             'warehouse.stock.create',
             'warehouse.stock.edit',
             'warehouse.stock.delete',
+            // Stock Transfer
             'stock.transfer.view',
             'stock.transfer.create',
             'stock.transfer.edit',
             'stock.transfer.delete',
             'stock.adjust',
+
+            // ✅ NEW: Inter-Branch Stock Request System
+            'stock.request.view',
+            'stock.request.create',
+            'stock.request.approve',
+            'stock.request.reject',
+
+            // ✅ NEW: Inter-Branch Vouchers (Payment/Receipt)
+            'inter.branch.voucher.view',
+            'inter.branch.voucher.create',
+            'inter.branch.voucher.delete',
+
+            // ✅ NEW: Branch Ledger (Financial Tracking)
+            'branch.ledger.view',
+            'branch.ledger.report',
+            'branch.account.view',
+
+            'warehouse.orders.view',
+            // Granular permissions for warehouse order admin UI
+            'warehouse.order.view',
+            'warehouse.order.edit',
 
             // Vendor
             'vendor.view',
@@ -133,6 +169,8 @@ class PermissionSeeder extends Seeder
             'customer.payments.create',
             'customer.payments.delete',
             'customer.toggle.status',
+            'customerremainingproducts.view',           // اپنی branch کا دیکھنا
+            'customerremainingproducts.view.all',       // تمام branches کا دیکھنا
 
             // Sales Officer
             'sales.officer.view',
@@ -152,6 +190,7 @@ class PermissionSeeder extends Seeder
             'booking.edit',
             'booking.delete',
             'booking.receipt',
+            'booking.invoice',
 
             // Vouchers
             'voucher.view',
@@ -184,11 +223,18 @@ class PermissionSeeder extends Seeder
 
             // Reporting
             'report.item.stock.view',
+            'report.item.stock.view.all.branches',      // ✅ Super admin: View all branches
+            'report.item.stock.view.own.branch',        // ✅ Branch admin: View only own branch
             'report.purchase.view',
             'report.sale.view',
+            // Branch-wise sale report permission (base)
+            'report.sale.branch.view',
+            // Branch-wise customer ledger view (base)
+            'report.customer.ledger.branch.view',
             'report.customer.ledger.view',
             'report.assembly.view',
             'report.inventory.onhand.view',
+            'report.stock.hold.view',
 
             // User Management
             'user.view',
@@ -255,9 +301,31 @@ class PermissionSeeder extends Seeder
             'view role',
             'view permissions',
             'view branch',
+            
         ];
 
         // Ensure unique values just in case
+        $permissions = array_values(array_unique($permissions));
+
+        // Add one permission per branch so users can be granted specific branch access
+        foreach (\App\Models\Branch::pluck('id') as $bid) {
+            $permissions[] = "branch.wise.product.view.$bid";
+            $permissions[] = "warehouse-stocks-product.view.$bid";
+            // allow granting report viewing per branch
+            $permissions[] = "report.sale.branch.view.$bid";
+            $permissions[] = "report.item.stock.view.$bid";        // ✅ NEW: Item stock report per branch
+            // per-branch permission to view customer ledger for a branch
+            $permissions[] = "report.customer.ledger.branch.view.$bid";
+            
+            // ✅ ERP STANDARD: Cross-branch purchase permissions per branch
+            // Allows managers to view/manage purchases from other branches
+            $permissions[] = "purchase.view.$bid";
+            $permissions[] = "purchase.create.$bid";
+            $permissions[] = "purchase.edit.$bid";
+            $permissions[] = "purchase.delete.$bid";
+        }
+
+        // dedupe again after appending
         $permissions = array_values(array_unique($permissions));
 
         foreach ($permissions as $permission) {

@@ -12,7 +12,7 @@ return new class extends Migration
      public function up(): void {
    Schema::create('warehouses', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('branch_id')->nullable();
+            // $table->foreignId('branch_id')->nullable();
             $table->string('warehouse_name')->nullable();
             $table->unsignedBigInteger('creater_id')->nullable();
             $table->string('location')->nullable()->nullable();

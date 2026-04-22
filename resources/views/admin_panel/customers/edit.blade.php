@@ -1,4 +1,4 @@
-@extends('admin_panel.layout.app')
+ @extends('admin_panel.layout.app')
 @section('content')
     <style>
         * {
@@ -252,33 +252,53 @@
                 <form action="{{ route('customers.update', $customer->id) }}" method="POST">
                     @csrf
 
+                    @php
+                        $branchesList = $branches ?? \App\Models\Branch::all();
+                    @endphp
+
                     <div class="row mb-3">
-                        <div class="col-md-2">
+                        <div class="col-md-1">
                             <label class="form-label">Customer ID:</label>
                             <input type="text" class="form-control" name="customer_id" readonly value="{{ $customer->customer_id }}">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <label class="form-label">Customer Name:</label>
                             <input type="text" class="form-control" name="customer_name" value="{{ $customer->customer_name }}" required>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-2">
                             <label class="form-label">کسٹمر کا نام:</label>
                             <input type="text" class="form-control text-end" name="customer_name_ur" dir="rtl" value="{{ $customer->customer_name_ur ?? '' }}">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label">Customer Type:</label>
-                            <select class="form-control" name="customer_type" required>
-                                <option value="Main Customer" {{ $customer->customer_type === 'Main Customer' ? 'selected' : '' }}>Main</option>
-                                <option value="Walking Customer" {{ $customer->customer_type === 'Walking Customer' ? 'selected' : '' }}>Walking</option>
+                            <select class="form-control" id="customerType" name="customer_type" required>
+                                <option value="credit" {{ $customer->customer_type === 'credit' ? 'selected' : '' }}>Credit</option>
+                                <option value="cash" {{ $customer->customer_type === 'cash' ? 'selected' : '' }}>Cash</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div class="row mb-3">
+                        @if(auth()->user() && auth()->user()->hasRole('super admin'))
+                            <div class="col-md-2">
+                                <label class="form-label">Branch:</label>
+                                <select class="form-control" name="branch_id" id="branch_id_select">
+                                    <option value="">Select Branch</option>
+                                    @foreach($branchesList as $b)
+                                        <option value="{{ $b->id }}" {{ old('branch_id', $customer->branch_id) == $b->id ? 'selected' : '' }}>{{ $b->name ?? $b->branch_name ?? 'Branch '. $b->id }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @else
+                            <input type="hidden" name="branch_id" value="{{ $customer->branch_id ?? auth()->user()->branch_id ?? 0 }}">
+                        @endif
+
                         <div class="col-md-3">
                             <label class="form-label">NTN / CNIC:</label>
                             <input type="text" class="form-control" name="cnic" value="{{ $customer->cnic ?? '' }}">
                         </div>
+                    </div>
+
+                     <div class="row mb-3"> 
+                        
                         <div class="col-md-3">
                             <label class="form-label">Mobile:</label>
                             <input type="text" class="form-control" name="mobile" value="{{ $customer->mobile ?? '' }}">
@@ -295,29 +315,43 @@
                                 <option value="exempt" {{ $customer->filer_type === 'exempt' ? 'selected' : '' }}>Exempt</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-3">
+                         <div class="col-md-3">
                             <label class="form-label">Opening Balance:</label>
-                            <input type="number" class="form-control" name="opening_balance" step="0.01" value="{{ $customer->opening_balance ?? 0 }}" required>
+                            <input type="number" class="form-control" id="opening_balance" name="opening_balance" step="0.01" value="{{ $customer->opening_balance ?? 0 }}" required>
                             <small class="form-text text-muted">Initial balance</small>
                         </div>
+                    </div>
+
+                    <div id="balanceFieldsContainer" class="row mb-3">
+                       
                         <div class="col-md-3">
                             <label class="form-label"><strong>Credit Limit:</strong></label>
-                            <input type="number" class="form-control" name="credit_limit" step="0.01" min="0" value="{{ $customer->credit_limit ?? 0 }}" required>
+                            <input type="number" class="form-control" id="credit_limit" name="credit_limit" step="0.01" min="0" value="{{ $customer->credit_limit ?? 0 }}" {{ $customer->no_credit_limit ? 'disabled' : 'required' }}>
                             <small class="form-text text-muted">Max credit</small>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">No Limit:</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="noLimit" name="no_credit_limit" value="1" {{ $customer->no_credit_limit ? 'checked' : '' }}>
+                                <label class="form-check-label" for="noLimit">
+                                    No Credit Limit
+                                </label>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Closing Balance:</label>
                             <input type="number" class="form-control" name="closing_balance" step="0.01" value="{{ $customer->closing_balance ?? 0 }}" readonly>
                             <small class="form-text text-muted">Auto-calculated</small>
                         </div>
+                        
                         <div class="col-md-3">
                             <label class="form-label">Address:</label>
                             <textarea rows="3" class="form-control" name="address_details">{{ $customer->address_details ?? '' }}</textarea>
                         </div>
-                    </div>
+                        </div>
+                    {{-- </div> --}}
+
+                    
 
                     <div class="mt-3">
                         <div class="button-group">
@@ -329,4 +363,44 @@
             </div>
         </div>
     </div>
+
+    <script>
+        $(document).ready(function() {
+            // 🔹 Initialize on page load
+            handleCustomerTypeChange($('#customerType').val());
+
+            // 🔹 Handle customer type change
+            $('#customerType').on('change', function() {
+                handleCustomerTypeChange($(this).val());
+            });
+
+            // 🔹 Handle no credit limit checkbox
+            $('#noLimit').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                $('#credit_limit').prop('disabled', isChecked);
+                if (isChecked) {
+                    $('#credit_limit').val('');
+                }
+            });
+        });
+
+        function handleCustomerTypeChange(type) {
+            if (type === 'cash') {
+                // CASH CUSTOMER: Hide balance fields (no ledger)
+                $('#balanceFieldsContainer').hide();
+                // Disable and clear balance fields so they don't get sent
+                $('#opening_balance').prop('disabled', true).val('0');
+                $('#credit_limit').prop('disabled', true).val('0');
+            } else if (type === 'credit') {
+                // CREDIT CUSTOMER: Show balance fields
+                $('#balanceFieldsContainer').show();
+                // Enable balance fields
+                $('#opening_balance').prop('disabled', false);
+                // credit_limit may be disabled if no_credit_limit is checked, so check that
+                if (!$('#noLimit').is(':checked')) {
+                    $('#credit_limit').prop('disabled', false);
+                }
+            }
+        }
+    </script>
 @endsection
