@@ -374,6 +374,19 @@
                             </div>
                         @endif
 
+                        <!-- ✅ Warehouse Selection (stored in purchase.warehouse_id header) -->
+                        <div class="col-md-6">
+                            <label>Warehouse <span class="text-danger">*</span></label>
+                            <select name="warehouse_id" id="warehouse_id" class="form-select" required>
+                                <option value="">Select Warehouse</option>
+                                @foreach($Warehouse as $wh)
+                                    <option value="{{ $wh->id }}">
+                                        {{ $wh->warehouse_name }} - {{ $wh->location ?? 'N/A' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="col-md-12">
                             <label>Job / Description</label>
                             <input type="text" name="note" class="form-control">

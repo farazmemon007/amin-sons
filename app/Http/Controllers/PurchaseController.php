@@ -1199,7 +1199,8 @@ class PurchaseController extends Controller
 
     public function Invoice($id)
     {
-        $purchase   = Purchase::with('items.product')->findOrFail($id);
+        // ✅ Load branch relationship to display login branch in invoice header
+        $purchase   = Purchase::with(['items.product', 'branch', 'vendor', 'warehouse'])->findOrFail($id);
         $Vendor     = Vendor::all();
         if (Auth::check() && Auth::user()->hasRole('super admin')) {
             $Warehouse = Warehouse::all();

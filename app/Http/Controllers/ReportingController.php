@@ -43,7 +43,7 @@ class ReportingController extends Controller
         return view('admin_panel.Reporting.onhand', compact('rows'));
     }
     public function customer_ledger_new(){
-        return view('admin_panel.Reporting.customer_ledger_new');
+        return view('admin_panel.Reporting.customer_leger_new');
     }
 
     public function item_stock_report()
