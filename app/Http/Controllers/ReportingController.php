@@ -43,7 +43,433 @@ class ReportingController extends Controller
         return view('admin_panel.Reporting.onhand', compact('rows'));
     }
     public function customer_ledger_new(){
-        return view('admin_panel.Reporting.customer_leger_new');
+        $user = Auth::user();
+
+        // Determine which branches user can view
+        if ($user->hasRole('super admin')) {
+            $branches = Branch::orderBy('name')->get();
+        } else {
+            $branches = Branch::where('id', $user->branch_id)->get();
+        }
+
+        // Get customers for non-admin users (super admin will load via AJAX)
+        $customers = [];
+        if (!$user->hasRole('super admin') && $user->branch_id) {
+            $customers = Customer::where('branch_id', $user->branch_id)
+                ->where('status', 'active')
+                ->select('id', 'customer_name', 'customer_type', 'credit_limit', 'address', 'mobile', 'email_address', 'opening_balance')
+                ->orderBy('customer_name')
+                ->get();
+        }
+
+        $startDate = date('Y-m-01');
+        $endDate   = date('Y-m-d');
+
+        return view('admin_panel.Reporting.customer_leger_new', compact('branches', 'customers', 'startDate', 'endDate'));
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+     *  FETCH CUSTOMER LEDGER (NEW – International ERP Standard)
+     *
+     *  Builds a chronological ledger by DIRECTLY joining:
+     *    1. Sales            → Debit  (SIN-xxxxx / invoice_no)
+     *    2. Sale Returns     → Credit (return_note)
+     *    3. Receipt Vouchers → Credit (BRV / cash payment)
+     *    4. Payment Vouchers → Credit (discount / expense against customer)
+     *  Each sale row shows ONE row per sale-item (Qty + Rate).
+     *  Gate Pass & DC numbers are looked up from outward_gatepasses.
+     *  Running balance is calculated in PHP to stay accurate.
+     * ═══════════════════════════════════════════════════════════════════════ */
+    public function fetch_customer_ledger_new(Request $request)
+    {
+        $user       = auth()->user();
+        $customerId = (int) $request->customer_id;
+        $start      = $request->start_date;          // Y-m-d
+        $end        = $request->end_date;             // Y-m-d
+
+        if (!$customerId || !$start || !$end) {
+            return response()->json(['error' => 'Missing required parameters'], 422);
+        }
+
+        // ── Authorization ──────────────────────────────────────────────────
+        $customer     = Customer::findOrFail($customerId);
+        $custBranchId = $customer->branch_id ?? null;
+        $allowed      = false;
+
+        if ($user && $user->hasRole('super admin')) {
+            $allowed = true;
+        } elseif ($user && ($user->branch_id ?? null) && $custBranchId && $user->branch_id == $custBranchId) {
+            $allowed = true;
+        } elseif ($user && $user->can('report.customer.ledger.branch.view')) {
+            $allowed = true;
+        }
+
+        if (!$allowed) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // ── Opening Balance (last ledger entry BEFORE start_date) ──────────
+        $prevLedger     = CustomerLedger::where('customer_id', $customerId)
+            ->where('created_at', '<', $start . ' 00:00:00')
+            ->latest('created_at')
+            ->first();
+        $openingBalance = $prevLedger
+            ? floatval($prevLedger->closing_balance)
+            : floatval($customer->opening_balance ?? 0);
+
+        // ── Gate Pass lookup map: invoice_no → {dc_no, gatepass_number} ───
+        $gpMap = [];
+        $gpRows = DB::table('outward_gatepasses')
+            ->whereNotNull('invoice_no')
+            ->select('invoice_no', 'dc_no', 'gatepass_number', 'created_at')
+            ->get();
+        foreach ($gpRows as $gp) {
+            // Store the LATEST gatepass per invoice (there can be multiple DCs)
+            $gpMap[$gp->invoice_no][] = [
+                'dc_no'            => $gp->dc_no ?? '-',
+                'gatepass_number'  => $gp->gatepass_number ?? '-',
+            ];
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 1 – SALES  (one entry per sale-item for Qty/Rate breakdown)
+        // ══════════════════════════════════════════════════════════════════
+        $salesRaw = DB::table('sales')
+            ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products',   'products.id',        '=', 'sale_items.product_id')
+            ->where('sales.customer_id', $customerId)
+            ->whereBetween(DB::raw('DATE(sales.created_at)'), [$start, $end])
+            ->select(
+                'sales.id          as sale_id',
+                'sales.invoice_no  as invoice_no',
+                'sales.manual_invoice as manual_invoice',
+                DB::raw('COALESCE(sales.manual_invoice, "-") as bill_no'),
+                'sales.total_net   as total_net',
+                'sales.created_at  as txn_date',
+                'products.item_name as item_name',
+                'sale_items.sales_qty  as qty',
+                'sale_items.sales_price as rate',
+                'sale_items.amount  as line_amount'
+            )
+            ->orderBy('sales.created_at', 'asc')
+            ->orderBy('sales.id', 'asc')
+            ->orderBy('sale_items.id', 'asc')
+            ->get();
+
+        // Group sale items under their parent sale
+        // For running balance: debit hits ONCE per sale (total_net), not per item
+        $salesGrouped = [];
+        foreach ($salesRaw as $row) {
+            $salesGrouped[$row->sale_id]['header'] = [
+                'invoice_no'     => $row->invoice_no,
+                'manual_invoice' => $row->manual_invoice ?? '-',
+                'total_net'      => floatval($row->total_net),
+                'txn_date'       => $row->txn_date,
+            ];
+            $salesGrouped[$row->sale_id]['items'][] = [
+                'item_name'   => $row->item_name,
+                'qty'         => floatval($row->qty ?? 0),
+                'rate'        => floatval($row->rate ?? 0),
+                'line_amount' => floatval($row->line_amount ?? 0),
+            ];
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 2 – SALE RETURNS  (Credit entries)
+        // ══════════════════════════════════════════════════════════════════
+        $returnsRaw = DB::table('sales_returns')
+            ->join('sales', 'sales.id', '=', 'sales_returns.sale_id')
+            ->where('sales.customer_id', $customerId)
+            ->whereBetween(DB::raw('DATE(sales_returns.created_at)'), [$start, $end])
+            ->select(
+                'sales_returns.id         as id',
+                'sales.invoice_no         as invoice_no',
+                'sales_returns.return_note as return_note',
+                'sales_returns.product    as item_name',
+                'sales_returns.qty        as qty',
+                'sales_returns.per_price  as rate',
+                'sales_returns.total_net  as credit_amount',
+                'sales_returns.created_at as txn_date'
+            )
+            ->orderBy('sales_returns.created_at', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 3 – RECEIPT VOUCHERS  (Cash + Bank payments from customer)
+        // ══════════════════════════════════════════════════════════════════
+        $receiptsRaw = DB::table('receipts_vouchers')
+            ->leftJoin('accounts',      'accounts.id',       '=', 'receipts_vouchers.row_account_id')
+            ->leftJoin('account_heads', 'account_heads.id',  '=', 'receipts_vouchers.row_account_head')
+            ->leftJoin('narrations',    'narrations.id',     '=', 'receipts_vouchers.narration_id')
+            ->where('receipts_vouchers.party_id', $customerId)
+            ->whereBetween(DB::raw('DATE(receipts_vouchers.receipt_date)'), [$start, $end])
+            ->select(
+                'receipts_vouchers.id           as id',
+                'receipts_vouchers.rvid         as rvid',
+                'receipts_vouchers.receipt_date as txn_date',
+                'receipts_vouchers.amount       as credit_amount',
+                'receipts_vouchers.reference_no as reference_no',
+                'receipts_vouchers.remarks      as remarks',
+                'narrations.narration           as narration_text',
+                'accounts.title                 as account_title',
+                'account_heads.name             as head_name'
+            )
+            ->orderBy('receipts_vouchers.receipt_date', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 4 – PAYMENT VOUCHERS  (Discounts / Expenses against customer)
+        // ══════════════════════════════════════════════════════════════════
+        $paymentVouchersRaw = DB::table('payment_vouchers')
+            ->leftJoin('narrations', 'narrations.id', '=', 'payment_vouchers.narration_id')
+            ->where('payment_vouchers.party_id', $customerId)
+            ->whereBetween(DB::raw('DATE(payment_vouchers.receipt_date)'), [$start, $end])
+            ->select(
+                'payment_vouchers.id           as id',
+                'payment_vouchers.pvid         as pvid',
+                'payment_vouchers.receipt_date as txn_date',
+                'payment_vouchers.amount       as credit_amount',
+                'payment_vouchers.reference_no as reference_no',
+                'payment_vouchers.remarks      as remarks',
+                'narrations.narration          as narration_text'
+            )
+            ->orderBy('payment_vouchers.receipt_date', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // BUILD UNIFIED EVENT LIST  (sorted by date → then type priority)
+        // ══════════════════════════════════════════════════════════════════
+        $events = [];
+
+        // Add Sales
+        foreach ($salesGrouped as $saleId => $saleData) {
+            $header  = $saleData['header'];
+            $items   = $saleData['items'];
+            $gp      = $gpMap[$header['invoice_no']] ?? [];
+            $dcNo    = !empty($gp) ? implode(' / ', array_unique(array_column($gp, 'dc_no'))) : '-';
+            $gpNo    = !empty($gp) ? implode(' / ', array_unique(array_column($gp, 'gatepass_number'))) : '-';
+
+            $events[] = [
+                'sort_date'   => $header['txn_date'],
+                'type'        => 'sale',
+                'priority'    => 1,
+                'data'        => [
+                    'invoice_no'  => $header['invoice_no'],
+                    'bill_no'     => $header['manual_invoice'] ?? '-',
+                    'dc_no'       => $dcNo,
+                    'gp_no'       => $gpNo,
+                    'txn_date'    => $header['txn_date'],
+                    'debit'       => $header['total_net'],
+                    'items'       => $items,
+                ],
+            ];
+        }
+
+        // Add Sale Returns
+        foreach ($returnsRaw as $ret) {
+            $events[] = [
+                'sort_date' => $ret->txn_date,
+                'type'      => 'return',
+                'priority'  => 2,
+                'data'      => [
+                    'invoice_no'  => $ret->invoice_no ?? '-',
+                    'return_note' => $ret->return_note ?? 'RETURN',
+                    'txn_date'    => $ret->txn_date,
+                    'credit'      => floatval($ret->credit_amount ?? 0),
+                    'item_name'   => $ret->item_name ?? '-',
+                    'qty'         => floatval($ret->qty ?? 0),
+                    'rate'        => floatval($ret->rate ?? 0),
+                ],
+            ];
+        }
+
+        // Add Receipt Vouchers
+        foreach ($receiptsRaw as $rec) {
+            $isBank = $rec->head_name && strtolower($rec->head_name) === 'bank';
+            $vno    = $rec->rvid ?? ('BRV-' . $rec->id);
+            // Description: narration or remarks or default
+            $desc   = $rec->narration_text
+                ?? ($rec->remarks ?: ($isBank ? 'ONLINE / BANK RECEIVED' : 'CASH RECEIVED'));
+            $events[] = [
+                'sort_date' => $rec->txn_date,
+                'type'      => 'receipt',
+                'priority'  => 3,
+                'data'      => [
+                    'vno'          => $vno,
+                    'reference_no' => $rec->reference_no ?? '-',
+                    'account'      => $rec->account_title ?? ($isBank ? 'Bank A/c' : 'Cash'),
+                    'description'  => strtoupper($desc),
+                    'txn_date'     => $rec->txn_date,
+                    'credit'       => floatval($rec->credit_amount ?? 0),
+                    'is_bank'      => $isBank,
+                ],
+            ];
+        }
+
+        // Add Payment Vouchers (discounts, tour expense, etc.)
+        foreach ($paymentVouchersRaw as $pv) {
+            $vno  = $pv->pvid ?? ('PV-' . $pv->id);
+            $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT VOUCHER');
+            $events[] = [
+                'sort_date' => $pv->txn_date,
+                'type'      => 'payment_voucher',
+                'priority'  => 4,
+                'data'      => [
+                    'vno'          => $vno,
+                    'reference_no' => $pv->reference_no ?? '-',
+                    'description'  => strtoupper($desc),
+                    'txn_date'     => $pv->txn_date,
+                    'credit'       => floatval($pv->credit_amount ?? 0),
+                ],
+            ];
+        }
+
+        // Sort all events chronologically
+        usort($events, function ($a, $b) {
+            $dateCompare = strcmp($a['sort_date'], $b['sort_date']);
+            return $dateCompare !== 0 ? $dateCompare : ($a['priority'] - $b['priority']);
+        });
+
+        // ══════════════════════════════════════════════════════════════════
+        // BUILD FINAL TRANSACTION ROWS WITH RUNNING BALANCE
+        // ══════════════════════════════════════════════════════════════════
+        $transactions   = [];
+        $runningBalance = $openingBalance;
+        $totalDebit     = 0;
+        $totalCredit    = 0;
+
+        foreach ($events as $event) {
+            $type = $event['type'];
+            $d    = $event['data'];
+
+            if ($type === 'sale') {
+                // ── SALE: one parent row (no qty/rate), then item sub-rows ──
+                $debit          = $d['debit'];
+                $runningBalance += $debit;
+                $totalDebit     += $debit;
+
+                // Parent summary row
+                $transactions[] = [
+                    'row_type'    => 'sale_header',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['invoice_no'],
+                    'bill'        => $d['bill_no'],
+                    'dc_no'       => $d['dc_no'],
+                    'gp_no'       => $d['gp_no'],
+                    'description' => 'SALE',
+                    'item_name'   => null,
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => $debit,
+                    'credit'      => 0,
+                    'balance'     => $runningBalance,
+                ];
+
+                // Item detail sub-rows (qty + rate, no balance change)
+                foreach ($d['items'] as $item) {
+                    $transactions[] = [
+                        'row_type'    => 'sale_item',
+                        'date'        => null,
+                        'vno'         => null,
+                        'bill'        => null,
+                        'dc_no'       => null,
+                        'gp_no'       => null,
+                        'description' => null,
+                        'item_name'   => $item['item_name'],
+                        'qty'         => $item['qty'],
+                        'rate'        => $item['rate'],
+                        'debit'       => null,
+                        'credit'      => null,
+                        'balance'     => null,
+                    ];
+                }
+
+            } elseif ($type === 'return') {
+                $credit          = $d['credit'];
+                $runningBalance -= $credit;
+                $totalCredit    += $credit;
+
+                $transactions[] = [
+                    'row_type'    => 'return',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['invoice_no'],
+                    'bill'        => $d['return_note'],
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => 'SALE RETURN',
+                    'item_name'   => $d['item_name'],
+                    'qty'         => $d['qty'] > 0 ? $d['qty'] : null,
+                    'rate'        => $d['rate'] > 0 ? $d['rate'] : null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'receipt') {
+                $credit          = $d['credit'];
+                $runningBalance -= $credit;
+                $totalCredit    += $credit;
+
+                $transactions[] = [
+                    'row_type'    => 'receipt',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['vno'],
+                    'bill'        => $d['reference_no'],
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => $d['account'],
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'payment_voucher') {
+                $credit          = $d['credit'];
+                $runningBalance -= $credit;
+                $totalCredit    += $credit;
+
+                $transactions[] = [
+                    'row_type'    => 'payment_voucher',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['vno'],
+                    'bill'        => $d['reference_no'],
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => null,
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+            }
+        }
+
+        return response()->json([
+            'customer' => [
+                'id'             => $customer->id,
+                'name'           => $customer->customer_name,
+                'type'           => $customer->customer_type,
+                'address'        => $customer->address ?? '-',
+                'mobile'         => $customer->mobile ?? '-',
+                'email'          => $customer->email_address ?? '-',
+                'credit_limit'   => floatval($customer->credit_limit ?? 0),
+                'opening_balance'=> $openingBalance,
+            ],
+            'period' => [
+                'start' => $start,
+                'end'   => $end,
+            ],
+            'opening_balance' => $openingBalance,
+            'total_debit'     => $totalDebit,
+            'total_credit'    => $totalCredit,
+            'closing_balance' => $runningBalance,
+            'transactions'    => $transactions,
+        ]);
     }
 
     public function item_stock_report()
@@ -726,6 +1152,192 @@ class ReportingController extends Controller
             ->get();
 
         return response()->json($customers);
+    }
+
+    /**
+     * ✅ ENHANCED CUSTOMER LEDGER WITH PRODUCT DETAILS
+     * Returns ledger with: Date, V NO, Bill, Description, Qty, Rate, Debit, Credit, Total
+     * This is for the customer_leger_new.blade.php view - International ERP Standard format
+     */
+    public function fetch_customer_ledger_detailed(Request $request)
+    {
+        $user = auth()->user();
+        $customerId = $request->customer_id;
+        $start = $request->start_date;
+        $end = $request->end_date . " 23:59:59";
+        $endDate = substr($end, 0, 10);
+
+        // ✅ Authorization
+        $customer = Customer::findOrFail($customerId);
+        $custBranchId = $customer->branch_id ?? null;
+        $allowed = false;
+
+        if ($user && $user->hasRole('super admin')) {
+            $allowed = true;
+        } else {
+            if ($user && ($user->branch_id ?? null) && $custBranchId && $user->branch_id == $custBranchId) {
+                $allowed = true;
+            }
+            if (! $allowed && $user && $user->can('report.customer.ledger.branch.view')) {
+                $allowed = true;
+            }
+            if (! $allowed && $user && $custBranchId && $user->can('report.customer.ledger.branch.view.' . $custBranchId)) {
+                $allowed = true;
+            }
+        }
+
+        if (! $allowed) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        // ✅ Get opening balance
+        $previousLedger = CustomerLedger::where('customer_id', $customerId)
+            ->where('created_at', '<', $start)
+            ->latest('created_at')
+            ->first();
+
+        $openingBalance = $previousLedger ? floatval($previousLedger->closing_balance) : floatval($customer->opening_balance ?? 0);
+
+        // ✅ Fetch all sales with their items (for Qty, Rate, Bill)
+        $sales = Sale::where('customer_id', $customerId)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start, $endDate])
+            ->with(['saleItems.product'])
+            ->select('id', 'invoice_no', 'bill_number', 'total_net', 'created_at')
+            ->get();
+
+        $salesMap = [];
+        foreach ($sales as $sale) {
+            $key = $sale->created_at->format('Y-m-d H:i:s');
+            $salesMap[$key] = [
+                'invoice_no' => $sale->invoice_no,
+                'bill_number' => $sale->bill_number ?? '-',
+                'total_net' => floatval($sale->total_net),
+                'items' => $sale->saleItems ? $sale->saleItems->map(function($item) {
+                    return [
+                        'product_name' => $item->product->item_name ?? '-',
+                        'quantity' => (float) ($item->sales_qty ?? 0),
+                        'rate' => (float) ($item->sales_price ?? 0),
+                    ];
+                })->toArray() : [],
+            ];
+        }
+
+        // ✅ Fetch receipts (payments) with account details
+        $paymentsMap = [];
+        $receipts = ReceiptsVoucher::where('party_id', $customerId)
+            ->whereBetween(DB::raw('DATE(receipt_date)'), [$start, $endDate])
+            ->orderBy('receipt_date', 'asc')
+            ->get();
+
+        foreach ($receipts as $receipt) {
+            $dateKey = $receipt->receipt_date instanceof \Carbon\Carbon 
+                ? $receipt->receipt_date->format('Y-m-d H:i:s')
+                : \Carbon\Carbon::parse($receipt->receipt_date)->format('Y-m-d H:i:s');
+
+            $paymentMode = "Cash";
+            $accountName = "-";
+
+            if ($receipt->row_account_id) {
+                $account = Account::find($receipt->row_account_id);
+                if ($account) {
+                    $accountHead = $account->head;
+                    if ($accountHead && strtolower($accountHead->name) === 'bank') {
+                        $paymentMode = "Bank";
+                        $accountName = $account->title ?? "Bank A/c";
+                    }
+                }
+            }
+
+            $paymentsMap[$dateKey] = [
+                'amount' => floatval($receipt->amount ?? 0),
+                'reference' => $receipt->reference_no ?? "-",
+                'voucher_no' => $receipt->receipt_no ?? "REC-" . $receipt->id,
+                'payment_mode' => $paymentMode,
+                'account_name' => $accountName,
+            ];
+        }
+
+        // ✅ Fetch ledger entries
+        $ledgerEntries = CustomerLedger::where('customer_id', $customerId)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start, $endDate])
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // ✅ Transform ledger entries with enhanced details
+        $transactions = $ledgerEntries->map(function ($entry) use ($salesMap, $paymentsMap) {
+            $difference = floatval($entry->closing_balance) - floatval($entry->previous_balance);
+            $debit = $difference > 0 ? $difference : 0;
+            $credit = $difference < 0 ? abs($difference) : 0;
+
+            $dateKey = $entry->created_at->format('Y-m-d H:i:s');
+            
+            $voucherNo = "-";
+            $billNumber = "-";
+            $description = "Ledger Entry";
+            $qty = null;
+            $rate = null;
+            $itemName = "-";
+
+            // Check if it matches a sale
+            if (isset($salesMap[$dateKey])) {
+                $saleData = $salesMap[$dateKey];
+                $voucherNo = $saleData['invoice_no'] ?? "-";
+                $billNumber = $saleData['bill_number'] ?? "-";
+                $description = "SALE";
+                
+                // Get first item's details (or combine if multiple items)
+                if (!empty($saleData['items'])) {
+                    $firstItem = $saleData['items'][0];
+                    $itemName = $firstItem['product_name'];
+                    $qty = $firstItem['quantity'];
+                    $rate = $firstItem['rate'];
+                }
+            }
+            // Check if it matches a payment
+            elseif (isset($paymentsMap[$dateKey])) {
+                $paymentData = $paymentsMap[$dateKey];
+                $voucherNo = $paymentData['voucher_no'];
+                $billNumber = $paymentData['reference'];
+                if ($paymentData['payment_mode'] === 'Bank') {
+                    $description = "PAYMENT - BANK (" . $paymentData['account_name'] . ")";
+                } else {
+                    $description = "PAYMENT - CASH";
+                }
+            }
+
+            return [
+                'date' => $entry->created_at->format('d-m-y'),
+                'vno' => $voucherNo,
+                'bill' => $billNumber,
+                'description' => $description,
+                'item_name' => $itemName,
+                'qty' => $qty,
+                'rate' => $rate,
+                'debit' => $debit,
+                'credit' => $credit,
+                'balance' => floatval($entry->closing_balance),
+            ];
+        });
+
+        // ✅ Return comprehensive response
+        return response()->json([
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->customer_name,
+                'type' => $customer->customer_type,
+                'address' => $customer->address ?? '-',
+                'mobile' => $customer->mobile ?? '-',
+                'email' => $customer->email_address ?? '-',
+                'credit_limit' => floatval($customer->credit_limit ?? 0),
+                'opening_balance' => $openingBalance,
+            ],
+            'period' => [
+                'start' => $start,
+                'end' => $endDate,
+            ],
+            'opening_balance' => $openingBalance,
+            'transactions' => $transactions->toArray(),
+        ]);
     }
 
     /**
