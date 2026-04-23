@@ -299,7 +299,7 @@
                                     @can('product.view')
                                     <li><a href="{{route('product')}}"><i class="fas fa-box"></i> All Products</a></li>
                                     {{-- ✅ Phase 2: Opening Stocks Link --}}
-                                    <li><a href="{{route('product.incomplete')}}"><i class="fas fa-hourglass-half" style="color: #ffc107;"></i> ⏳ Opening Stocks <span class="badge badge-warning badge-pill" id="incomplete-count" style="display: none;"></span></a></li>
+                                    <li><a href="{{route('opening.stocks.index')}}"><i class="fas fa-hourglass-half" style="color: #ffc107;"></i> ⏳ Opening Stocks <span class="badge badge-warning badge-pill" id="incomplete-count" style="display: none;"></span></a></li>
                                     @endcan
                                     @can('category.view')
                                     <li><a href="{{route('Category.home')}}"><i class="fas fa-list"></i> Categories</a></li>

@@ -30,6 +30,10 @@ dd();
                                 <div class="text-end">
                                     <h2 class="fw-bold text-uppercase text-primary mb-2">DELIVERY CHALLAN</h2>
                                     <p class="mb-1"><strong>DC #:</strong> DC-{{ $sale->id }}</p>
+                                    <p class="mb-1"><strong>Invoice #:</strong> {{ $sale->invoice_no ?? 'N/A' }}</p>
+                                    @if($sale->manual_invoice)
+                                    <p class="mb-1"><strong>Manual Invoice #:</strong> <span style="color:#e65100;font-weight:700;">{{ $sale->manual_invoice }}</span></p>
+                                    @endif
                                     <p class="mb-1"><strong>Reference:</strong> {{ $sale->reference ?? 'N/A' }}</p>
                                     <p class="mb-0"><strong>Date:</strong> {{ \Carbon\Carbon::parse($sale->created_at)->format('d M Y, h:i A') }}</p>
                                 </div>

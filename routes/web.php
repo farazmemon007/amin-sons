@@ -136,9 +136,18 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('/products/{id}/edit', [ProductController::class, 'edit'])->middleware('permission:product.edit')->name('products.edit');
     Route::get('/generate-barcode-image', [ProductController::class, 'generateBarcode'])->middleware('permission:product.barcode')->name('generate-barcode-image');
     
-    // ✅ Phase 2 Routes: Opening Stock Configuration
+    // ✅ Phase 2 Routes: Opening Stock Configuration (legacy)
     Route::get('/products/opening-stock/{product_id}', [ProductController::class, 'createOpeningStock'])->middleware('permission:product.edit')->name('product.opening-stock.create');
     Route::get('/products/incomplete', [ProductController::class, 'incompleteProducts'])->middleware('permission:product.view')->name('product.incomplete');
+
+    // ✅ NEW: Unified Opening Stock Manager (ERP Standard)
+    Route::get('/opening-stocks', [ProductController::class, 'openingStockManager'])->middleware('permission:product.edit')->name('opening.stocks.index');
+    Route::post('/opening-stocks/store', [ProductController::class, 'storeOpeningStocks'])->middleware('permission:product.edit')->name('opening.stocks.store');
+    Route::get('/opening-stocks/search-products', [ProductController::class, 'searchProductsForStock'])->middleware('permission:product.view')->name('opening.stocks.search');
+    Route::get('/opening-stocks/{id}/edit', [ProductController::class, 'editOpeningStock'])->middleware('permission:product.edit')->name('opening.stocks.edit');
+    Route::post('/opening-stocks/{id}/update', [ProductController::class, 'updateOpeningStock'])->middleware('permission:product.edit')->name('opening.stocks.update');
+    Route::get('/opening-stocks/warehouses-by-branch', [ProductController::class, 'getWarehousesForBranch'])->middleware('permission:product.view')->name('opening.stocks.warehouses');
+    Route::get('/opening-stocks/stock-breakdown', [ProductController::class, 'getProductStockBreakdown'])->middleware('permission:product.view')->name('opening.stocks.breakdown');
 
     // Route::get('/barcode/{id}', [ProductController::class, 'barcode'])->name('product.barcode');
     // Searches

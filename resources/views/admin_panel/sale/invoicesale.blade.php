@@ -179,6 +179,9 @@ echo"</pre>";
 
             <div class="invoice-meta">
                 <div><strong>Invoice #:</strong> {{ $sale->invoice_no }}</div>
+                @if($sale->manual_invoice)
+                <div><strong>Manual Invoice #:</strong> <span style="color:#e65100;font-weight:700;">{{ $sale->manual_invoice }}</span></div>
+                @endif
                 {{ $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y') }}  
                 <div><strong>Status:</strong> Posted Sale</div>
             </div>

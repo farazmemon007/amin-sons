@@ -144,11 +144,17 @@ class ReportingController extends Controller
                 'sales.invoice_no  as invoice_no',
                 'sales.manual_invoice as manual_invoice',
                 DB::raw('COALESCE(sales.manual_invoice, "-") as bill_no'),
-                'sales.total_net   as total_net',
+                DB::raw('COALESCE(sales.total_net, sales.sub_total1 - sales.discount_amount) as total_net'),
+                'sales.additional_discount as additional_discount',
+                'sales.extra_charges       as extra_charges',
                 'sales.created_at  as txn_date',
                 'products.item_name as item_name',
+                'products.price    as retail_price',
+                'products.wholesale_price as n_price',
+                'sale_items.product_id as product_id',
                 'sale_items.sales_qty  as qty',
-                'sale_items.sales_price as rate',
+                'sale_items.discount_amount as item_discount',
+                DB::raw('CASE WHEN sale_items.sales_price > 0 THEN sale_items.sales_price WHEN sale_items.sales_qty > 0 THEN ROUND((sale_items.amount + sale_items.discount_amount) / sale_items.sales_qty, 2) ELSE 0 END as rate'),
                 'sale_items.amount  as line_amount'
             )
             ->orderBy('sales.created_at', 'asc')
@@ -156,21 +162,49 @@ class ReportingController extends Controller
             ->orderBy('sale_items.id', 'asc')
             ->get();
 
+        // Build avg purchase price map per product (total_cost / total_qty)
+        $avgPriceMap = [];
+        $avgPriceRaw = DB::table('purchase_items')
+            ->select(
+                'product_id',
+                DB::raw('COALESCE(SUM(qty),0) as total_qty'),
+                DB::raw('COALESCE(SUM(line_total),0) as total_cost')
+            )
+            ->groupBy('product_id')
+            ->get();
+        foreach ($avgPriceRaw as $ap) {
+            $avgPriceMap[$ap->product_id] = $ap->total_qty > 0
+                ? floatval($ap->total_cost) / floatval($ap->total_qty)
+                : 0;
+        }
+
         // Group sale items under their parent sale
         // For running balance: debit hits ONCE per sale (total_net), not per item
         $salesGrouped = [];
         foreach ($salesRaw as $row) {
             $salesGrouped[$row->sale_id]['header'] = [
-                'invoice_no'     => $row->invoice_no,
-                'manual_invoice' => $row->manual_invoice ?? '-',
-                'total_net'      => floatval($row->total_net),
-                'txn_date'       => $row->txn_date,
+                'invoice_no'          => $row->invoice_no,
+                'manual_invoice'      => $row->manual_invoice ?? '-',
+                'total_net'           => floatval($row->total_net ?? 0),
+                'additional_discount' => floatval($row->additional_discount ?? 0),
+                'extra_charges'       => floatval($row->extra_charges ?? 0),
+                'txn_date'            => $row->txn_date,
             ];
+            $qty       = floatval($row->qty ?? 0);
+            $avgPrice  = $avgPriceMap[$row->product_id] ?? 0;
+            $nPrice    = floatval($row->n_price ?? 0);
             $salesGrouped[$row->sale_id]['items'][] = [
-                'item_name'   => $row->item_name,
-                'qty'         => floatval($row->qty ?? 0),
-                'rate'        => floatval($row->rate ?? 0),
-                'line_amount' => floatval($row->line_amount ?? 0),
+                'item_name'    => $row->item_name,
+                'qty'          => $qty,
+                'rate'         => floatval($row->rate ?? 0),
+                'item_discount'=> floatval($row->item_discount ?? 0),
+                'line_amount'  => floatval($row->line_amount ?? 0),
+                'retail_price' => floatval($row->retail_price ?? 0),
+                'policy_price' => floatval($row->rate ?? 0),
+                'avg_price'    => $avgPrice,
+                'avg_s_value'  => $avgPrice * $qty,
+                'n_price'      => $nPrice,
+                'stock_value'  => floatval($row->retail_price ?? 0) * $qty,
             ];
         }
 
@@ -249,6 +283,7 @@ class ReportingController extends Controller
             $dcNo    = !empty($gp) ? implode(' / ', array_unique(array_column($gp, 'dc_no'))) : '-';
             $gpNo    = !empty($gp) ? implode(' / ', array_unique(array_column($gp, 'gatepass_number'))) : '-';
 
+
             $events[] = [
                 'sort_date'   => $header['txn_date'],
                 'type'        => 'sale',
@@ -260,6 +295,8 @@ class ReportingController extends Controller
                     'gp_no'       => $gpNo,
                     'txn_date'    => $header['txn_date'],
                     'debit'       => $header['total_net'],
+                    'add_disc'    => $header['additional_discount'] ?? 0,
+                    'extra_chg'   => $header['extra_charges'] ?? 0,
                     'items'       => $items,
                 ],
             ];
@@ -365,24 +402,45 @@ class ReportingController extends Controller
                     'balance'     => $runningBalance,
                 ];
 
-                // Item detail sub-rows (qty + rate, no balance change)
+                // Item detail sub-rows (qty + rate + stock pricing, no balance change)
+                $invoiceTotalQty = 0;
+                $invoiceTotalStk = 0;
                 foreach ($d['items'] as $item) {
+                    $invoiceTotalQty += $item['qty'];
+                    $invoiceTotalStk += $item['stock_value'] ?? 0;
                     $transactions[] = [
-                        'row_type'    => 'sale_item',
-                        'date'        => null,
-                        'vno'         => null,
-                        'bill'        => null,
-                        'dc_no'       => null,
-                        'gp_no'       => null,
-                        'description' => null,
-                        'item_name'   => $item['item_name'],
-                        'qty'         => $item['qty'],
-                        'rate'        => $item['rate'],
-                        'debit'       => null,
-                        'credit'      => null,
-                        'balance'     => null,
+                        'row_type'     => 'sale_item',
+                        'date'         => null,
+                        'vno'          => null,
+                        'bill'         => null,
+                        'dc_no'        => null,
+                        'gp_no'        => null,
+                        'description'  => null,
+                        'item_name'    => $item['item_name'],
+                        'qty'          => $item['qty'],
+                        'rate'         => $item['rate'],
+                        'item_discount'=> $item['item_discount'] ?? 0,
+                        'line_amount'  => $item['line_amount']   ?? 0,
+                        'policy_price' => $item['policy_price'] ?? 0,
+                        'avg_price'    => $item['avg_price']    ?? 0,
+                        'avg_s_value'  => $item['avg_s_value']  ?? 0,
+                        'n_price'      => $item['n_price']      ?? 0,
+                        'stock_value'  => $item['stock_value']  ?? 0,
+                        'debit'        => null,
+                        'credit'       => null,
+                        'balance'      => null,
                     ];
                 }
+
+                // Total Qty + Stock Value + Additional Discount + Extra Charges
+                $transactions[] = [
+                    'row_type'  => 'sale_total',
+                    'total_qty' => $invoiceTotalQty,
+                    'total_stk' => $invoiceTotalStk,
+                    'add_disc'  => $d['add_disc'] ?? 0,
+                    'extra_chg' => $d['extra_chg'] ?? 0,
+                    'total_net' => $d['debit'],
+                ];
 
             } elseif ($type === 'return') {
                 $credit          = $d['credit'];
@@ -438,6 +496,28 @@ class ReportingController extends Controller
                     'bill'        => $d['reference_no'],
                     'dc_no'       => '-',
                     'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => null,
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'discount') {
+                // ERP Standard: Invoice-level discount credited to customer
+                $credit          = $d['credit'];
+                $runningBalance -= $credit;
+                $totalCredit    += $credit;
+
+                $transactions[] = [
+                    'row_type'    => 'discount',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['invoice_no'],
+                    'bill'        => null,
+                    'dc_no'       => null,
+                    'gp_no'       => null,
                     'description' => $d['description'],
                     'item_name'   => null,
                     'qty'         => null,

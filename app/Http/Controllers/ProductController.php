@@ -1160,4 +1160,365 @@ public function searchProductsForSalebypagination(Request $request)
         return response()->json(['exists' => $exists]);
     }
 
+    // ==========================================
+    // ✅ NEW UNIFIED OPENING STOCK MANAGER
+    // ==========================================
+
+    /**
+     * Show unified Opening Stock Manager page
+     * Super admin: sees branch selector + all products
+     * Regular user: auto-branch, no selector
+     */
+    public function openingStockManager()
+    {
+        $user         = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+        $branches     = $isSuperAdmin ? Branch::orderBy('name')->get() : collect();
+        $userBranchId = $user->branch_id;
+
+        // Fetch ALL warehouses directly from DB (bypass Branch relationship)
+        $warehouses = DB::table('warehouses')->orderBy('warehouse_name')->get();
+
+        return view('admin_panel.product.opening-stocks-manager', compact(
+            'isSuperAdmin', 'branches', 'userBranchId', 'warehouses'
+        ));
+    }
+
+    /**
+     * AJAX: Search products for opening stock manager
+     * Returns products filtered by branch_id
+     */
+    public function searchProductsForStock(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+
+        // Products are GLOBAL — any branch can add opening stock for any product
+        // Branch is only used to store the STOCK, not to filter products
+        $query = Product::with(['unit'])
+            ->when($q !== '', function ($q2) use ($q) {
+                $q2->where(function ($q3) use ($q) {
+                    $q3->where('item_name', 'like', "%{$q}%")
+                       ->orWhere('item_code', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('item_name')
+            ->limit(50)
+            ->get(['id', 'item_name', 'item_code', 'unit_id', 'branch_id',
+                   'wholesale_price', 'price', 'alert_quantity', 'initial_stock']);
+
+        $branchId = (int) $request->get('branch_id', Auth::user()->branch_id ?? 0);
+
+        return response()->json($query->map(fn($p) => [
+            'id'              => $p->id,
+            'text'            => $p->item_code . ' — ' . $p->item_name,
+            'item_name'       => $p->item_name,
+            'item_code'       => $p->item_code,
+            'unit'            => optional($p->unit)->name ?? 'PCS',
+            'wholesale_price' => $p->wholesale_price ?? 0,
+            'retail_price'    => $p->price ?? 0,
+            'alert_quantity'  => $p->alert_quantity ?? 0,
+            'current_stock'   => $branchId
+                ? (Stock::where('product_id', $p->id)->where('branch_id', $branchId)->value('qty') ?? 0)
+                : (Stock::where('product_id', $p->id)->where('branch_id', $p->branch_id)->value('qty') ?? 0),
+        ])->values());
+    }
+
+    /**
+     * AJAX: Get warehouses for a branch (called when super admin changes branch)
+     */
+    public function getWarehousesForBranch(Request $request)
+    {
+        // Return ALL warehouses (global) — not branch-specific
+        $warehouses = DB::table('warehouses')
+            ->orderBy('warehouse_name')
+            ->get(['id', 'warehouse_name']);
+
+        return response()->json($warehouses->map(fn($w) => [
+            'id'            => $w->id,
+            'warehouse_name'=> $w->warehouse_name,
+            'name'          => $w->warehouse_name,
+        ]));
+    }
+
+    /**
+     * AJAX: Get stock breakdown for a product in a branch
+     * Returns branch total + per-warehouse rows
+     */
+    public function getProductStockBreakdown(Request $request)
+    {
+        $productId = (int) $request->get('product_id');
+        $branchId  = (int) $request->get('branch_id');
+
+        if (!$productId || !$branchId) {
+            return response()->json(['total' => 0, 'locations' => []]);
+        }
+
+        // Branch total from stocks table
+        $total = DB::table('stocks')
+            ->where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->value('qty') ?? 0;
+
+        // Per-location breakdown from warehouse_stocks (qty > 0)
+        $rows = DB::table('warehouse_stocks as ws')
+            ->leftJoin('warehouses as w', 'ws.warehouse_id', '=', 'w.id')
+            ->where('ws.product_id', $productId)
+            ->where('ws.branch_id', $branchId)
+            ->where('ws.quantity', '>', 0)
+            ->select('ws.warehouse_id', 'ws.quantity', 'w.warehouse_name')
+            ->get();
+
+        $locations = $rows->map(fn($r) => [
+            'label' => is_null($r->warehouse_id) ? '🏪 Branch / Shop' : ('📦 ' . ($r->warehouse_name ?? 'Warehouse')),
+            'qty'   => (float) $r->quantity,
+        ]);
+
+        return response()->json([
+            'total'     => (float) $total,
+            'locations' => $locations,
+        ]);
+    }
+
+    /**
+     * Store batch opening stocks
+     * rows[] = [{product_id, opening_qty, alert_qty, wholesale_price, retail_price, allocation_data}]
+     * Logic: ADDITIVE — adds on top of existing stock
+     */
+    public function storeOpeningStocks(Request $request)
+    {
+        $user         = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+        $branchId     = $isSuperAdmin
+            ? (int) $request->input('branch_id', $user->branch_id)
+            : (int) $user->branch_id;
+
+        // Guard: branch_id must be valid
+        if (!$branchId) {
+            return response()->json(['error' => 'Branch not selected. Please select a branch first.'], 422);
+        }
+
+        // Verify branch exists in DB
+        $branchExists = DB::table('branches')->where('id', $branchId)->exists();
+        if (!$branchExists) {
+            return response()->json(['error' => "Branch ID {$branchId} does not exist."], 422);
+        }
+
+        $rows = $request->input('rows', []);
+        if (empty($rows)) {
+            return response()->json(['error' => 'No rows submitted.'], 422);
+        }
+
+        try {
+            DB::transaction(function () use ($rows, $branchId) {
+                foreach ($rows as $row) {
+                    $productId  = (int) ($row['product_id'] ?? 0);
+                    $opening    = (float) ($row['opening_qty'] ?? 0);
+                    $alertQty   = (float) ($row['alert_qty'] ?? 0);
+                    $wholesale  = (float) ($row['wholesale_price'] ?? 0);
+                    $retail     = (float) ($row['retail_price'] ?? 0);
+                    $allocData  = json_decode($row['allocation_data'] ?? '[]', true) ?? [];
+
+                    if (!$productId || $opening <= 0) continue;
+
+                    $product = Product::find($productId);
+                    if (!$product) continue;
+
+                    // Update prices & alert
+                    $product->update([
+                        'wholesale_price'   => $wholesale,
+                        'price'             => $retail,
+                        'alert_quantity'    => $alertQty,
+                        'initial_stock'     => ($product->initial_stock ?? 0) + $opening,
+                        'completion_status' => 'complete',
+                    ]);
+
+                    // Stock movement
+                    DB::table('stock_movements')->insert([
+                        'product_id'  => $productId,
+                        'branch_id'   => $branchId,
+                        'type'        => 'in',
+                        'qty'         => $opening,
+                        'ref_type'    => 'OPENING',
+                        'ref_id'      => null,
+                        'note'        => 'Opening stock entry',
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ]);
+
+                    // Upsert stocks table
+                    $this->upsertStocks(
+                        productId: $productId,
+                        qtyDelta:  $opening,
+                        branchId:  $branchId,
+                    );
+
+                    // Upsert warehouse_stocks
+                    $this->applyWarehouseAllocation($productId, $branchId, $retail, $allocData, $opening);
+                }
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Save failed: ' . $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Opening stocks saved successfully!',
+        ]);
+    }
+
+    /**
+     * Show edit form for a single product's opening stock
+     */
+    public function editOpeningStock($id)
+    {
+        $product      = Product::with(['unit', 'category_relation', 'branch'])->findOrFail($id);
+        $user         = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+        $branches     = $isSuperAdmin ? Branch::orderBy('name')->get() : collect();
+
+        // Fetch ALL warehouses directly from DB — most reliable approach
+        $warehouses = DB::table('warehouses')->orderBy('warehouse_name')->get();
+
+        // Current warehouse allocations for this product + branch
+        $currentAllocs = DB::table('warehouse_stocks')
+            ->where('product_id', $id)
+            ->where('branch_id', $product->branch_id)
+            ->get();
+
+        // Use warehouse_stocks SUM as the source of truth for current stock
+        // (stocks table may be inflated by additive opening stock entries)
+        $currentStock = DB::table('warehouse_stocks')
+            ->where('product_id', $id)
+            ->where('branch_id', $product->branch_id)
+            ->sum('quantity') ?? 0;
+
+        // Fallback to stocks table if warehouse_stocks has no records
+        if ($currentStock == 0) {
+            $currentStock = DB::table('stocks')
+                ->where('product_id', $id)
+                ->where('branch_id', $product->branch_id)
+                ->value('qty') ?? 0;
+        }
+
+        return view('admin_panel.product.opening-stock-edit', compact(
+            'product', 'isSuperAdmin', 'branches', 'warehouses',
+            'currentAllocs', 'currentStock'
+        ));
+    }
+
+    /**
+     * Update a single product's opening stock
+     * - Updates prices
+     * - Adds delta stock movement
+     * - Replaces warehouse allocations
+     */
+    public function updateOpeningStock(Request $request, $id)
+    {
+        $product      = Product::findOrFail($id);
+        $user         = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+
+        $branchId = $isSuperAdmin
+            ? (int) $request->input('branch_id', $product->branch_id)
+            : (int) $user->branch_id;
+
+        if (!$isSuperAdmin && $user->branch_id !== $product->branch_id) {
+            abort(403, 'You can only edit products from your own branch.');
+        }
+
+        $newQty    = (float) $request->input('opening_qty', 0);
+        $alertQty  = (float) $request->input('alert_qty', 0);
+        $wholesale = (float) $request->input('wholesale_price', 0);
+        $retail    = (float) $request->input('retail_price', 0);
+        $allocData = json_decode($request->input('allocation_data', '[]'), true) ?? [];
+
+        // Current stock qty
+        $currentQty = Stock::where('product_id', $id)
+            ->where('branch_id', $branchId)
+            ->value('qty') ?? 0;
+
+        $delta = $newQty - $currentQty; // can be negative (reduction)
+
+        DB::transaction(function () use ($product, $id, $branchId, $delta, $newQty, $alertQty, $wholesale, $retail, $allocData) {
+            // Update product
+            $product->update([
+                'wholesale_price'   => $wholesale,
+                'price'             => $retail,
+                'alert_quantity'    => $alertQty,
+                'initial_stock'     => $newQty,
+                'completion_status' => 'complete',
+            ]);
+
+            // Stock movement for delta
+            if ($delta != 0) {
+                StockMovement::create([
+                    'product_id' => $id,
+                    'branch_id'  => $branchId,
+                    'type'       => $delta > 0 ? 'in' : 'out',
+                    'qty'        => abs($delta),
+                    'ref_type'   => 'OPENING_ADJ',
+                    'ref_id'     => null,
+                    'note'       => 'Opening stock adjustment (edit)',
+                ]);
+
+                // Update stocks table
+                $this->upsertStocks(
+                    productId: $id,
+                    qtyDelta:  $delta,
+                    branchId:  $branchId,
+                );
+            }
+
+            // Replace warehouse allocations
+            WarehouseStock::where('product_id', $id)
+                          ->where('branch_id', $branchId)
+                          ->delete();
+
+            $this->applyWarehouseAllocation($id, $branchId, $retail, $allocData, $newQty);
+        });
+
+        return redirect()->route('opening.stocks.index')
+                         ->with('success', 'Opening stock updated successfully!');
+    }
+
+    /**
+     * Helper: Apply warehouse allocation data
+     */
+    private function applyWarehouseAllocation(int $productId, int $branchId, float $price, array $allocData, float $totalQty): void
+    {
+        $now = now();
+
+        // If NO allocations provided → put everything in branch-level (warehouse_id = NULL)
+        if (empty($allocData)) {
+            DB::table('warehouse_stocks')->updateOrInsert(
+                ['branch_id' => $branchId, 'warehouse_id' => null, 'product_id' => $productId],
+                ['quantity' => $totalQty, 'price' => $price, 'updated_at' => $now, 'created_at' => $now]
+            );
+            return;
+        }
+
+        // Process EACH allocation row the user specified
+        foreach ($allocData as $alloc) {
+            $qty          = (float) ($alloc['quantity'] ?? 0);
+            $locationType = $alloc['location_type'] ?? 'shop';
+
+            if ($locationType === 'shop') {
+                // Branch / Shop level → warehouse_id = NULL
+                DB::table('warehouse_stocks')->updateOrInsert(
+                    ['branch_id' => $branchId, 'warehouse_id' => null, 'product_id' => $productId],
+                    ['quantity' => $qty, 'price' => $price, 'updated_at' => $now, 'created_at' => $now]
+                );
+            } elseif ($locationType === 'warehouse' && !empty($alloc['warehouse_id'])) {
+                // Specific Warehouse → warehouse_id = X
+                $warehouseId = (int) $alloc['warehouse_id'];
+                DB::table('warehouse_stocks')->updateOrInsert(
+                    ['branch_id' => $branchId, 'warehouse_id' => $warehouseId, 'product_id' => $productId],
+                    ['quantity' => $qty, 'price' => $price, 'updated_at' => $now, 'created_at' => $now]
+                );
+            }
+        }
+    }
+
 }
