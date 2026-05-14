@@ -205,7 +205,7 @@
             display: flex !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            justify-content: flex-start !important; /* Align to left like dashboard */
+            justify-content: center !important; /* Center items for better balance */
         }
 
         .nav.page-navigation .nav-item {
@@ -213,15 +213,15 @@
         }
 
         .nav.page-navigation .nav-item .nav-link {
-            padding: 25px 10px !important; /* Reduced horizontal padding from 12px to 10px */
+            padding: 25px 8px !important; /* Even more compact padding (8px) */
             white-space: nowrap !important;
             display: flex !important;
             align-items: center !important;
         }
 
         .nav.page-navigation .nav-item .menu-title {
-            font-size: 13px !important; /* Slightly smaller font for better fit */
-            margin-left: 8px !important;
+            font-size: 13px !important;
+            margin-left: 6px !important; /* Reduced margin */
         }
 
         /* Responsive adjustments for medium screens */
@@ -288,7 +288,7 @@
     *===========================-->
         <nav class="rt_nav_header horizontal-layout col-lg-12 col-12 p-0">
             <div class="top_nav flex-grow-1">
-                <div class="container-fluid d-flex flex-row h-100 align-items-center" style="padding-left: 30px; padding-right: 30px;">
+                <div class="container d-flex flex-row h-100 align-items-center">
                     <!--=========================*
                               Logo
                 *===========================-->
@@ -342,8 +342,8 @@
                     </div>
                 </div>
             </div>
-            <div class="nav-bottom" style="overflow-x: hidden;">
-                <div class="container-fluid" style="padding-left: 30px; padding-right: 30px;">
+            <div class="nav-bottom">
+                <div class="container">
                     <ul class="nav page-navigation">
                         <!--=========================*
                               Home
