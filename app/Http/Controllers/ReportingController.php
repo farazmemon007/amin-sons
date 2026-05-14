@@ -66,7 +66,7 @@ class ReportingController extends Controller
         $startDate = date('Y-m-01');
         $endDate   = date('Y-m-d');
 
-        return view('admin_panel.Reporting.customer_leger_new', compact('branches', 'customers', 'startDate', 'endDate'));
+        return view('admin_panel.reporting.customer_leger_new', compact('branches', 'customers', 'startDate', 'endDate'));
     }
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -2282,7 +2282,7 @@ class ReportingController extends Controller
             $customers = Customer::orderBy('customer_name')->get();
             $warehouses = Warehouse::orderBy('warehouse_name')->get();
 
-            return view('admin_panel.Reporting.stock_hold_audit', [
+            return view('admin_panel.reporting.stock_hold_audit', [
                 'stockHolds' => $stockHolds,
                 'customers' => $customers,
                 'warehouses' => $warehouses,
@@ -2381,7 +2381,7 @@ class ReportingController extends Controller
             $salesmen = \App\Models\SalesOfficer::orderBy('name')->get();
         }
 
-        return view('admin_panel.Reporting.salesman_performance', compact('branches', 'isSuper', 'salesmen', 'userBranchId'));
+        return view('admin_panel.reporting.salesman_performance', compact('branches', 'isSuper', 'salesmen', 'userBranchId'));
     }
 
     /**
@@ -2515,7 +2515,7 @@ class ReportingController extends Controller
         }
         $bankAccounts = $bankAccounts->orderBy('title')->get();
 
-        return view('admin_panel.Reporting.local_purchase_report', compact('branches', 'startDate', 'endDate', 'bankAccounts'));
+        return view('admin_panel.reporting.local_purchase_report', compact('branches', 'startDate', 'endDate', 'bankAccounts'));
     }
 
     /**
