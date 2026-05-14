@@ -194,8 +194,8 @@
                         </td>
                         <td class="text-end">
                             <button class="btn-edit-modern" 
-                                data-bs-toggle="modal" 
-                                data-bs-target="#mapModal" 
+                                data-toggle="modal" 
+                                data-target="#mapModal" 
                                 data-branch-name="{{ $branch->name }}"
                                 data-branch-id="{{ $branch->id }}" 
                                 data-warehouses="{{ $branch->warehouses->pluck('id')->implode(',') }}">
@@ -218,7 +218,9 @@
                 @method('PUT')
                 <div class="modal-header modal-header-custom">
                     <h5 class="fw-bold mb-0">Mapping for <span id="modalBranchName" class="text-primary"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -245,7 +247,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-0 p-4">
-                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light px-4" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">Update Configuration</button>
                 </div>
             </form>

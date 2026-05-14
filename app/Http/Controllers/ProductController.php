@@ -471,7 +471,6 @@ public function searchProductsForSalebypagination(Request $request)
 ///////////////////////////
 
 
-    // ===== Create page =====
     public function view_store()
     {
         // ✅ ERP STANDARD: Role-based branch visibility
@@ -494,9 +493,14 @@ public function searchProductsForSalebypagination(Request $request)
         $types      = \App\Models\ProductType::all();
         $warehouses = Warehouse::with('branches')->get();
         
+        // ✅ ERP STANDARD: Sequential Barcode Generation
+        $maxId = \App\Models\Product::max('id') ?? 0;
+        // Prefix with '100' and pad to 5 digits (e.g., 10000001, 10000002)
+        $nextBarcode = '100' . str_pad($maxId + 1, 5, '0', STR_PAD_LEFT);
+        
         return view('admin_panel.product.create', compact(
             'categories', 'units', 'brands', 'types', 'branches', 'warehouses',
-            'isSuperAdmin', 'user'
+            'isSuperAdmin', 'user', 'nextBarcode'
         ));
     }
 

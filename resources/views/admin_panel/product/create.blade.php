@@ -201,8 +201,8 @@
                                 <div class="field-group">
                                     <label class="field-label">Barcode</label>
                                     <div class="d-flex align-items-center">
-                                        <input type="text" id="barcodeInput" name="barcode_path" class="custom-input" placeholder="Barcode / SKU" style="border-radius: 4px 0 0 4px !important;">
-                                        <button class="btn-gen" type="button" id="generateBarcodeBtn">Gen</button>
+                                        <input type="text" id="barcodeInput" name="barcode_path" class="custom-input" value="{{ $nextBarcode ?? '' }}" placeholder="Barcode / SKU" style="border-radius: 4px 0 0 4px !important;">
+                                        <button class="btn-gen" type="button" id="generateBarcodeBtn" title="Generate Custom SKU">Gen</button>
                                     </div>
                                 </div>
 
@@ -466,10 +466,15 @@
 
             // 2. SKU / Barcode Gen
             $('#generateBarcodeBtn').on('click', function() {
-                const brand = ($('select[name="brand_id"] option:selected').text().trim() || 'P').substring(0, 1).toUpperCase();
-                const model = ($('#model').val().trim() || 'X').substring(0, 2).toUpperCase();
-                const rand = Math.floor(1000 + Math.random() * 9000);
-                $('#barcodeInput').val(`${brand}${model}-${rand}`);
+                // Generate sequential barcode if clicked manually
+                const nextBarcode = "{{ $nextBarcode ?? '' }}";
+                if(nextBarcode) {
+                    $('#barcodeInput').val(nextBarcode);
+                } else {
+                    // Fallback just in case
+                    const rand = Math.floor(1000000 + Math.random() * 9000000);
+                    $('#barcodeInput').val(`100${rand}`);
+                }
             });
 
             // 3. Category Sync
