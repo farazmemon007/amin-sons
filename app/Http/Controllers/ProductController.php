@@ -916,20 +916,16 @@ public function searchProductsForSalebypagination(Request $request)
                 'category_id'     => $request->category_id,
                 'sub_category_id' => $request->sub_category_id,
                 'type_id'         => $request->type_id,
-                'item_code'       => $request->item_code,
                 'item_name'       => $request->product_name,
                 'barcode_path'    => $request->barcode_path ?? rand(100000000000, 999999999999),
                 'unit_id'         => $request->unit,
                 'brand_id'        => $request->brand_id,
-                'wholesale_price' => $request->wholesale_price,
-                'price'           => $request->retail_price,
-                'alert_quantity'  => $request->alert_quantity,
-                'model'  => $request->model,
-                'hs_code'  => $request->hs_code,
-                'pack_type'       =>  $request->packing_type,
-                'pack_qty'       =>  $request->packing_qty,
-                'piece_per_pack'   =>  $request->piece_per_pack,
-                'loose_piece'   =>  $request->loose_piece,
+                'model'           => $request->model,
+                'hs_code'         => $request->hs_code,
+                'pack_type'       => $request->packing_type,
+                'pack_qty'        => (float) ($request->packing_qty ?? 0),
+                'piece_per_pack'  => (float) ($request->piece_per_pack ?? 0),
+                'loose_piece'     => (float) ($request->loose_piece ?? 0),
                 'image'           => $imagePath,
                 'is_part'         => $request->has('is_part') ? 1 : 0,
                 'is_assembled'    => $request->has('is_assembled') ? 1 : 0,
@@ -1444,6 +1440,22 @@ public function searchProductsForSalebypagination(Request $request)
             }
         }
 
+        // 1. Fetch ONLY warehouses belonging to the selected branch
+        $warehouses = \App\Models\Warehouse::whereHas('branches', function($q) use ($selectedBranchId) {
+            $q->where('branch_id', $selectedBranchId);
+        })->orderBy('warehouse_name')->get();
+
+        // 2. Global Stock Summary (for Super Admin to see where stock is)
+        $globalStockSummary = [];
+        if ($isSuperAdmin) {
+            $globalStockSummary = DB::table('stocks')
+                ->join('branches', 'stocks.branch_id', '=', 'branches.id')
+                ->where('stocks.product_id', $id)
+                ->where('stocks.qty', '>', 0)
+                ->select('branches.name as branch_name', 'stocks.qty', 'stocks.branch_id')
+                ->get();
+        }
+
         // Current warehouse allocations for the SELECTED branch
         $currentAllocs = DB::table('warehouse_stocks')
             ->where('product_id', $id)
@@ -1466,7 +1478,8 @@ public function searchProductsForSalebypagination(Request $request)
 
         return view('admin_panel.product.opening-stock-edit', compact(
             'product', 'isSuperAdmin', 'allBranches', 'availableBranches',
-            'warehouses', 'currentAllocs', 'currentStock', 'selectedBranchId'
+            'warehouses', 'currentAllocs', 'currentStock', 'selectedBranchId',
+            'globalStockSummary'
         ));
     }
 

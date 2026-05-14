@@ -26,8 +26,8 @@
                 <h4 class="fw-bold mb-0">Purchase Orders (Requests)</h4>
                 <small class="text-muted">Draft purchase requests sent to vendors</small>
             </div>
-            <div class="d-flex gap-2">
-                <form action="{{ route('purchase_orders.index') }}" method="GET" class="d-flex gap-2 align-items-center">
+            <div class="d-flex">
+                <form action="{{ route('purchase_orders.index') }}" method="GET" class="d-flex align-items-center mr-2">
                     <div class="input-group">
                         <input type="text" name="search" class="form-control" placeholder="Search PO Number..." value="{{ request('search') }}" style="min-width: 250px; border-radius: 8px 0 0 8px;">
                         <button type="submit" class="btn btn-secondary" style="border-radius: 0 8px 8px 0;">
@@ -41,15 +41,17 @@
                     @endif
                 </form>
                 <a href="{{ route('purchase_orders.create') }}" class="btn btn-primary px-4 fw-bold shadow-sm" style="border-radius: 8px;">
-                    <i class="fa fa-plus me-2"></i> CREATE PO
+                    <i class="fa fa-plus mr-2"></i> CREATE PO
                 </a>
             </div>
         </div>
 
         @if (session('success'))
             <div class="alert alert-success border-0 shadow-sm alert-dismissible fade show" role="alert">
-                <strong><i class="fa fa-check-circle me-2"></i>Success!</strong> {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                <strong><i class="fa fa-check-circle mr-2"></i>Success!</strong> {{ session('success') }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         @endif
 
@@ -118,7 +120,7 @@
                                             <i class="fa fa-truck"></i>
                                         </a>
                                         <div class="dropdown">
-                                            <button class="btn btn-light btn-sm border dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            <button class="btn btn-light btn-sm border dropdown-toggle" type="button" data-toggle="dropdown">
                                                 Manage
                                             </button>
                                             <div class="dropdown-menu dropdown-menu-end">

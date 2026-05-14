@@ -328,7 +328,7 @@
 
                     <div class="alert alert-info border-0 p-3 mt-4" style="background: rgba(99, 102, 241, 0.1);">
                         <p class="small mb-0 text-white opacity-75">
-                            <i class="las la-lightbulb"></i> Tip: Wholesale rates are usually 15-20% lower than retail.
+                            <i class="las la-lightbulb"></i> Tip: Ensure Wholesale price is not less than the Retail price.
                         </p>
                     </div>
                 </div>
@@ -363,12 +363,15 @@
                                     <span class="input-group-text bg-transparent border-0 ps-0 text-muted">₨</span>
                                     <input type="number" name="wholesale_price" class="form-control-modern w-100" placeholder="Rate per unit" required>
                                 </div>
-                            </div>
-                            <div class="form-group-compact">
+                            </div>                            <div class="form-group-compact">
                                 <label class="text-primary">Retail Price (B2C)</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-transparent border-0 ps-0 text-muted">₨</span>
-                                    <input type="number" name="retail_price" class="form-control-modern w-100 fw-bold border-primary-subtle" placeholder="Selling price" required>
+                                    <span class="input-group-text bg-primary text-white border-primary">₨</span>
+                                    <input type="number" name="retail_price" class="form-control-modern" 
+                                           value="{{ $product->price ?? 0 }}" step="0.01" min="0" required>
+                                </div>
+                                <div id="price-validation-warning" style="display:none; color:#dc2626; font-size:12px; font-weight:700; margin-top:5px; background:#fff1f2; padding:8px; border-radius:6px; border:1px solid #fca5a5;">
+                                    ⚠️ Warning: Retail price should not be less than wholesale
                                 </div>
                             </div>
                         </div>
@@ -422,84 +425,28 @@
                 // Price validation
                 const wholesalePriceInput = form.querySelector('input[name="wholesale_price"]');
                 const retailPriceInput = form.querySelector('input[name="retail_price"]');
-                let priceValidationDiv = null;
+                const priceWarningDiv = document.getElementById('price-validation-warning');
 
-                // Track selected items (warehouse IDs and shop)
-                let selectedItems = new Set();
-
-                // Initialize price validation container
-                function initializePriceValidation() {
-                    // Create error message div if it doesn't exist
-                    if (!priceValidationDiv) {
-                        priceValidationDiv = document.createElement('div');
-                        priceValidationDiv.id = 'price-validation-error';
-                        priceValidationDiv.style.cssText = `
-                            display: none;
-                            margin-top: 8px;
-                            padding: 10px 12px;
-                            background-color: #fee;
-                            color: #c33;
-                            border: 1px solid #fcc;
-                            border-radius: 6px;
-                            font-size: 13px;
-                            font-weight: 500;
-                        `;
-                        retailPriceInput.parentElement.parentElement.appendChild(priceValidationDiv);
-                    }
-                }
-
-                // Validate prices and update UI
                 function validatePrices() {
-                    initializePriceValidation();
-                    
                     const wholesale = parseFloat(wholesalePriceInput.value) || 0;
                     const retail = parseFloat(retailPriceInput.value) || 0;
                     
-                    // If both are 0 or empty, no error
-                    if (wholesale === 0 && retail === 0) {
-                        priceValidationDiv.style.display = 'none';
-                        wholesalePriceInput.classList.remove('is-invalid');
-                        retailPriceInput.classList.remove('is-invalid');
+                    if (wholesale > 0 && retail > 0 && retail < wholesale) {
+                        wholesalePriceInput.style.borderColor = '#dc2626';
+                        retailPriceInput.style.borderColor = '#dc2626';
+                        priceWarningDiv.style.display = 'block';
+                        return false;
+                    } else {
+                        wholesalePriceInput.style.borderColor = '';
+                        retailPriceInput.style.borderColor = '';
+                        priceWarningDiv.style.display = 'none';
                         return true;
                     }
-                    
-                    // If one has value but other is empty, that's okay (will be caught by required)
-                    if ((wholesale === 0 && retail > 0) || (wholesale > 0 && retail === 0)) {
-                        priceValidationDiv.style.display = 'none';
-                        wholesalePriceInput.classList.remove('is-invalid');
-                        retailPriceInput.classList.remove('is-invalid');
-                        return true;
-                    }
-                    
-                    // Both have values - check validity
-                    if (wholesale > 0 && retail > 0) {
-                        if (retail >= wholesale) {
-                            // Valid
-                            priceValidationDiv.style.display = 'none';
-                            wholesalePriceInput.classList.remove('is-invalid');
-                            retailPriceInput.classList.remove('is-invalid');
-                            return true;
-                        } else {
-                            // Invalid - retail < wholesale
-                            priceValidationDiv.style.display = 'block';
-                            priceValidationDiv.innerHTML = '❌ Retail price must be greater than or equal to wholesale price';
-                            wholesalePriceInput.classList.add('is-invalid');
-                            retailPriceInput.classList.add('is-invalid');
-                            return false;
-                        }
-                    }
-                    
-                    return true;
                 }
 
-                // Add price input listeners
                 if (wholesalePriceInput && retailPriceInput) {
                     wholesalePriceInput.addEventListener('input', validatePrices);
-                    wholesalePriceInput.addEventListener('change', validatePrices);
                     retailPriceInput.addEventListener('input', validatePrices);
-                    retailPriceInput.addEventListener('change', validatePrices);
-                    
-                    // Initial validation on page load
                     validatePrices();
                 }
 
@@ -763,10 +710,14 @@
 
                 // Form submission validation
                 form.addEventListener('submit', function(event) {
-                    // Check price validation first
+                    // Check price validation first: Retail >= Wholesale
                     if (!validatePrices()) {
                         event.preventDefault();
-                        alert('⚠️ Retail price must be greater than or equal to wholesale price');
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Price Mismatch',
+                            text: 'Retail price should not be less than wholesale price.'
+                        });
                         retailPriceInput.focus();
                         return false;
                     }

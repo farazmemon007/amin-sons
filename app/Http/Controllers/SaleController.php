@@ -96,19 +96,12 @@ class SaleController extends Controller
 
                 /* ================= UPDATE WAREHOUSE IDs ================= */
                 // warehouse_id can be NULL (branch stock) or actual warehouse_id (warehouse stock)
-                // Do NOT validate NULL - it's valid for branch stock sales
                 foreach ($booking->items as $item) {
                     $wid = $request->warehouse_id[$item->product_id] ?? null;
-                    // NULL is allowed (branch stock), actual ID is allowed (warehouse stock)
-                    $item->update(['warehouse_id' => $wid]);
-                    
-                    Log::info('Updated booking item with warehouse selection', [
-                        'product_id' => $item->product_id,
-                        'warehouse_id' => $wid ?? 'NULL (branch stock)',
-                    ]);
+                    $item->warehouse_id = $wid;
+                    $item->save();
                 }
-
-                $booking->load('items');
+                Log::info('Updated booking items with warehouse selections', ['booking_id' => $booking->id]);
 
                 /* ================= CREATE SALE ================= */
                 // IMPORTANT: Sales have INDEPENDENT counter from Bookings
@@ -138,14 +131,11 @@ class SaleController extends Controller
                     Log::warning('Using fallback sale invoice (counter not available)', ['invoice_no' => $invoiceNo]);
                 }
 
-                $sale = Sale::create([
-                    'branch_id'        => $booking->branch_id,
-                    'booking_id'       => $booking->id,  // ✅ NEW: Direct reference to source booking
+                $saleData = [
                     'invoice_no'       => $invoiceNo,
                     'manual_invoice'   => $booking->manual_invoice,
                     'customer_id'      => $booking->customer_id,
                     'salesman_id'      => $booking->salesman_id ?? $request->salesman_id ?? null,
-                    // For walking customers, persist the display name from booking
                     'sub_customer'     => (($booking->party_type ?? '') === 'walking') ? ($booking->customer_name ?? null) : null,
                     'party_type'       => $booking->party_type,
                     'address'          => $booking->address,
@@ -160,7 +150,17 @@ class SaleController extends Controller
                     'previous_balance' => $booking->previous_balance,
                     'total_balance'    => $booking->total_balance,
                     'total_net'        => $booking->sub_total2 ?? 0,
-                ]);
+                ];
+
+                // ✅ ERP Standard: Only add branch_id and booking_id if columns exist in DB
+                if (\Illuminate\Support\Facades\Schema::hasColumn('sales', 'branch_id')) {
+                    $saleData['branch_id'] = $booking->branch_id;
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('sales', 'booking_id')) {
+                    $saleData['booking_id'] = $booking->id;
+                }
+
+                $sale = Sale::create($saleData);
 
                 /* ================= CUSTOMER LEDGER (ONLY FOR CREDIT CUSTOMERS) ================= */
                 // Only create ledger entries for credit customers
@@ -747,10 +747,10 @@ class SaleController extends Controller
                 /* ================= UPDATE WAREHOUSE IDs (Optional) ================= */
                 foreach ($booking->items as $item) {
                     $wid = $warehouseMap[$item->product_id] ?? null;
-                    $item->update(['warehouse_id' => $wid]);
+                    $item->warehouse_id = $wid;
+                    $item->save();
                 }
-
-                $booking->load('items');
+                Log::info('Updated booking items with warehouse selections (draft)', ['booking_id' => $booking->id]);
 
                 /* ================= CREATE SALE RECORD ================= */
                 $invoiceNo = null;
@@ -2387,6 +2387,15 @@ public function finddc($invoice)
         if ($bookingItemsRaw->count() > 0) {
             foreach ($bookingItemsRaw as $item) {
                 $product = Product::find($item->product_id);
+                $qty = (int) $item->sales_qty;
+                $discount_type = 'pkr';
+                $total_disc = (float) $item->discount_amount;
+                
+                // If PKR, we need per-unit discount for the sale222 UI
+                $disc_per_unit = ($discount_type === 'pkr' && $qty > 0) 
+                    ? ($total_disc / $qty) 
+                    : $total_disc;
+
                 $items[] = [
                     'product_id' => $item->product_id,
                     'item_name'  => $product->item_name ?? '',
@@ -2394,11 +2403,11 @@ public function finddc($invoice)
                     'uom'        => $product && $product->brand ? $product->brand->name : '',
                     'unit'       => $product->unit_id ?? '',
                     'price'      => (float) $item->retail_price,
-                    'discount'   => (float) $item->discount_amount,
-                    'discount_amount' => (float) $item->discount_amount,
-                    'discount_percent' => (float) $item->discount_percent,
-                    'discount_type' => $item->discount_type ?? 'percent',
-                    'qty'        => (int) $item->sales_qty,
+                    'discount'   => (float) $disc_per_unit,
+                    'discount_amount' => (float) $total_disc,
+                    'discount_percent' => 0,
+                    'discount_type' => $discount_type,
+                    'qty'        => $qty,
                     'total'      => (float) $item->amount,
                     'color'      => [],
                     'onhand_qty' => (float) ($stockMap[$item->product_id] ?? 0),
@@ -2424,6 +2433,11 @@ public function finddc($invoice)
                     ->first();
                 $productId = $product->id ?? null;
 
+                $qty = (int) ($qtys[$index] ?? 1);
+                $total_disc = (float) ($discounts[$index] ?? 0);
+                // In booking, discount is total for the row. In sale222, PKR discount is per unit.
+                $disc_per_unit = $qty > 0 ? ($total_disc / $qty) : 0;
+
                 $items[] = [
                     'product_id' => $productId,
                     'item_name'  => $product->item_name ?? $p,
@@ -2431,11 +2445,11 @@ public function finddc($invoice)
                     'uom'        => $product->brand->name ?? ($brands[$index] ?? ''),
                     'unit'       => $product->unit ?? ($units[$index] ?? ''),
                     'price'      => (float) ($prices[$index] ?? 0),
-                    'discount'   => (float) ($discounts[$index] ?? 0),
-                    'discount_amount' => (float) ($discounts[$index] ?? 0),
+                    'discount'   => (float) $disc_per_unit,
+                    'discount_amount' => (float) $total_disc,
                     'discount_percent' => 0,
-                    'discount_type' => 'percent',
-                    'qty'        => (int) ($qtys[$index] ?? 1),
+                    'discount_type' => 'pkr',
+                    'qty'        => $qty,
                     'total'      => (float) ($totals[$index] ?? 0),
                     'color'      => isset($colors_json[$index]) ? json_decode($colors_json[$index], true) : [],
                     'onhand_qty' => (float) ($stockMap[$productId] ?? 0),

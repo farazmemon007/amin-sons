@@ -201,6 +201,75 @@ class AccountsHeadController extends Controller
     }
 
     /**
+     * Update existing Account
+     * ✅ If head is changed, account code is automatically regenerated
+     */
+    public function updateAccount(Request $request, $id)
+    {
+        $account = Account::findOrFail($id);
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+
+        // ✅ Authorization
+        if (!$isSuperAdmin && $account->branch_id != $user->branch_id) {
+            return redirect()->back()->with('error', 'Unauthorized.');
+        }
+
+        $rules = [
+            'head_id'         => 'required|exists:account_heads,id',
+            'title'           => 'required|string|max:150',
+            'type'            => 'required|in:Debit,Credit',
+            'opening_balance' => 'nullable|numeric',
+            'status'          => 'nullable|in:on',
+        ];
+
+        $request->validate($rules);
+
+        $data = [
+            'title'           => $request->title,
+            'type'            => $request->type,
+            'opening_balance' => $request->opening_balance ?? 0,
+            'status'          => $request->status === 'on' ? 1 : 0,
+        ];
+
+        // ✅ If head changed, generate new sequential code
+        if ($account->head_id != $request->head_id) {
+            $head = AccountHead::findOrFail($request->head_id);
+            $branch = Branch::findOrFail($account->branch_id);
+            
+            $service = new \App\Services\AccountCodeService();
+            $data['head_id'] = $request->head_id;
+            $data['account_code'] = $service->generateAccountCode($branch, $head);
+        }
+
+        $account->update($data);
+
+        return redirect()->back()->with('success', 'Account updated successfully.');
+    }
+
+    /**
+     * Delete Account
+     * ✅ ERP Standard: Check if account has transactions before deleting (optional/future)
+     */
+    public function destroyAccount($id)
+    {
+        $account = Account::findOrFail($id);
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+
+        // ✅ Authorization
+        if (!$isSuperAdmin && $account->branch_id != $user->branch_id) {
+            return redirect()->back()->with('error', 'Unauthorized.');
+        }
+
+        // TODO: Check for existing transactions before deletion
+        
+        $account->delete();
+
+        return redirect()->back()->with('success', 'Account deleted successfully.');
+    }
+
+    /**
      * ✅ ERP STANDARD: Per-Account Ledger
      * Shows complete transaction history for a single account.
      * Accessible from the branch accounts list.

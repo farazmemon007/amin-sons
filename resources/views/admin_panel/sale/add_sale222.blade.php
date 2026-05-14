@@ -570,7 +570,7 @@
                         <!-- CUSTOMER SELECT -->
                         <div class="mb-2">
                             <label class="form-label fw-bold mb-1">Select Customer</label>
-                            <select class="form-select" id="customerSelect">
+                            <select class="form-select js-customer" id="customerSelect">
                                 <option selected disabled>Loading…</option>
                             </select>
                             <small class="text-muted" id="customerCountHint"></small>
@@ -1136,18 +1136,24 @@
                 // === 1. SET BOOKING ID ===
                 $('#booking_id').val(window.BOOKING_DATA.id || '');
 
+                // === 1b. SET BRANCH (for Admin users) ===
+                if (window.BOOKING_DATA.branch_id) {
+                    $('#branch_id').val(window.BOOKING_DATA.branch_id);
+                    console.log('🏢 Branch set:', window.BOOKING_DATA.branch_id);
+                }
+
                 // === 2. SET CUSTOMER TYPE ===
                 const customerType = window.BOOKING_CUSTOMER.customer_type || 'credit';
-                $(`input[name="partyType"][value="${customerType}"]`).prop('checked', true).trigger('change');
+                $(`input[name="partyType"][value="${customerType}"]`).prop('checked', true);
 
-                // === 3. WAIT FOR CUSTOMER DROPDOWN TO LOAD ===
-                setTimeout(() => {
-                    // === 4. POPULATE CUSTOMER FIELDS ===
-                    if (window.BOOKING_CUSTOMER.id) {
-                        // Credit or Cash customer
-                        const customerId = window.BOOKING_CUSTOMER.id;
-                        $('#customer_id').val(customerId);
-                        $('#customerSelect').val(customerId).trigger('change');
+                // === 3. LOAD CUSTOMERS WITH AUTO-SELECT ===
+                // This replaces the old timeout-based selection
+                loadCustomersByType(customerType, window.BOOKING_CUSTOMER.id);
+
+                // === 4. POPULATE CUSTOMER FIELDS ===
+                if (window.BOOKING_CUSTOMER.id) {
+                    const customerId = window.BOOKING_CUSTOMER.id;
+                    $('#customer_id').val(customerId);
                         
                         const customerName = window.BOOKING_CUSTOMER.customer_name || 
                                            window.BOOKING_CUSTOMER.name || '';
@@ -1230,15 +1236,18 @@
                             const $discountAmount = $newRow.find('.discount-amount');
                             const $discountTypeField = $newRow.find('.discount-type-field');
 
+                            console.log(`📦 Item ${index}: discount_type=${item.discount_type}, discount=${item.discount}, discount_percent=${item.discount_percent}`);
+                            
                             if (item.discount_type === 'percent' || item.discount_percent > 0) {
-                                $discountBtn.data('type', 'percent').text('%');
+                                $discountBtn.data('type', 'percent').attr('data-type', 'percent').text('%');
                                 $discountTypeField.val('percent');
                                 $discountInput.val(parseFloat(item.discount_percent || 0).toFixed(2));
                                 $discountAmount.val('0');
                             } else {
-                                $discountBtn.data('type', 'pkr').text('PKR');
+                                $discountBtn.data('type', 'pkr').attr('data-type', 'pkr').text('PKR');
                                 $discountTypeField.val('pkr');
-                                $discountInput.val('0');
+                                // Set the input value to the per-unit discount
+                                $discountInput.val(parseFloat(item.discount || 0).toFixed(2));
                                 $discountAmount.val(parseFloat(item.discount_amount || 0).toFixed(2));
                             }
 
@@ -1269,7 +1278,6 @@
                     refreshPostedState();
 
                     console.log('✅ Form prefilled with booking data');
-                }, 500);
             }
             
             function init() {
@@ -1382,7 +1390,7 @@
             }
 
             // 🔹 Load customers list
-            function loadCustomersByType(type) {
+            function loadCustomersByType(type, idToSelect = null) {
                 // For walking customers, don't load from API (no pre-defined customers)
                 if (type === 'walking') {
                     $('#customerSelect').html('<option selected disabled>N/A</option>')
@@ -1425,6 +1433,12 @@
                     }
 
                     $('#customerSelect').html(html).prop('disabled', false);
+
+                    // ✅ AUTO-SELECT IF ID PROVIDED
+                    if (idToSelect) {
+                        console.log('🎯 Auto-selecting customer:', idToSelect);
+                        $('#customerSelect').val(idToSelect).trigger('change');
+                    }
                 });
 
                 // If branch selector present, bind change to reload customers

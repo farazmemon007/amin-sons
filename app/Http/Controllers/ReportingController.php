@@ -1414,25 +1414,53 @@ class ReportingController extends Controller
 
     public function purchase_report()
     {
-        // ✅ ERP STANDARD: Auto-select current month date range
-        $startDate = now()->startOfMonth()->format('Y-m-d');  // 1st of current month
-        $endDate = now()->format('Y-m-d');                     // Today
-        $vendors = \App\Models\Vendor::orderBy('name')->get();
+        $user = Auth::user();
         
-        return view('admin_panel.reporting.purchase_report', compact('startDate', 'endDate', 'vendors'));
+        // Determine which branches user can view
+        if ($user->hasRole('super admin')) {
+            $branches = \App\Models\Branch::orderBy('name')->get();
+        } else {
+            $branches = \App\Models\Branch::where('id', $user->branch_id)->get();
+        }
+
+        // Vendors are now BRANCH-SPECIFIC
+        $vendorQuery = \App\Models\Vendor::select('id', 'name', 'phone');
+        if (!$user->hasRole('super admin')) {
+            $vendorQuery->where('branch_id', $user->branch_id ?? 0);
+        }
+        $vendors = $vendorQuery->orderBy('name')->get();
+
+        // ✅ ERP STANDARD: Auto-select current month date range
+        $startDate = now()->startOfMonth()->format('Y-m-d');
+        $endDate = now()->format('Y-m-d');
+        
+        return view('admin_panel.reporting.purchase_report', compact('startDate', 'endDate', 'vendors', 'branches', 'user'));
     }
 
 
     public function fetchPurchaseReport(Request $request)
     {
+        $user      = Auth::user();
         $startDate = $request->start_date;
         $endDate   = $request->end_date;
         $vendorId  = $request->vendor_id;
+        $branchId  = $request->branch_id;
+
+        // Security: Non-admin can only see their own branch
+        if (!$user->hasRole('super admin')) {
+            $branchId = $user->branch_id;
+        }
 
         $query = DB::table('purchases')
             ->leftJoin('purchase_items', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->leftJoin('products', 'purchase_items.product_id', '=', 'products.id')
             ->leftJoin('vendors', 'purchases.vendor_id', '=', 'vendors.id')
+            ->when($branchId && $branchId !== 'all', function($q) use ($branchId) {
+                return $q->where('purchases.branch_id', $branchId);
+            })
+            ->when($vendorId && $vendorId !== 'all', function($q) use ($vendorId) {
+                return $q->where('purchases.vendor_id', $vendorId);
+            })
             ->select(
                 'purchases.purchase_date',
                 'purchases.invoice_no',

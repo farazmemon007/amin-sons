@@ -20,7 +20,18 @@
             <div class="card shadow-sm mb-3" style="border-radius:10px;border:none;">
                 <div class="card-body py-3">
                     <form id="purchaseFilterForm" class="row g-3 align-items-end">
-                        <div class="col-md-3">
+                        <div class="col-md-2" id="branch_container" @if(!$user->hasRole('super admin')) style="display:none;" @endif>
+                            <label class="form-label fw-semibold mb-1">Select Branch</label>
+                            <select name="branch_id" id="branch_id" class="form-control form-control-sm select2">
+                                @if($user->hasRole('super admin'))
+                                    <option value="all">-- All Branches --</option>
+                                @endif
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}" {{ $user->branch_id == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                             <label class="form-label fw-semibold mb-1">Select Vendor</label>
                             <select name="vendor_id" id="vendor_id" class="form-control form-control-sm select2">
                                 <option value="all">-- All Vendors --</option>
@@ -259,6 +270,31 @@
             fetchReport();
         });
 
+        // ✅ NEW: Branch change listener to fetch vendors dynamically
+        $('#branch_id').on('change', function() {
+            let branchId = $(this).val();
+            if (branchId === 'all') {
+                // If all branches, maybe show all vendors or clear
+                // For now, let's clear and show "Select Branch"
+                $('#vendor_id').html('<option value="all">-- All Vendors --</option>').trigger('change');
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('vendors-by-branch') }}", // Existing route from ReportingController
+                type: "GET",
+                data: { branch_id: branchId },
+                success: function(response) {
+                    let options = '<option value="all">-- All Vendors --</option>';
+                    response.forEach(v => {
+                        // The controller returns {id, customer_name, customer_type} for compatibility
+                        options += `<option value="${v.id}">${v.customer_name}</option>`;
+                    });
+                    $('#vendor_id').html(options).trigger('change');
+                }
+            });
+        });
+
         // ✅ ERP STANDARD: Auto-fetch report on page load
         fetchReport();
 
@@ -280,7 +316,8 @@
                     _token: "{{ csrf_token() }}",
                     start_date: start_date,
                     end_date: end_date,
-                    vendor_id: vendor_id
+                    vendor_id: vendor_id,
+                    branch_id: $('#branch_id').val()
                 },
                 success: function(response) {
                     $('#loader').hide();
@@ -413,7 +450,8 @@
                     _token: "{{ csrf_token() }}",
                     start_date: start_date,
                     end_date: end_date,
-                    vendor_id: $('#vendor_id').val()
+                    vendor_id: $('#vendor_id').val(),
+                    branch_id: $('#branch_id').val()
                 },
                 success: function(response) {
                     $('#loader').hide();

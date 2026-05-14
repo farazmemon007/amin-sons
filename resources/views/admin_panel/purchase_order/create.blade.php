@@ -39,6 +39,27 @@
         <form action="{{ route('purchase_orders.store') }}" method="POST" id="poForm">
             @csrf
 
+            {{-- Error Display --}}
+            @if ($errors->any())
+                <div class="alert alert-danger mb-4 shadow-sm border-0" style="border-left: 4px solid #ef4444;">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fa fa-exclamation-triangle me-2"></i>
+                        <strong class="text-uppercase small">Validation Errors Found</strong>
+                    </div>
+                    <ul class="mb-0 small fw-bold">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger mb-4 shadow-sm border-0" style="border-left: 4px solid #ef4444;">
+                    <i class="fa fa-times-circle me-2"></i> {{ session('error') }}
+                </div>
+            @endif
+
             <div class="d-flex justify-content-between align-items-end mb-4">
                 <div>
                     <h3 class="fw-900 mb-1" style="letter-spacing: -0.5px; color: #1e293b;">New Purchase Order</h3>
@@ -63,21 +84,21 @@
                     <div class="card h-100">
                         <div class="card-header"><i class="fa fa-info-circle me-2"></i>Order Specification</div>
                         <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
                                     <label>Order Date <span class="text-danger">*</span></label>
                                     <input type="date" name="order_date" value="{{ date('Y-m-d') }}" class="form-control" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4 mb-3">
                                     <label>Expected Date <span class="text-danger">*</span></label>
                                     <input type="date" name="expected_date" value="{{ date('Y-m-d') }}" class="form-control" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4 mb-3">
                                     <label>PO Number <small class="text-primary">(Auto)</small></label>
                                     <input type="text" id="po_number" value="{{ $nextPO }}" class="form-control fw-bold text-primary" readonly style="background-color: #f0f7ff; border-color: #bfdbfe;">
                                 </div>
                                 @if($isSuperAdmin)
-                                    <div class="col-md-4">
+                                    <div class="col-md-4 mb-3">
                                         <label>Target Branch <span class="text-danger">*</span></label>
                                         <select name="branch_id" id="branch_select" class="form-select" required>
                                             @foreach($branches as $b)
@@ -88,16 +109,16 @@
                                 @else
                                     <input type="hidden" name="branch_id" id="branch_select" value="{{ $currentBranch }}">
                                 @endif
-                                <div class="col-md-4">
+                                <div class="col-md-4 mb-3">
                                     <label>Target Warehouse <span class="text-danger">*</span></label>
-                                    <select name="warehouse_id" id="warehouse_select" class="form-select" required>
+                                    <select name="warehouse_id" id="warehouse_select" class="form-select">
                                         <option value="">-- Select Warehouse --</option>
                                         @foreach($warehouses as $w)
                                             <option value="{{ $w->id }}">{{ $w->warehouse_name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-12">
+                                <div class="col-md-12 mb-3">
                                     <label>Procurement Note</label>
                                     <textarea name="note" class="form-control" rows="2" placeholder="Describe any specific quality or delivery instructions..."></textarea>
                                 </div>

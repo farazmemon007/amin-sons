@@ -108,17 +108,17 @@
         <!-- Actions Top Bar -->
         <div class="d-flex justify-content-between align-items-center mb-4 no-print">
             <div class="d-flex align-items-center gap-3">
-                <a href="{{ route('purchase_orders.index') }}" class="btn btn-outline-secondary shadow-sm btn-erp">
-                    <i class="fas fa-arrow-left"></i> Back
+                <a href="{{ route('purchase_orders.index') }}" class="btn btn-outline-secondary shadow-sm btn-erp mr-3">
+                    <i class="fas fa-arrow-left mr-1"></i> Back
                 </a>
                 <h4 class="m-0 fw-bold text-slate-800">PO Details</h4>
             </div>
             <div class="d-flex gap-2">
-                <button onclick="showExportOptions()" class="btn btn-dark shadow-sm btn-erp">
-                    <i class="fas fa-file-pdf"></i> Export
+                <button onclick="showExportOptions()" class="btn btn-dark shadow-sm btn-erp mr-2">
+                    <i class="fas fa-file-pdf mr-1"></i> Export
                 </button>
-                <button onclick="shareWhatsApp()" class="btn btn-success shadow-sm btn-erp" style="background-color: #25d366; border-color: #25d366; color: #fff;">
-                    <i class="fab fa-whatsapp"></i> WhatsApp
+                <button onclick="shareWhatsApp()" class="btn btn-success shadow-sm btn-erp mr-2" style="background-color: #25d366; border-color: #25d366; color: #fff;">
+                    <i class="fab fa-whatsapp mr-1"></i> WhatsApp
                 </button>
                 @if($order->status !== 'cancelled')
                     <a href="{{ route('inward-gatepass.from-po', $order->id) }}" class="btn btn-primary shadow-sm btn-erp">

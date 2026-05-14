@@ -686,14 +686,14 @@
                                         </div>
                                     </div>
                                     <div class="user-actions">
-                                        {{-- @can('users.edit') --}}
+                                        @can('users.edit')
                                             <button class="btn btn-roles edit-role-btn" title="Edit Roles">
                                                 <i class="fa fa-key"></i>
                                             </button>
                                             <button class="btn btn-edit edit-user-btn" title="Edit User">
                                                 <i class="fa fa-pen"></i>
                                             </button>
-                                        {{-- @endcan --}}
+                                        @endcan
                                         @can('warehouse.manage')
                                             <button class="btn btn-warehouse assign-warehouses-btn"
                                                 data-user-id="{{ $user->id }}"
@@ -702,12 +702,12 @@
                                                 <i class="fa fa-warehouse"></i>
                                             </button>
                                         @endcan
-                                        {{-- @can('users.delete') --}}
+                                        @can('users.delete')
                                             <button class="btn btn-delete delete-user-btn" data-id="{{ $user->id }}"
                                                 title="Delete User">
                                                 <i class="fa fa-trash"></i>
                                             </button>
-                                        {{-- @endcan --}}
+                                        @endcan
                                     </div>
                                 </div>
                                 <div class="roles-section">
@@ -742,7 +742,9 @@
                         <i class="fa fa-user-plus"></i>
                         <span>Add New User</span>
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form id="userForm" class="myform" action="{{ route('users.store') }}" method="POST">
                     @csrf
@@ -825,7 +827,7 @@
                     </div>
 
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save">
@@ -850,7 +852,9 @@
                         </h5>
                         <small class="text-white-50 mt-1" id="editRoleUserLabel">User: John Doe</small>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form id="editRoleForm" class="edit-role-form" action="{{ route('users.update.roles') }}"
                     method="POST">
@@ -867,7 +871,7 @@
                     </div>
 
                     <div class="modal-footer-modern">
-                        <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-cancel" data-dismiss="modal">
                             <i class="fa fa-times me-2"></i>Cancel
                         </button>
                         <button type="submit" class="btn btn-save">
@@ -889,7 +893,9 @@
                         <i class="fa fa-warehouse me-2"></i>
                         Assign Warehouses — <span id="awUserName" class="fw-bold"></span>
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body p-4">
 
@@ -911,7 +917,7 @@
 
                 </div>
                 <div class="modal-footer" style="background:#f8fafc;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-success" id="awSaveBtn">
                         <i class="fa fa-save me-1"></i> Save Assignments
                     </button>
@@ -920,7 +926,9 @@
         </div>
     </div>
 
+@endsection
 
+@section('js')
     <script src="{{ asset('assets/js/mycode.js') }}"></script>
 
     <script>
@@ -1242,5 +1250,4 @@
             });
         });
     </script>
-
-    @endsection
+@endsection

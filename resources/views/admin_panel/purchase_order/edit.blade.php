@@ -51,21 +51,21 @@
                     <div class="card h-100">
                         <div class="card-header">Order Information</div>
                         <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-4">
+                             <div class="row">
+                                <div class="col-md-4 mb-3">
                                     <label>Order Date</label>
                                     <input type="date" name="order_date" value="{{ $order->order_date }}" class="form-control" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4 mb-3">
                                     <label>Expected Date</label>
                                     <input type="date" name="expected_date" value="{{ $order->expected_date }}" class="form-control" required>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-4 mb-3">
                                     <label>PO Number</label>
                                     <input type="text" value="{{ $order->po_number }}" class="form-control fw-bold" readonly style="background: #f8fafc;">
                                 </div>
                                 @if($isSuperAdmin)
-                                    <div class="col-md-4">
+                                    <div class="col-md-4 mb-3">
                                         <label>Branch</label>
                                         <select name="branch_id" id="branch_select" class="form-select" required>
                                             @foreach($branches as $b)
@@ -76,15 +76,15 @@
                                 @else
                                     <input type="hidden" name="branch_id" id="branch_select" value="{{ $order->branch_id }}">
                                 @endif
-                                <div class="col-md-4">
+                                <div class="col-md-4 mb-3">
                                     <label>Warehouse</label>
-                                    <select name="warehouse_id" id="warehouse_select" class="form-select" required>
+                                    <select name="warehouse_id" id="warehouse_select" class="form-select">
                                         @foreach($warehouses as $w)
                                             <option value="{{ $w->id }}" @selected($w->id == $order->warehouse_id)>{{ $w->warehouse_name }}</option>
                                         @endforeach
                                     </select>
                                 </div>
-                                <div class="col-md-12">
+                                <div class="col-md-12 mb-3">
                                     <label>Procurement Note</label>
                                     <textarea name="note" class="form-control" rows="2">{{ $order->note }}</textarea>
                                 </div>

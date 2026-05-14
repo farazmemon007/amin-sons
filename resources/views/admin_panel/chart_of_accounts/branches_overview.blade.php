@@ -316,6 +316,76 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* ERP Modal Styling - Premium Look */
+    .modal-content {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        overflow: hidden;
+    }
+    .modal-header {
+        padding: 22px 30px;
+        border-bottom: none;
+    }
+    .modal-title {
+        font-weight: 700;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .modal-body {
+        padding: 35px 30px;
+        background: #fff;
+    }
+    .form-label {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--dark);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .form-label i {
+        color: var(--primary);
+        font-size: 1rem;
+        width: 20px;
+        text-align: center;
+    }
+    .form-control, .form-select {
+        border: 2px solid #edf2f7;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        color: #2d3748;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #f8fafc;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        outline: none;
+    }
+    .modal-footer {
+        padding: 20px 30px 30px;
+        border-top: 1px solid #f1f5f9;
+        background: #f8fafc;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+    .modal-footer .btn {
+        padding: 12px 24px;
+        font-weight: 700;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+    }
 </style>
 
 <div class="container-fluid">
@@ -335,12 +405,12 @@
                 @can('chart.of.accounts.create')
                 <div class="page-header-actions">
                     <!-- Create Account Head Button -->
-                    <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#createHeadModal">
+                    <button type="button" class="btn" data-toggle="modal" data-target="#createHeadModal">
                         <i class="fas fa-plus"></i> Create Account Head
                     </button>
                     
                     <!-- Create Account Button -->
-                    <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#createAccountModal">
+                    <button type="button" class="btn" data-toggle="modal" data-target="#createAccountModal">
                         <i class="fas fa-plus"></i> Create Account
                     </button>
                 </div>
@@ -451,20 +521,24 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="createHeadLabel"><i class="fas fa-plus-circle"></i> Create Account Head</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
             <form action="{{ route('coa.head.store') }}" method="POST">
                 @csrf
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="headName" class="form-label fw-bold">Account Head Name <span class="text-danger">*</span></label>
+                    <div class="mb-4">
+                        <label for="headName" class="form-label"><i class="fas fa-tag"></i> Account Head Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="headName" name="name" placeholder="e.g., Bank, Cash, Asset" required>
-                        <small class="text-muted">Account head is a category for grouping similar accounts</small>
+                        <p class="text-muted mt-2 mb-0" style="font-size: 0.8rem;">
+                            <i class="fas fa-info-circle"></i> Account head is a high-level category used to group similar accounts.
+                        </p>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Create Head</button>
+                    <button type="button" class="btn btn-light border" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-check-circle"></i> Create Head</button>
                 </div>
             </form>
         </div>
@@ -477,14 +551,16 @@
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
                 <h5 class="modal-title" id="createAccountLabel"><i class="fas fa-plus-circle"></i> Create Account</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
             <form action="{{ route('coa.account.store') }}" method="POST">
                 @csrf
                 <div class="modal-body">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="accountBranch" class="form-label fw-bold">Branch <span class="text-danger">*</span></label>
+                        <div class="col-md-6 mb-4">
+                            <label for="accountBranch" class="form-label"><i class="fas fa-building"></i> Branch <span class="text-danger">*</span></label>
                             <select class="form-select" id="accountBranch" name="branch_id" required>
                                 <option value="">-- Select Branch --</option>
                                 @foreach($branches ?? [] as $branch)
@@ -492,8 +568,8 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="accountHead" class="form-label fw-bold">Account Head <span class="text-danger">*</span></label>
+                        <div class="col-md-6 mb-4">
+                            <label for="accountHead" class="form-label"><i class="fas fa-sitemap"></i> Account Head <span class="text-danger">*</span></label>
                             <select class="form-select" id="accountHead" name="head_id" required>
                                 <option value="">-- Select Head --</option>
                                 @foreach($heads ?? [] as $head)
@@ -502,32 +578,49 @@
                             </select>
                         </div>
                     </div>
+
                     <div class="row">
-                        <div class="col-12 mb-3">
-                            <label for="accountTitle" class="form-label fw-bold">Account Title <span class="text-danger">*</span></label>
+                        <div class="col-12 mb-4">
+                            <label for="accountTitle" class="form-label"><i class="fas fa-font"></i> Account Title <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="accountTitle" name="title" placeholder="e.g., Main Bank Account" required>
-                            <small class="text-muted d-block mt-1">
-                                <i class="fas fa-info-circle"></i> Account code will be auto-generated based on head and branch
-                            </small>
+                            <div class="mt-2 d-flex align-items-center gap-2" style="font-size: 0.8rem; color: #64748b;">
+                                <i class="fas fa-magic text-warning"></i> 
+                                <span>Account code will be auto-generated sequentially for the selected branch.</span>
+                            </div>
                         </div>
                     </div>
+
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="accountType" class="form-label fw-bold">Account Type <span class="text-danger">*</span></label>
+                        <div class="col-md-6 mb-4">
+                            <label for="accountType" class="form-label"><i class="fas fa-exchange-alt"></i> Account Type <span class="text-danger">*</span></label>
                             <select class="form-select" id="accountType" name="type" required>
                                 <option value="">-- Select Type --</option>
-                                <option value="Debit">Debit</option>
-                                <option value="Credit">Credit</option>
+                                <option value="Debit">Debit (Increase Asset/Expense)</option>
+                                <option value="Credit">Credit (Increase Liability/Income)</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="accountOpeningBalance" class="form-label fw-bold">Opening Balance</label>
-                            <input type="number" step="0.01" class="form-control" id="accountOpeningBalance" name="opening_balance" placeholder="0.00" value="0.00">
+                        <div class="col-md-6 mb-4">
+                            <label for="accountOpeningBalance" class="form-label"><i class="fas fa-wallet"></i> Opening Balance</label>
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text bg-light fw-bold" style="border: 2px solid #edf2f7; border-right: none; border-radius: 10px 0 0 10px;">PKR</span>
+                                </div>
+                                <input type="number" step="0.01" class="form-control" id="accountOpeningBalance" name="opening_balance" placeholder="0.00" value="0.00">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-2">
+                        <div class="col-12">
+                            <div class="custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="accountStatusOverview" name="status" checked>
+                                <label class="custom-control-label fw-bold" for="accountStatusOverview" style="cursor: pointer;">Set as Active Account</label>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-light border" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Create Account</button>
                 </div>
             </form>

@@ -101,7 +101,7 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'branch_id'          => 'required|exists:branches,id',
-            'warehouse_id'       => 'required|exists:warehouses,id',
+            'warehouse_id'       => 'nullable|exists:warehouses,id',
             'vendor_id'          => 'required|exists:vendors,id',
             'order_date'         => 'required|date',
             'expected_date'      => 'required|date',
@@ -122,9 +122,8 @@ class PurchaseOrderController extends Controller
 
             $poNumber = 'PO-B' . $branchId . '-' . str_pad($branch->po_counter, 4, '0', STR_PAD_LEFT);
 
-            $order = PurchaseOrder::create([
+            $orderData = [
                 'branch_id'     => $branchId,
-                'warehouse_id'  => $request->warehouse_id,
                 'vendor_id'     => $request->vendor_id,
                 'po_number'     => $poNumber,
                 'order_date'    => $request->order_date,
@@ -133,7 +132,13 @@ class PurchaseOrderController extends Controller
                 'created_by'    => Auth::id(),
                 'status'        => 'pending',
                 'total_amount'  => 0,
-            ]);
+            ];
+
+            if ($request->filled('warehouse_id')) {
+                $orderData['warehouse_id'] = $request->warehouse_id;
+            }
+
+            $order = PurchaseOrder::create($orderData);
 
             $totalAmount = 0;
 
@@ -241,14 +246,21 @@ class PurchaseOrderController extends Controller
             DB::beginTransaction();
 
             $order = PurchaseOrder::findOrFail($id);
-            $order->update([
+            $updateData = [
                 'branch_id'     => $request->branch_id,
-                'warehouse_id'  => $request->warehouse_id,
                 'vendor_id'     => $request->vendor_id,
                 'order_date'    => $request->order_date,
                 'expected_date' => $request->expected_date,
                 'note'          => $request->note,
-            ]);
+            ];
+
+            if ($request->filled('warehouse_id')) {
+                $updateData['warehouse_id'] = $request->warehouse_id;
+            } else {
+                $updateData['warehouse_id'] = null;
+            }
+
+            $order->update($updateData);
 
             // Delete old items and re-create
             $order->items()->delete();

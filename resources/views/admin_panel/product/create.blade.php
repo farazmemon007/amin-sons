@@ -2,1216 +2,597 @@
 
 @section('content')
     @can('product.create')
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-        <link rel="stylesheet"
-            href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css">
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        @stack('scripts')
-
+        @section('css')
         <style>
-            .image-preview-wrapper {
-                position: relative;
-                display: inline-block
+            /* Layout Matching User's Image */
+            .main-content-inner { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05); }
+            .form-section { display: flex; flex-wrap: wrap; gap: 30px; align-items: flex-start; }
+            .image-col { width: 320px; flex-shrink: 0; }
+            .fields-col { flex: 1; min-width: 600px; }
+            
+            /* Field Styling */
+            .field-group { margin-bottom: 20px; flex: 1; }
+            .field-label { display: block; font-weight: 600; color: #444; margin-bottom: 8px; font-size: 14px; }
+            .field-label i { color: #4e73df; margin-right: 5px; }
+            
+            .custom-input, .custom-select {
+                width: 100%;
+                border: 1px solid #ddd !important; /* Explicit border for all fields */
+                border-radius: 4px;
+                padding: 6px 12px;
+                height: 40px;
+                font-size: 14px;
+                background-color: #fff;
+                transition: border-color 0.2s;
+            }
+            .custom-input:focus, .custom-select:focus { border-color: #2563eb !important; outline: none; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1); }
+            
+            /* Action Buttons (+ and Gen) */
+            .btn-plus-sm { 
+                background: #2563eb; color: #fff; border: none; width: 32px; height: 24px; 
+                border-radius: 4px; display: flex; align-items: center; justify-content: center; 
+                margin-top: 5px; cursor: pointer; font-size: 12px; transition: 0.2s;
+            }
+            .btn-plus-sm:hover { background: #1d4ed8; }
+            
+            .btn-plus-inline {
+                background: #2563eb; color: #fff; border: none; width: 40px; height: 40px; 
+                border-radius: 4px; display: flex; align-items: center; justify-content: center; 
+                cursor: pointer; font-size: 14px; margin-left: 5px; flex-shrink: 0;
+            }
+            
+            .btn-gen { 
+                background: #2563eb; color: #fff; border: none; padding: 0 15px; 
+                border-radius: 0 4px 4px 0; height: 40px; cursor: pointer; font-size: 13px;
+                transition: 0.2s;
+            }
+            .btn-gen:hover { background: #1d4ed8; }
+            
+            /* Row Layout */
+            .field-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 5px; }
+            
+            /* Image Preview Area */
+            .image-box { 
+                width: 100%; height: 320px; background: #fff; 
+                border: 2px dashed #ddd; border-radius: 12px; 
+                position: relative; overflow: hidden; display: flex; 
+                align-items: center; justify-content: center; margin-bottom: 15px;
+            }
+            #preview { max-width: 100%; max-height: 100%; object-fit: contain; }
+            .close-img { 
+                position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); 
+                color: #fff; width: 28px; height: 28px; border-radius: 50%; 
+                display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;
+                transition: 0.2s;
+            }
+            .close-img:hover { background: #ef4444; }
+
+            /* Select2 Customization */
+            .select2-container--default .select2-selection--multiple { border: 1px solid #ddd !important; min-height: 40px; border-radius: 4px; }
+            .select2-container--default.select2-container--focus .select2-selection--multiple { border-color: #2563eb !important; }
+            
+            /* Add arrow to multi-select as requested */
+            .select2-container--default .select2-selection--multiple { position: relative; padding-right: 30px; }
+            .select2-container--default .select2-selection--multiple::after {
+                content: "\f107"; font-family: "Line Awesome Free"; font-weight: 900;
+                position: absolute; top: 50%; right: 10px; transform: translateY(-50%);
+                color: #888; pointer-events: none;
             }
 
-            .image-preview-wrapper img {
-                max-width: 100%;
-                border-radius: 10px;
-                box-shadow: 0 4px 16px rgba(0, 0, 0, .06)
+            /* Checkboxes */
+            .check-group { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+            .check-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #555; }
+            .check-row input { width: 18px; height: 18px; cursor: pointer; }
+            
+            .btn-bom { 
+                border: 1px solid #2563eb; color: #2563eb; background: #fff; 
+                padding: 6px 20px; border-radius: 4px; font-size: 14px;
+                transition: 0.2s; cursor: pointer; margin-left: 15px;
             }
-
-            .clear-image-btn {
-                position: absolute;
-                top: 8px;
-                right: 10px;
-                width: 30px;
-                height: 30px;
-                background: rgba(0, 0, 0, .6);
-                color: #fff;
-                border: none;
-                border-radius: 50%;
-                font-size: 16px;
-                font-weight: bold;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: .2s
+            .btn-bom:hover:not(:disabled) { background: #2563eb; color: #fff; }
+            .btn-bom:disabled { border-color: #ccc; color: #ccc; cursor: not-allowed; }
+            
+            .btn-save-main {
+                background: #2563eb; color: #fff; border: none; padding: 12px 60px;
+                border-radius: 6px; font-weight: 700; font-size: 16px; 
+                cursor: pointer; transition: 0.3s; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
             }
-
-            .clear-image-btn:hover {
-                background: rgba(220, 53, 69, .9)
-            }
-
-            #preview {
-                width: 395px;
-                height: 325px;
-                border: 2px dashed #d9dfe7;
-                border-radius: 10px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                overflow: hidden;
-                background: #f8fafc
-            }
-
-            #preview img {
-                max-width: 100%;
-                max-height: 100%;
-                object-fit: contain;
-                display: block
-            }
-
-            .page-title {
-                font-weight: 700;
-                letter-spacing: .3px
-            }
-
-            .btn-outline--primary {
-                border-color: #3b82f6;
-                color: #3b82f6
-            }
-
-            .btn-outline--primary:hover {
-                background: #3b82f6;
-                border-color: #3b82f6;
-                color: #fff
-            }
-
-            .card {
-                border-radius: 14px;
-                border: 1px solid #eef1f5
-            }
-
-            .form-label {
-                font-weight: 600
-            }
-
-            .select2-container--default .select2-selection--multiple {
-                display: flex;
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                min-height: 38px;
-                max-height: 38px;
-                white-space: nowrap;
-                scrollbar-width: thin
-            }
-
-            .select2-selection__choice {
-                white-space: nowrap;
-                margin-right: 4px;
-                font-size: 11px;
-                padding: 2px 6px
-            }
-
-            .badge-note {
-                font-size: .75rem
-            }
-
-            .small-help {
-                font-size: .8rem;
-                color: #6b7280
-            }
-
-            .modal-wide {
-                max-width: 1100px
-            }
-
-            .bom-table thead th,
-            .bom-table tbody td {
-                vertical-align: middle
-            }
-
-            .bom-table input[readonly] {
-                background: #f8fafc
-            }
-
-            .toolbar-gap>* {
-                margin-right: .4rem
-            }
+            .btn-save-main:hover { background: #1d4ed8; transform: translateY(-1px); }
         </style>
-        <style>
-            .add-btn {
-                width: 40px;
-                padding: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-
-                border-left: 0;
-            }
-
-            .add-btn i {
-                font-size: 13px;
-                transition: transform 0.2s ease;
-            }
-
-            /* Hover polish */
-            .add-btn:hover i {
-                transform: scale(1.15);
-            }
-
-            /* Focus consistency */
-            .category-group .form-select:focus {
-                box-shadow: none;
-            }
-
-            .add-btn {
-                border-top-left-radius: 0;
-                border-bottom-left-radius: 0;
-            }
-        </style>
+        @endsection
 
         <div class="main-content">
             <div class="main-content-inner">
-                <div class="container-fluid">
-                    <div class="body-wrapper">
-                        <div class="bodywrapper__inner">
-                            {{-- <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
-                                <h6 class="page-title mb-0">Add Product</h6> --}}
-
-                                {{-- <div class="d-flex justify-content-center flex-wrap gap-2 flex-grow-1 toolbar-gap">
-                                    <button type="button" class="btn btn-sm btn-outline--primary" data-bs-toggle="modal"
-                                        data-bs-target="#categoryModal">
-                                        <i class="la la-plus-circle"></i> Add Category
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline--primary" data-bs-toggle="modal"
-                                        data-bs-target="#subcategoryModal">
-                                        <i class="las la-plus"></i> Add Subcategory
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline--primary cuModalBtn"
-                                        data-modal_title="Add New Model" data-bs-toggle="modal" data-bs-target="#modelModal">
-                                        <i class="las la-plus"></i> Add Models
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline--primary cuModalBtn"
-                                        data-modal_title="Add New Brand" data-bs-toggle="modal" data-bs-target="#cuModal">
-                                        <i class="las la-plus"></i> Add Brand
-                                    </button>
-                                    <a class="btn btn-sm btn-outline--primary" href="{{ url('/home') }}">
-                                        <i class="la la-tachometer-alt"></i> Go To Dashboard
-                                    </a>
-                                </div> --}}
-                                @if (session('swal_error'))
-                                    <script>
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Error',
-                                            text: "{{ session('swal_error') }}"
-                                        });
-                                    </script>
-                                @elseif(session('catagory_swal_error'))
-                                    <script>
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Error',
-                                            text: "{{ session('catagory_swal_error') }}"
-                                        });
-                                    </script>
-                                @elseif(session('subcatagory_swal_error'))
-                                    <script>
-                                        Swal.fire({
-                                            icon: 'error',
-                                            title: 'Error',
-                                            text: "{{ session('catagory_swal_error') }}"
-                                        });
-                                    </script>
-                                @endif
-
-
-
-
-
-
-
-
-
-                                {{-- ////////////////////////////////////// --}}
-
-                                <div class="d-flex">
-                                    <a href="{{ route('product') }}" class="btn btn-sm btn-outline--primary">
-                                        <i class="la la-undo"></i> Back
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div class="row mb-none-30">
-                                <div class="col-lg-12 col-md-12 mb-30">
-                                    <div class="card">
-                                        <div class="card-body">
-                                            @if (session()->has('success'))
-                                                <div class="alert alert-success">
-                                                    <strong>Success!</strong> {{ session('success') }}.
-                                                </div>
-                                            @endif
-
-                                            <form id="productForm" action="{{ route('store-product') }}" method="POST"
-                                                enctype="multipart/form-data">
-                                                @csrf
-                                                {{-- ✅ PHASE 1: Hidden input to indicate this is Phase 1 submission --}}
-                                                <input type="hidden" name="phase" value="phase1">
-                                                <div class="row g-4">
-                                                    <!-- Image -->
-                                                    <div class="col-md-4">
-                                                        <div class="card shadow-sm border-0 p-3">
-                                                            <div class="image-preview-wrapper w-100">
-                                                                <img id="preview" src="" alt="No Image Selected">
-                                                                <button type="button" class="clear-image-btn"
-                                                                    id="clearImageBtn">&times;</button>
-                                                            </div>
-                                                            <div class="mt-3">
-                                                                <label class="form-label">Product Image</label>
-                                                                <input type="file" id="imageInput" name="image"
-                                                                    class="form-control">
-                                                                <div class="small-help mt-1">PNG/JPG up to 2MB.</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <!-- Product Info -->
-                                                    <div class="col-md-8">
-                                                        <div class="row g-3">
-
-                                                            <!-- BRANCH SELECTION: Super Admin sees dropdown, Regular user sees hidden field -->
-                                                            @if($isSuperAdmin)
-                                                                <!-- Super Admin: Dropdown to select any branch -->
-                                                                <div class="col-sm-3">
-                                                                    <label class="form-label fw-bold text-primary">🏢 Branch</label>
-                                                                    <select name="branch_id" class="form-select" required>
-                                                                        <option value="">-- Select Branch --</option>
-                                                                        @foreach($branches as $branch)
-                                                                            <option value="{{ $branch->id }}">
-                                                                                {{ $branch->name }} (ID: {{ $branch->id }})
-                                                                            </option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                    <small class="text-muted d-block mt-1">📌 Select the branch this product belongs to</small>
-                                                                </div>
-                                                            @else
-                                                                <!-- Regular User: Hidden field with their branch + Display text -->
-                                                                <div class="col-sm-3">
-                                                                    <label class="form-label fw-bold text-primary">🏢 Branch</label>
-                                                                    <input type="hidden" name="branch_id" value="{{ $user->branch_id ?? 1 }}">
-                                                                    <div class="alert alert-info d-flex align-items-center" style="margin-bottom: 0;">
-                                                                        <i class="fa fa-info-circle me-2"></i>
-                                                                        <div>
-                                                                            <strong>{{ $branches->first()?->name ?? 'Default Branch' }}</strong>
-                                                                            <br>
-                                                                            <small>Your product will be created in your assigned branch</small>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            @endif
-
-                                                            {{-- ✅ PHASE 1 ONLY: Removed warehouse assignment --}}
-                                                            {{-- Warehouse assignments will be configured in Phase 2 (Opening Stock form) --}}
-
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Category</label>
-                                                                <div class="input-group">
-                                                                    <select id="category-dropdown" name="category_id"
-                                                                        class="form-select">
-                                                                        <option value="">Select Category</option>
-                                                                        @foreach ($categories as $cat)
-                                                                            <option value="{{ $cat->id }}">{{ $cat->name }}
-                                                                            </option>
-                                                                        @endforeach
-                                                                    </select>
-
-                                                                    <button type="button" class="btn btn-primary add-btn"
-                                                                        data-bs-toggle="modal" data-bs-target="#categoryModal"
-                                                                        title="Add New Category">
-                                                                        <i class="fa-solid fa-plus"></i>
-                                                                    </button>
-
-                                                                </div>
-                                                            </div>
-
-
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Sub Category</label>
-                                                                <div class="input-group">
-
-
-                                                                    <select id="subcategory-dropdown" name="sub_category_id"
-                                                                        class="form-select">
-                                                                        <option value="">Select Sub category</option>
-                                                                    </select>
-                                                                    <button type="button" class="btn btn-primary add-btn"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#subcategoryModal"
-                                                                        title="Add New Category">
-                                                                        <i class="fa-solid fa-plus"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                        
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Type</label>
-                                                                <div class="input-group">
-
-
-                                                                    <select id="type-dropdown" name="type_id"
-                                                                        class="form-select">
-                                                                        <option value="">Select Type</option>
-                                                                        @foreach ($types as $type)
-                                                                            <option value="{{ $type->id }}">{{ $type->name }}</option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                    <button type="button" class="btn btn-primary add-btn"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#typeModal"
-                                                                        title="Add New Type">
-                                                                        <i class="fa-solid fa-plus"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-
-
-
-
-
-
-
-
-
-                                                          
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Brand</label>
-                                                                <div class="input-group">
-
-
-                                                                    <select name="brand_id" class="form-select" required>
-                                                                        <option value="" disabled selected>Select One</option>
-                                                                        @foreach ($brands as $brand)
-                                                                            <option value="{{ $brand->id }}">{{ $brand->name }}
-                                                                            </option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                    <button type="button" class="btn btn-primary add-btn"
-                                                                        data-bs-toggle="modal"
-                                                                        data-bs-target="#brandcategoryModal"
-                                                                        title="Add New Category">
-                                                                        <i class="fa-solid fa-plus"></i>
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-sm-3">
-                                                                <label for="barcodeInput" class="form-label">Barcode</label>
-                                                                <div class="input-group">
-                                                                    <input type="text" id="barcodeInput" name="barcode_path"
-                                                                        class="form-control"
-                                                                        placeholder="Enter or Generate Barcode">
-
-                                                                    <button type="button" id="generateBarcodeBtn"
-                                                                        class="btn btn-primary px-1"
-                                                                        style="font-size:11px; height:32px; line-height:2;">
-                                                                        Gen
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                              <div class="col-sm-3">
-                                                                <label class="form-label">Item Description</label>
-                                                                <input type="text" id="product_name" value="{{ old('product_name') }}"
-                                                                    name="product_name" class="form-control" required>
-                                                            </div>
-
-                                                            <script>
-                                                                // Filter warehouse checkboxes when branch changes
-                                                                document.addEventListener('DOMContentLoaded', function () {
-                                                                    var branchSelect = document.querySelector('select[name="branch_id"]');
-                                                                    var checkRows = document.querySelectorAll('.warehouse-assignment-row');
-
-                                                                    function filterByBranch(bid) {
-                                                                        checkRows.forEach(function (row) {
-                                                                            var bids = row.getAttribute('data-branches') || '';
-                                                                            if (!bid) {
-                                                                                row.style.display = 'block';
-                                                                                return;
-                                                                            }
-                                                                            var arr = String(bids).split(',').map(function (v) { return v.trim(); });
-                                                                            if (arr.indexOf(String(bid)) !== -1) {
-                                                                                row.style.display = 'block';
-                                                                            } else {
-                                                                                row.style.display = 'none';
-                                                                                row.querySelector('input').checked = false;
-                                                                            }
-                                                                        });
-                                                                    }
-
-                                                                    if (branchSelect) {
-                                                                        branchSelect.addEventListener('change', function () {
-                                                                            filterByBranch(this.value);
-                                                                        });
-                                                                        // initial filter if value pre-selected
-                                                                        filterByBranch(branchSelect.value);
-                                                                    } else {
-                                                                        // non-super users: get their branch id from hidden input
-                                                                        var hidden = document.querySelector('input[name="branch_id"]');
-                                                                        if (hidden) filterByBranch(hidden.value);
-                                                                    }
-                                                                });
-                                                            </script>
-
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Model</label>
-                                                                <input type="text" id="model" value="{{ old('model') }}"
-                                                                    name="model" class="form-control">
-                                                            </div>
-
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">HS Code</label>
-                                                                <div class="input-group">
-                                                                    <input type="text" id="hs_code" value="{{ old('hs_code') }}"
-                                                                        name="hs_code" class="form-control" required>
-
-
-                                                                </div>
-                                                            </div>
-
-
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Color</label>
-                                                                <select name="color[]" id="color-select" class="form-select"
-                                                                    multiple="multiple" style="width:100%">
-                                                                    <option value="Black">Black</option>
-                                                                    <option value="White">White</option>
-                                                                    <option value="Red">Red</option>
-                                                                    <option value="Blue">Blue</option>
-                                                                </select>
-                                                            </div>
-                                                            {{-- //////////////////// --}}
-
-                                                            {{-- Packaging Type --}}
-                                                            <div class="col-sm-3">
-                                                                <label class="form-label">Packaging Type</label>
-                                                                <div class="input-group">
-                                                                    <select id="packing_type" name="packing_type"
-                                                                        class="form-select" required>
-                                                                        <option value="">Select Packaging Type</option>
-                                                                        <option value="Standard">Standard</option>
-                                                                        <option value="Customize">Customize</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-
-                                                            {{-- Unit field (shown for Standard) --}}
-                                                            {{-- <div class="col-sm-3" id="unitSection" style="display: none;">
-                                                                <label class="form-label">Unit</label>
-                                                                <div class="input-group">
-                                                                    <select id="unit_select" name="unit" class="form-select">
-                                                                        <option value="">Select Unit</option>
-                                                                        @foreach ($units as $u)
-                                                                            <option value="{{ $u->id }}">{{ $u->name }}</option>
-                                                                        @endforeach
-                                                                    </select>
-                                                                </div>
-                                                            </div> --}}
-
-                                                    <div class="col-sm-3" id="unitSection" style="display: none;">
-                                                        <label class="form-label">Unit</label>
-                                                        <div class="input-group">
-                                                            <input type="text" id="unit_readonly" class="form-control" style="display:none;" value="Piece" readonly>
-                                                            <input type="hidden" name="unit" id="unit_hidden" disabled>
-                                                            <select id="unit_select" name="unit" class="form-select">
-                                                                <option value="">Select Unit</option>
-                                                               @foreach ($units as $u)
-                                                                            <option value="{{ $u->id }}">{{ $u->name }}</option>
-                                                                        @endforeach
-                                                            </select>
-                                                            <button type="button" class="btn btn-primary add-btn" id="unit_add_btn"
-                                                                data-bs-toggle="modal" data-bs-target="#unitModal"
-                                                                title="Add New Unit">
-                                                                <i class="fa-solid fa-plus"></i>
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                            {{-- Packaging Quantity (shown for Customize) --}}
-                                                            <div class="col-sm-3" id="packingQtySection" style="display: none;">
-                                                                <label class="form-label">Packaging Quantity</label>
-                                                                <div class="input-group">
-                                                                    <input type="text" id="packing_qty"
-                                                                        value="{{ old('packing_qty') }}" name="packing_qty"
-                                                                        class="form-control">
-                                                                </div>
-                                                            </div>
-                                                        {{-- --}}
-
-                                                        {{-- Unit per Packing (shown for Customize) --}}
-                                                        <div class="col-sm-3" id="unitPerPackingSection" style="display: none;">
-                                                            <label class="form-label">Unit per Packing</label>
-                                                            <input id="piece_per_pack" type="text"
-                                                                value="{{ old('piece_per_package') }}" name="piece_per_pack"
-                                                                class="form-control">
-                                                        </div>
-
-                                                        {{-- Loose Pieces (shown for Customize) --}}
-                                                        <div class="col-sm-3" id="loosepiece_section" style="display: none;">
-                                                            <label class="form-label">Loose Pieces</label>
-                                                            <input id="loose_piece" type="text"
-                                                                value="{{ old('unit_per_package') }}" name="loose_piece"
-                                                                class="form-control">
-                                                        </div>
-
-                                                        {{-- ✅ PHASE 1 ONLY: Remove opening stock, alert qty, prices, warehouse assignments --}}
-                                                        {{-- These will be configured in Phase 2 (Opening Stock form) --}}
-                                                        {{-- Only basic product profile is saved in this form --}}
-                                                    </div>
-
-                                                    <hr class="my-4">
-
-                                                    {{-- Is Part toggle --}}
-                                                    <div class="form-check form-switch mb-3">
-                                                        <input class="form-check-input" type="checkbox" id="isPart"
-                                                            name="is_part" value="1">
-                                                        <label class="form-check-label" for="isPart">This is a Part (not a
-                                                            full product)</label>
-                                                    </div>
-
-                                                    {{-- Assembled toggle + modal trigger --}}
-                                                    <div class="row g-3 align-items-center">
-                                                        <div class="col-md-4">
-                                                            <div class="form-check form-switch">
-                                                                <input class="form-check-input" type="checkbox" id="isAssembled"
-                                                                    name="is_assembled" value="1">
-                                                                <label class="form-check-label" for="isAssembled">This product
-                                                                    is assembled from parts?</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-md-5 d-flex align-items-center gap-2">
-                                                            <button type="button" class="btn btn-outline--primary btn-sm"
-                                                                id="openPartsModal" disabled>
-                                                                <i class="las la-tools"></i> Define Parts (BOM)
-                                                            </button>
-                                                            <span class="badge bg-secondary badge-note d-none" id="bomBadge">0
-                                                                parts</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Hidden BOM JSON holder --}}
-                                                    <input type="hidden" name="bom_json" id="bom_json" value="[]">
-
-                                                </div>
-                                        </div>
-
-                                        <div class="mt-4">
-                                            <button type="submit" class="btn btn-primary w-100 py-2">
-                                                <i class="las la-save"></i> ✅ Create Product Profile (Phase 1)
-                                            </button>
-                                            <small class="d-block mt-2 text-muted text-center">
-                                                📌 Opening stock, prices & warehouse assignments will be configured in the next step
-                                            </small>
-                                        </div>
-                                        </form>
-
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div><!-- bodywrapper__inner end -->
-                </div><!-- body-wrapper end -->
-            </div>
-
-            {{-- category modal --}}
-            <div id="categoryModal" class="modal fade" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><span class="type"></span> <span>Add Category</span></h5>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                <i class="las la-times"></i>
-                            </button>
-                        </div>
-                        <form action="{{ route('store.category') }}" method="POST">
-                            @csrf
-                            <div class="modal-body">
-                                <div class="form-group">
-                                    <input type="hidden" name="page" value="product_page" class="form-control" required>
-                                    <label>Name</label>
-                                    <input type="text" name="name" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn--primary h-45 w-100">Submit</button>
-                            </div>
-                        </form>
-                    </div>
+                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                    <h5 class="m-0 font-weight-bold" style="color: #1e293b;">Add New Product</h5>
+                    <a href="{{ route('product') }}" class="btn btn-sm btn-outline-primary px-3">
+                        <i class="las la-arrow-left"></i> Back
+                    </a>
                 </div>
-            </div>
 
-            {{-- subcategory modal --}}
-            <div id="subcategoryModal" class="modal fade" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><span class="type"></span> <span>Add Subcategory</span></h5>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                <i class="las la-times"></i>
-                            </button>
+                @if (session('swal_error'))
+                    <script>Swal.fire({ icon: 'error', title: 'Error', text: "{{ session('swal_error') }}" });</script>
+                @endif
+
+                <form id="productForm" action="{{ route('store-product') }}" method="POST" enctype="multipart/form-data">
+                    @csrf
+                    <input type="hidden" name="phase" value="phase1">
+
+                    <div class="form-section">
+                        <!-- Left: Image Area -->
+                        <div class="image-col">
+                            <div class="image-box">
+                                <img id="preview" src="{{ asset('assets/images/placeholder-img.png') }}" alt="Product Image">
+                                <button type="button" class="close-img" id="clearImageBtn" title="Remove Image">&times;</button>
+                            </div>
+                            <label class="field-label">Product Image</label>
+                            <input type="file" id="imageInput" name="image" class="custom-input mb-2" accept="image/*">
+                            <p class="small text-muted mb-0">📌 Drag and drop or click to upload</p>
                         </div>
-                        <form action="{{ route('store.subcategory') }}" method="POST">
-                            @csrf
-                            <div class="modal-body">
-                                <input type="hidden" id="" name="page" value="product_page" class="form-control" required>
-                                <div class="form-group">
-                                    <label>Category Name</label>
-                                    <select name="category_id" class="form-select">
-                                        @foreach ($categories as $item)
-                                            <option value="{{ $item->id }}">{{ $item->name }}</option>
+
+                        <!-- Right: Fields Area -->
+                        <div class="fields-col">
+                            <!-- Row 1: Branch, Category, SubCategory, Type -->
+                            <div class="field-row">
+                                <div class="field-group">
+                                    <label class="field-label">🏢 Branch</label>
+                                    @if($isSuperAdmin)
+                                        <select name="branch_id" class="custom-select" required>
+                                            <option value="">-- Select Branch --</option>
+                                            @foreach($branches as $branch)
+                                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    @else
+                                        <input type="text" class="custom-input bg-light" value="{{ $branches->first()?->name ?? 'Default Branch' }}" readonly>
+                                        <input type="hidden" name="branch_id" value="{{ $user->branch_id ?? 1 }}">
+                                    @endif
+                                    <p class="small text-danger mt-1 mb-0" style="font-size: 11px;">📌 Select the branch this product belongs to</p>
+                                </div>
+
+                                <div class="field-group">
+                                    <label class="field-label">Category</label>
+                                    <select id="category-dropdown" name="category_id" class="custom-select" required>
+                                        <option value="">Select Category</option>
+                                        @foreach ($categories as $cat)
+                                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
                                         @endforeach
                                     </select>
+                                    <button type="button" class="btn-plus-sm" data-toggle="modal" data-target="#categoryModal">+</button>
                                 </div>
-                                <div class="form-group">
-                                    <label>Sub-Category Name</label>
-                                    <input type="text" id="sub_category" name="name" class="form-control" required>
+
+                                <div class="field-group">
+                                    <label class="field-label">Sub Category</label>
+                                    <select id="subcategory-dropdown" name="sub_category_id" class="custom-select" required>
+                                        <option value="">Select Sub category</option>
+                                    </select>
+                                    <button type="button" class="btn-plus-sm" data-toggle="modal" data-target="#subcategoryModal">+</button>
                                 </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn--primary h-45 w-100">Submit</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
 
-
-{{-- Type modal --}}
-            <div id="typeModal" class="modal fade" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><span class="type"></span> <span>Add Type</span></h5>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                <i class="las la-times"></i>
-                            </button>
-                        </div>
-                        <form action="{{ route('store.type') }}" method="POST">
-                            @csrf
-                            <div class="modal-body">
-                                <input type="hidden" id="" name="page" value="product_page" class="form-control" required>
-                                <div class="form-group">
-                                    <label>Type Name</label>
-                                    <input type="text" name="name" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn--primary h-45 w-100">Submit</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-
-
-
-            {{-- Unit modal --}}
-            <div id="modelModal" class="modal fade" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><span class="type"></span> <span>Add Models</span></h5>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                <i class="las la-times"></i>
-                            </button>
-                        </div>
-                        <form action="{{ route('store.Unit') }}" method="POST">
-                            @csrf
-                            <div class="modal-body">
-                                <div class="form-group">
-                                    <label>Name</label>
-                                    <input type="text" name="unit" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn--primary h-45 w-100">Submit</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            {{-- brand modal --}}
-            <div id="brandcategoryModal" class="modal fade" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><span class="type"></span> <span>Add Brand</span></h5>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                <i class="las la-times"></i>
-                            </button>
-                        </div>
-                        <form action="{{ route('store.Brand') }}" method="POST">
-                            @csrf
-                            <div class="modal-body">
-                                <input type="hidden" name="page" value="product_page" class="form-control" required>
-                                <div class="form-group">
-                                    <label>Name</label>
-                                    <input type="text" name="name" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn--primary h-45 w-100">Submit</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            {{-- Pakagetype model --}}
-            {{-- <div id="PackageTypeModal" class="modal fade" tabindex="-1" role="dialog">
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title"><span class="type"></span> <span>Add Package type</span></h5>
-                            <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                <i class="las la-times"></i>
-                            </button>
-                        </div>
-                        <form action="{{ route('package-type.store') }}" method="POST">
-                            @csrf
-                            <div class="modal-body">
-                                <input type="hidden" name="page" value="product_page" class="form-control" required>
-                                <div class="form-group">
-                                    <label>Name</label>
-                                    <input type="text" name="name" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="submit" class="btn btn-primary h-45 w-100">Submit</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div> --}}
-                    {{-- unit modal --}}
-  <div id="unitModal" class="modal fade" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title">Add Unit</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-
-            <form id="unitForm" action="{{ route('store.Unit') }}" method="POST">
-                @csrf
-
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Unit Name</label>
-                        <input type="hidden" name="page" value="product_page">
-                        <input type="text" name="name" class="form-control">
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Submit</button>
-                </div>
-
-            </form>
-
-        </div>
-    </div>
-</div>
-
-
-            {{-- Parts/BOM Modal --}}
-            <div class="modal fade" id="partsModal" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-scrollable modal-xl modal-wide">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h6 class="modal-title"><i class="las la-cubes me-1"></i> Define Parts (BOM)</h6>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-
-                        <div class="modal-body">
-                            <div class="small-help mb-3">
-                                Add parts and set <b>Required / Unit</b>. System shows current <b>Available</b> and calculates
-                                <b>Needed</b> from “Opening Stock (pcs)” plus any <b>Shortage</b>.
-                            </div>
-
-                            <div class="row g-2 mb-3">
-                                <div class="col-md-6">
-                                    <div class="p-2 border rounded">
-                                        <div class="text-muted small">Reference</div>
-                                        <div>Stock in (pieces): <b id="bomStockPieces">0</b></div>
-                                        <div>Assemble possible from parts: <b id="assemblePossible">0</b></div>
+                                <div class="field-group">
+                                    <label class="field-label">Type</label>
+                                    <div class="d-flex align-items-center">
+                                        <select name="type_id" class="custom-select">
+                                            <option value="">Select Type</option>
+                                            @foreach ($types as $type)
+                                                <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="btn-plus-inline" data-toggle="modal" data-target="#typeModal">+</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm bom-table">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="min-width:320px;">Part</th>
-                                            <th style="min-width:120px;">Required / Unit</th>
-                                            <th style="min-width:120px;">Available</th>
-                                            <th style="min-width:120px;">Needed</th>
-                                            <th style="min-width:120px;">Shortage</th>
-                                            <th style="min-width:90px;">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="bomRows"></tbody>
-                                </table>
+                            <!-- Row 2: Brand, Barcode, Item Description, Model -->
+                            <div class="field-row mt-3">
+                                <div class="field-group">
+                                    <label class="field-label">Brand</label>
+                                    <div class="d-flex align-items-center">
+                                        <select name="brand_id" class="custom-select">
+                                            <option value="">Select One</option>
+                                            @foreach ($brands as $brand)
+                                                <option value="{{ $brand->id }}">{{ $brand->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="btn-plus-inline" data-toggle="modal" data-target="#brandcategoryModal">+</button>
+                                    </div>
+                                </div>
+
+                                <div class="field-group">
+                                    <label class="field-label">Barcode</label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="text" id="barcodeInput" name="barcode_path" class="custom-input" placeholder="Barcode / SKU" style="border-radius: 4px 0 0 4px !important;">
+                                        <button class="btn-gen" type="button" id="generateBarcodeBtn">Gen</button>
+                                    </div>
+                                </div>
+
+                                <div class="field-group" style="grid-column: span 1;">
+                                    <label class="field-label">Item Description</label>
+                                    <input type="text" id="product_name" name="product_name" class="custom-input" placeholder="Product Name" required>
+                                </div>
+
+                                <div class="field-group">
+                                    <label class="field-label">Model</label>
+                                    <input type="text" id="model" name="model" class="custom-input" placeholder="Model No.">
+                                </div>
                             </div>
 
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="addBomRow">
-                                <i class="las la-plus-circle"></i> Add Part
-                            </button>
-                        </div>
+                            <!-- Row 3: HS Code, Color, Packaging Type -->
+                            <div class="field-row mt-3">
+                                <div class="field-group">
+                                    <label class="field-label">HS Code</label>
+                                    <input type="text" name="hs_code" class="custom-input" placeholder="HS Code">
+                                </div>
 
-                        <div class="modal-footer">
-                            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button class="btn btn-primary" id="saveBom"><i class="las la-save"></i> Save Parts</button>
+                                <div class="field-group">
+                                    <label class="field-label">Color</label>
+                                    <select name="color[]" id="color-select" class="custom-select" multiple="multiple">
+                                        <option value="Black">Black</option>
+                                        <option value="White">White</option>
+                                        <option value="Red">Red</option>
+                                        <option value="Blue">Blue</option>
+                                        <option value="Silver">Silver</option>
+                                        <option value="Golden">Golden</option>
+                                    </select>
+                                </div>
+
+                                <div class="field-group">
+                                    <label class="field-label">Packaging Type</label>
+                                    <select id="packing_type" name="packing_type" class="custom-select" required>
+                                        <option value="">Select Packaging Type</option>
+                                        <option value="Standard">Standard</option>
+                                        <option value="Customize">Customize</option>
+                                    </select>
+                                </div>
+
+                                <div class="field-group" id="unitSection" style="display: none;">
+                                    <label class="field-label">Unit</label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="text" id="unit_readonly" class="custom-input bg-light" value="Piece" readonly style="display:none;">
+                                        <input type="hidden" name="unit" id="unit_hidden" disabled>
+                                        <select id="unit_select" name="unit" class="custom-select">
+                                            <option value="">Select Unit</option>
+                                            @foreach ($units as $u)
+                                                <option value="{{ $u->id }}">{{ $u->name }}</option>
+                                            @endforeach
+                                        </select>
+                                        <button type="button" class="btn-plus-inline" id="unit_add_btn" data-toggle="modal" data-target="#unitModal">+</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 4: Advanced Packing (Hidden by default) -->
+                            <div class="field-row mt-3" id="advancedPackingRow" style="display: none;">
+                                <div class="field-group">
+                                    <label class="field-label">Pack Qty</label>
+                                    <input type="number" id="packing_qty" name="packing_qty" class="custom-input">
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">Unit/Pack</label>
+                                    <input type="number" id="piece_per_pack" name="piece_per_pack" class="custom-input">
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">Loose Pcs</label>
+                                    <input type="number" id="loose_piece" name="loose_piece" class="custom-input">
+                                </div>
+                                <div class="field-group"></div>
+                            </div>
+
+                            <!-- Toggles Section -->
+                            <div class="check-group mt-4">
+                                <div class="check-row">
+                                    <input type="checkbox" id="isPart" name="is_part" value="1">
+                                    <label for="isPart" class="m-0">This is a Part (not a full product)</label>
+                                </div>
+                                <div class="check-row">
+                                    <input type="checkbox" id="isAssembled" name="is_assembled" value="1">
+                                    <label for="isAssembled" class="m-0">This product is assembled from parts?</label>
+                                    <button type="button" class="btn-bom" id="openPartsModal" disabled>Define Parts (BOM)</button>
+                                    <span class="badge badge-secondary ml-2 d-none" id="bomBadge">0 parts</span>
+                                </div>
+                            </div>
+
+                            <!-- Form Submit -->
+                            <div class="mt-5 pt-4 border-top text-center">
+                                <button type="submit" class="btn-save-main">SAVE PRODUCT</button>
+                                <p class="text-muted small mt-2">Next step: Setup opening stock and pricing</p>
+                            </div>
                         </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modals (Inline as per original structure) -->
+        <div id="categoryModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Category</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <form action="{{ route('store.category') }}" method="POST">
+                        @csrf
+                        <div class="modal-body">
+                            <input type="hidden" name="page" value="product_page">
+                            <div class="form-group"><label>Name</label><input type="text" name="name" class="form-control" required></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Submit</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="subcategoryModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Subcategory</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <form action="{{ route('store.subcategory') }}" method="POST">
+                        @csrf
+                        <div class="modal-body">
+                            <input type="hidden" name="page" value="product_page">
+                            <div class="form-group">
+                                <label>Category</label>
+                                <select name="category_id" class="form-control">
+                                    @foreach ($categories as $item) <option value="{{ $item->id }}">{{ $item->name }}</option> @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group"><label>Sub-Category Name</label><input type="text" name="name" class="form-control" required></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Submit</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="typeModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Type</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <form action="{{ route('store.type') }}" method="POST">
+                        @csrf
+                        <div class="modal-body">
+                            <input type="hidden" name="page" value="product_page">
+                            <div class="form-group"><label>Type Name</label><input type="text" name="name" class="form-control" required></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Submit</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="brandcategoryModal" class="modal fade" tabindex="-1" role="dialog">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Brand</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <form action="{{ route('store.Brand') }}" method="POST">
+                        @csrf
+                        <div class="modal-body">
+                            <input type="hidden" name="page" value="product_page">
+                            <div class="form-group"><label>Name</label><input type="text" name="name" class="form-control" required></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Submit</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="unitModal" class="modal fade" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Unit</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <form action="{{ route('store.Unit') }}" method="POST">
+                        @csrf
+                        <div class="modal-body">
+                            <input type="hidden" name="page" value="product_page">
+                            <div class="form-group"><label>Unit Name</label><input type="text" name="name" class="form-control" required></div>
+                        </div>
+                        <div class="modal-footer"><button type="submit" class="btn btn-primary w-100">Submit</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOM Modal -->
+        <div class="modal fade" id="partsModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-xl" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="las la-cubes"></i> Define Parts (BOM)</h5>
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Part</th>
+                                        <th>Required / Unit</th>
+                                        <th>Available</th>
+                                        <th>Needed</th>
+                                        <th>Shortage</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bomRows"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="addBomRow">Add Part</button>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button class="btn btn-primary" id="saveBom">Save Parts</button>
                     </div>
                 </div>
             </div>
         </div>
-        </div>
 
-        {{-- Scripts --}}
-        {{-- Removed redundant jQuery/Bootstrap loads that conflict with app.blade.php --}}
-
+        @section('js')
         <script>
-            function calculateOpeningStock() {
-
-                let packingQty = parseFloat(document.getElementById('packing_qty').value) || 0;
-                let unitPerPackage = parseFloat(document.getElementById('piece_per_pack').value) || 0;
-                let loosePiece = parseFloat(document.getElementById('loose_piece').value) || 0;
-
-                let packedStock = 0;
-
-                // Multiply only if both are entered
-                if (packingQty > 0 && unitPerPackage > 0) {
-                    packedStock = packingQty * unitPerPackage;
-                }
-                // If only one is entered
-                else {
-                    packedStock = packingQty + unitPerPackage;
-                }
-
-                let totalStock = packedStock + loosePiece;
-
-                document.getElementById('opening_stock').value = totalStock;
-            }
-
-            document.getElementById('packing_qty').addEventListener('input', calculateOpeningStock);
-            document.getElementById('piece_per_pack').addEventListener('input', calculateOpeningStock);
-            document.getElementById('loose_piece').addEventListener('input', calculateOpeningStock);
-        </script>
-
-
-
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                const input = document.getElementById('barcodeInput');
-                const btn = document.getElementById('generateBarcodeBtn');
-
-                let manualMode = false; // 👈 flag
-
-                // 1️⃣ Auto-generate ONLY on page load
-                if (input.value.trim() === '') {
-                    fetch('{{ route('generate-barcode-image') }}')
-                        .then(res => res.json())
-                        .then(data => {
-                            if (!manualMode) {
-                                input.value = data.barcode_number;
-                            }
-                        });
-                }
-
-                // 2️⃣ Button click → clear field & allow manual typing
-                btn.addEventListener('click', function () {
-                    manualMode = true;   // ❌ stop auto
-                    input.value = '';   // clear
-                    input.focus();      // cursor ready
-                });
-            });
-        </script>
-
-
-
-        <script>
-
-            // Barcode generate
-            document.getElementById('generateBarcodeBtn').addEventListener('click', function () {
-                let currentValue = document.getElementById('barcodeInput').value.trim();
-                const hit = (url) => fetch(url).then(r => r.json()).then(data => {
-                    document.getElementById('barcodeInput').value = data.barcode_number;
-                });
-                if (currentValue !== "") {
-                    hit('/generate-barcode-image?code=' + currentValue);
-                } else {
-                    hit('{{ route('generate-barcode-image') }}');
-                }
-            });
-
-
-            // Image preview/clear
+            // 1. Image Preview
             const imageInput = document.getElementById('imageInput');
             const preview = document.getElementById('preview');
-            const clearImageBtn = document.getElementById('clearImageBtn');
-            imageInput.addEventListener('change', function () {
-                const file = this.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        preview.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-            clearImageBtn.addEventListener('click', function () {
-                preview.src = "";
-                imageInput.value = "";
+            const clearBtn = document.getElementById('clearImageBtn');
+            const placeholder = "{{ asset('assets/images/placeholder-img.png') }}";
+
+            if(imageInput) {
+                imageInput.onchange = function() {
+                    const [file] = imageInput.files;
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = e => { preview.src = e.target.result; };
+                        reader.readAsDataURL(file);
+                    }
+                };
+            }
+            if(clearBtn) {
+                clearBtn.onclick = function() {
+                    imageInput.value = '';
+                    preview.src = placeholder;
+                };
+            }
+
+            // 2. SKU / Barcode Gen
+            $('#generateBarcodeBtn').on('click', function() {
+                const brand = ($('select[name="brand_id"] option:selected').text().trim() || 'P').substring(0, 1).toUpperCase();
+                const model = ($('#model').val().trim() || 'X').substring(0, 2).toUpperCase();
+                const rand = Math.floor(1000 + Math.random() * 9000);
+                $('#barcodeInput').val(`${brand}${model}-${rand}`);
             });
 
-            // Dependent Subcategory
+            // 3. Category Sync
             $('#category-dropdown').on('change', function () {
-                var categoryId = $(this).val();
+                const categoryId = $(this).val();
+                const $sub = $('#subcategory-dropdown');
                 if (categoryId) {
                     $.ajax({
-                        url: '/get-subcategories/' + categoryId,
-                        type: "GET",
-                        dataType: "json",
+                        url: "/get-subcategories/" + categoryId,
+                        type: 'GET',
                         success: function (data) {
-                            $('#subcategory-dropdown').empty().append(
-                                '<option selected disabled>Select Subcategory</option>');
-                            $.each(data, function (_, v) {
-                                $('#subcategory-dropdown').append('<option value="' + v.id + '">' +
-                                    v.name + '</option>');
-                            });
+                            $sub.empty().append('<option selected disabled>Select Sub category</option>');
+                            $.each(data, function (_, v) { $sub.append(`<option value="${v.id}">${v.name}</option>`); });
                         }
                     });
                 } else {
-                    $('#subcategory-dropdown').empty().append('<option value="">Select Subcategory</option>');
+                    $sub.empty().append('<option value="">Select Sub category</option>');
                 }
             });
 
-
-
-            // Load types on page load
-            $(document).ready(function () {
-                // Types now loaded via PHP
-            });
-
-
-            // ✅ Standard form submission for Type modal now handled by controller redirect
-            // (matching Category/Subcategory flow)
-
-
-            // Packing Type conditional visibility
+            // 4. Packaging Toggles
             $('#packing_type').on('change', function () {
-                var packingType = $(this).val();
-
-                if (packingType === 'Standard') {
-                    // Show unitSection
+                const type = $(this).val();
+                if (type === 'Standard') {
                     $('#unitSection').show();
-                    // Find the ID of the 'Piece' option
-                    var pieceOptionId = $('#unit_select option').filter(function() { 
-                        var txt = $(this).text().toLowerCase();
-                        return txt === 'piece' || txt === 'pcs' || txt === 'pieces'; 
-                    }).first().val();
-                    
-                    // Set to Piece and show readonly, hide select
-                    $('#unit_readonly').val('Piece').show().prop('disabled', false);
-                    $('#unit_hidden').val(pieceOptionId).prop('disabled', false);
-                    $('#unit_select').prop('disabled', true).hide();
-                    $('#unit_select').closest('.input-group').find('.select2-container').hide();
+                    $('#advancedPackingRow').hide();
+                    const pieceId = $('#unit_select option').filter(function() { 
+                        const t = $(this).text().toLowerCase(); return t.includes('piece') || t.includes('pcs'); 
+                    }).val();
+                    $('#unit_readonly').show();
+                    $('#unit_hidden').val(pieceId).prop('disabled', false);
+                    $('#unit_select').hide().prop('disabled', true);
                     $('#unit_add_btn').hide();
-
-                    // Hide Customize fields
-                    $('#packingQtySection').hide();
-                    $('#unitPerPackingSection').hide();
-                    $('#loosepiece_section').hide();
-
-                    // Clear customize fields
-                    $('#packing_qty').val('');
-                    $('#piece_per_pack').val('');
-                    $('#loose_piece').val('');
-
-                } else if (packingType === 'Customize') {
-                    // Show unitSection
-                    $('#unitSection').show();
-                    // Show select, hide readonly
-                    $('#unit_readonly').hide().prop('disabled', true);
+                } else if (type === 'Customize') {
+                    $('#unitSection, #advancedPackingRow').show();
+                    $('#unit_readonly').hide();
                     $('#unit_hidden').prop('disabled', true);
-                    $('#unit_select').prop('disabled', false).show();
-                    $('#unit_select').closest('.input-group').find('.select2-container').show();
+                    $('#unit_select').show().prop('disabled', false);
                     $('#unit_add_btn').show();
-
-                    // Show Customize fields
-                    $('#packingQtySection').show();
-                    $('#unitPerPackingSection').show();
-                    $('#loosepiece_section').show();
-
                 } else {
-                    // Hide all conditional fields
-                    $('#unitSection').hide();
-                    $('#packingQtySection').hide();
-                    $('#unitPerPackingSection').hide();
-                    $('#loosepiece_section').hide();
+                    $('#unitSection, #advancedPackingRow').hide();
                 }
             });
 
-            // Color select2
+            // 5. Initialize Select2
             $(document).ready(function () {
                 $('#color-select').select2({
                     tags: true,
                     placeholder: "Select or type color(s)",
                     allowClear: true,
-                    width: 'resolve'
+                    width: '100%'
                 });
+                $('[data-toggle="tooltip"]').tooltip();
             });
 
-            // ===== BOM logic =====
-            const partsModal = new bootstrap.Modal(document.getElementById('partsModal'));
-            let bomItems = []; // {part_id, code, name, unit, required_per_unit, available_qty, needed_for_row, shortage}
-
+            // 6. BOM (Bill of Materials) Logic
+            let bomItems = [];
             const num = n => isNaN(parseFloat(n)) ? 0 : parseFloat(n);
 
-            function toggleBomUI() {
-                const on = $('#isAssembled').is(':checked');
-                $('#openPartsModal').prop('disabled', !on);
-                if (!on) {
-                    bomItems = [];
-                    $('#bom_json').val('[]');
-                    $('#bomBadge').addClass('d-none').text('0 parts');
-                }
-            }
-            $('#isAssembled').on('change', toggleBomUI);
-            toggleBomUI();
+            $('#isAssembled').on('change', function() {
+                $('#openPartsModal').prop('disabled', !this.checked);
+                if(!this.checked) { bomItems = []; $('#bom_json').val('[]'); $('#bomBadge').addClass('d-none'); }
+            });
 
             $('#openPartsModal').on('click', function () {
-                const stockPieces = num($('input[name="Stock"]').val());
-                $('#bomStockPieces').text(stockPieces);
                 renderBomTable();
-                recalcAssemblePossible();
-                partsModal.show();
+                $('#partsModal').modal('show');
             });
-
-            $('input[name="Stock"]').on('input', function () {
-                if ($('#partsModal').hasClass('show')) {
-                    $('#bomStockPieces').text(num($(this).val()));
-                    $('#bomRows tr').each(function () {
-                        recalcRow($(this));
-                    });
-                    recalcAssemblePossible();
-                }
-            });
-
-            function emptyItem() {
-                return {
-                    part_id: null,
-                    code: '',
-                    name: '',
-                    unit: '',
-                    required_per_unit: 1,
-                    available_qty: 0,
-                    needed_for_row: 0,
-                    shortage: 0
-                };
-            }
-
-            function rowTemplate(i, it) {
-                return `
-        <tr data-index="${i}">
-          <td>
-            <select class="form-control form-control-sm part-select" style="width:100%"></select>
-            <div class="small text-muted mt-1">Search part by name/code</div>
-          </td>
-          <td><input type="number" step="0.01" class="form-control form-control-sm req-per-unit" value="${num(it.required_per_unit)}" min="0"></td>
-          <td><input type="number" class="form-control form-control-sm available" value="${num(it.available_qty)}" readonly></td>
-          <td><input type="number" class="form-control form-control-sm needed" value="${num(it.needed_for_row)}" readonly></td>
-          <td><input type="number" class="form-control form-control-sm shortage" value="${num(it.shortage)}" readonly></td>
-          <td><button type="button" class="btn btn-sm btn-outline-danger del-bom-row">X</button></td>
-        </tr>`;
-            }
 
             function renderBomTable() {
                 const $tb = $('#bomRows');
                 $tb.empty();
                 if (!bomItems.length) {
-                    bomItems.push(emptyItem());
+                    bomItems.push({part_id: null, code: '', name: '', unit: '', required_per_unit: 1, available_qty: 0, needed_for_row: 0, shortage: 0});
                 }
                 bomItems.forEach((it, idx) => {
-                    const tr = $(rowTemplate(idx, it));
+                    const tr = $(`
+                        <tr data-index="${idx}">
+                          <td><select class="form-control form-control-sm part-select" style="width:100%"></select></td>
+                          <td><input type="number" step="0.01" class="form-control form-control-sm req-per-unit" value="${num(it.required_per_unit)}" min="0"></td>
+                          <td><input type="number" class="form-control form-control-sm available" value="${num(it.available_qty)}" readonly></td>
+                          <td><input type="number" class="form-control form-control-sm needed" value="${num(it.needed_for_row)}" readonly></td>
+                          <td><input type="number" class="form-control form-control-sm shortage" value="${num(it.shortage)}" readonly></td>
+                          <td><button type="button" class="btn btn-sm btn-outline-danger del-bom-row">X</button></td>
+                        </tr>`);
                     $tb.append(tr);
-                    initPartSelect2(tr.find('.part-select'), it.part_id ? {
-                        id: it.part_id,
-                        text: (it.name || '') + ' - ' + (it.code || '')
-                    } : null);
+                    initPartSelect2(tr.find('.part-select'), it.part_id ? {id: it.part_id, text: it.name + ' - ' + it.code} : null);
                     recalcRow(tr);
                 });
             }
 
-            $('#addBomRow').on('click', function () {
-                bomItems.push(emptyItem());
+            $('#addBomRow').on('click', function() {
+                bomItems.push({part_id: null, code: '', name: '', unit: '', required_per_unit: 1, available_qty: 0, needed_for_row: 0, shortage: 0});
                 renderBomTable();
             });
 
-            $(document).on('click', '.del-bom-row', function () {
+            $(document).on('click', '.del-bom-row', function() {
                 const idx = $(this).closest('tr').data('index');
                 bomItems.splice(idx, 1);
                 renderBomTable();
-                recalcAssemblePossible();
             });
 
             function initPartSelect2($el, presetOption = null) {
                 $el.select2({
-                    placeholder: 'Search part...',
-                    width: '100%',
-                    dropdownParent: $('#partsModal'),
+                    placeholder: 'Search part...', width: '100%', dropdownParent: $('#partsModal'),
                     ajax: {
-                        delay: 200,
-                        url: "{{ route('search-part-name') }}",
-                        dataType: 'json',
-                        data: params => ({
-                            q: params.term || ''
-                        }),
+                        delay: 200, url: "{{ route('search-part-name') }}", dataType: 'json',
+                        data: params => ({ q: params.term || '' }),
                         processResults: data => ({
                             results: (data || []).map(p => ({
-                                id: p.id,
-                                text: `${p.item_name} - ${p.item_code}`,
-                                code: p.item_code,
-                                name: p.item_name,
-                                unit: p.unit ?? '',
-                                available_qty: Number(p.available_qty || 0)
-                            })),
-                            pagination: {
-                                more: false
-                            }
-                        }),
-                        cache: true
+                                id: p.id, text: p.item_name + ' - ' + p.item_code, code: p.item_code, name: p.item_name, unit: p.unit ?? '', available_qty: Number(p.available_qty || 0)
+                            }))
+                        }), cache: true
                     }
                 });
-
-                if (presetOption) {
-                    const option = new Option(presetOption.text, presetOption.id, true, true);
-                    $el.append(option).trigger('change');
-                }
-
+                if (presetOption) $el.append(new Option(presetOption.text, presetOption.id, true, true)).trigger('change');
                 $el.on('select2:select', function (e) {
                     const d = e.params.data;
                     const $tr = $(this).closest('tr');
                     const idx = $tr.data('index');
-
-                    bomItems[idx].part_id = d.id;
-                    bomItems[idx].code = d.code;
-                    bomItems[idx].name = d.name;
-                    bomItems[idx].unit = d.unit;
-                    bomItems[idx].available_qty = Number(d.available_qty || 0);
-
+                    bomItems[idx] = { ...bomItems[idx], part_id: d.id, code: d.code, name: d.name, unit: d.unit, available_qty: Number(d.available_qty || 0) };
                     $tr.find('.available').val(bomItems[idx].available_qty);
                     recalcRow($tr);
-                    recalcAssemblePossible();
                 });
             }
 
@@ -1220,15 +601,13 @@
                 const idx = $tr.data('index');
                 bomItems[idx].required_per_unit = num($(this).val());
                 recalcRow($tr);
-                recalcAssemblePossible();
             });
 
             function recalcRow($tr) {
                 const idx = $tr.data('index');
-                const stockPieces = num($('input[name="Stock"]').val());
                 const rpu = num($tr.find('.req-per-unit').val());
                 const avail = num($tr.find('.available').val());
-                const needed = Math.max(0, rpu * stockPieces);
+                const needed = Math.max(0, rpu);
                 const shortage = Math.max(0, needed - avail);
                 $tr.find('.needed').val(needed);
                 $tr.find('.shortage').val(shortage);
@@ -1236,102 +615,30 @@
                 bomItems[idx].shortage = shortage;
             }
 
-            function recalcAssemblePossible() {
-                let minPossible = Infinity;
-                $('#bomRows tr').each(function () {
-                    const rpu = num($(this).find('.req-per-unit').val());
-                    const avail = num($(this).find('.available').val());
-                    if (rpu > 0) {
-                        minPossible = Math.min(minPossible, Math.floor(avail / rpu));
-                    }
-                });
-                if (minPossible === Infinity) minPossible = 0;
-                $('#assemblePossible').text(minPossible);
-            }
-
-            // Save BOM from modal → hidden input
             $('#saveBom').on('click', function () {
                 const cleaned = bomItems.filter(x => x.part_id);
                 $('#bom_json').val(JSON.stringify(cleaned));
-                if (cleaned.length) {
-                    $('#bomBadge').removeClass('d-none').text(`${cleaned.length} parts`);
-                } else {
-                    $('#bomBadge').addClass('d-none').text('0 parts');
-                }
-                partsModal.hide();
+                if (cleaned.length) $('#bomBadge').removeClass('d-none').text(cleaned.length + ' parts');
+                else $('#bomBadge').addClass('d-none').text('0 parts');
+                $('#partsModal').modal('hide');
             });
-        </script>
-        <script>
-            // Duplicate product name and model validation
+
+            // 7. Form Submission
             $('#productForm').on('submit', function (e) {
                 e.preventDefault();
-
-                const productName = $('#product_name').val().trim();
-                const productModel = $('#model').val().trim();
-                const category = $('#category-dropdown').val();
-                const subCategory = $('#subcategory-dropdown').val();
-
-                if (!productName) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Required Field',
-                        text: 'Please enter product name',
-                    });
+                const name = $('#product_name').val().trim();
+                const cat = $('#category-dropdown').val();
+                if (!name || !cat) {
+                    Swal.fire({ icon: 'warning', title: 'Missing Info', text: 'Product name and category are required.' });
                     return false;
                 }
-
-                if (!category) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Required Field',
-                        text: 'Please select category',
-                    });
-                    return false;
-                }
-
-                if (!subCategory) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Required Field',
-                        text: 'Please select sub category',
-                    });
-                    return false;
-                }
-
-                // Check if product with this name or model already exists
-                $.ajax({
-                    url: "{{ route('check-product-name') }}",
-                    type: 'GET',
-                    data: { name: productName, model: productModel },
-                    success: function (response) {
-                        if (response.exists) {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Duplicate Product',
-                                text: 'A product with this name or model already exists!',
-                                confirmButtonText: 'OK'
-                            });
-                            return false;
-                        } else {
-                            // Product name and model are unique, submit form
-                            document.getElementById('productForm').submit();
-                        }
-                    },
-                    error: function () {
-                        // If check fails, allow submission to proceed
-                        document.getElementById('productForm').submit();
-                    }
-                });
+                this.submit();
             });
         </script>
-        <script>
-            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-                new bootstrap.Tooltip(el)
-            })
-        </script>
+        @endsection
     @else
-        <div class="container py-4">
-            <div class="alert alert-danger">You do not have permission to create Products.</div>
+        <div class="container py-5 text-center">
+            <div class="alert alert-danger">Access Denied: Product Creation is restricted.</div>
         </div>
     @endcan
 @endsection

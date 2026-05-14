@@ -69,7 +69,9 @@
                 @if (session('success'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                 @endif
 <input type="hidden" name="branch_id" value="1">
@@ -78,7 +80,9 @@
                 @if (session('error'))
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
                     </div>
                 @endif
                 <div class="card-body">
@@ -266,8 +270,8 @@
         </div>
     </div>
 @endsection
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+@section('js')
 <script>
 $(document).ready(function () {
     function num(n) {
@@ -344,11 +348,7 @@ $(document).ready(function () {
         recalcRow($(this));
     });
     recalcSummary();
-});
-</script>
 
-<script>
-    $(document).ready(function() {
 
         // ---------- Helper Functions ----------
         function num(n) {
@@ -548,26 +548,7 @@ $(document).ready(function () {
         recalcSummary();
 
         // Select2 Color Init on focus
-    $(document).ready(function () {
-    // 1️⃣ Page load par saare color select2 initialize karo
-    $('.select2-color').each(function () {
-        $(this).select2({
-            placeholder: "Select Color",
-            tags: true,
-            width: '100%'
-        });
-    });
+    // Already in document ready
 
-    // 2️⃣ Jab naye row aaye to tab bhi initialize karo
-    $('#purchaseItems').on('focus', '.select2-color', function () {
-        if (!$(this).hasClass("select2-hidden-accessible")) {
-            $(this).select2({
-                placeholder: "Select Color",
-                tags: true,
-                width: '100%'
-            });
-        }
-    });
-});
     });
 </script>

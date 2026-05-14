@@ -166,10 +166,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendors/data-table/css/jquery.dataTables.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendors/data-table/css/dataTables.bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendors/data-table/css/responsive.bootstrap.min.css') }}">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ asset('assets/vendors/data-table/css/responsive.jqueryui.min.css') }}">
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     {{-- Online Links --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/brands.min.css" integrity="sha512-58P9Hy7II0YeXLv+iFiLCv1rtLW47xmiRpC1oFafeKNShp8V5bKV/ciVtYqbk2YfxXQMt58DjNfkXFOn62xE+g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
@@ -202,6 +199,76 @@
         .modal.show {
             z-index: 1050;
         }
+
+        /* ✅ Fix Navbar Wrapping Issue - Ensure all items stay in one row */
+        .nav.page-navigation {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            width: 100% !important;
+            justify-content: flex-start !important; /* Align to left like dashboard */
+        }
+
+        .nav.page-navigation .nav-item {
+            flex: 0 0 auto !important;
+        }
+
+        .nav.page-navigation .nav-item .nav-link {
+            padding: 25px 10px !important; /* Reduced horizontal padding from 12px to 10px */
+            white-space: nowrap !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+
+        .nav.page-navigation .nav-item .menu-title {
+            font-size: 13px !important; /* Slightly smaller font for better fit */
+            margin-left: 8px !important;
+        }
+
+        /* Responsive adjustments for medium screens */
+        @media (max-width: 1400px) {
+            .nav.page-navigation .nav-item .nav-link {
+                padding: 20px 8px !important;
+            }
+            .nav.page-navigation .nav-item .menu-title {
+                font-size: 13px !important;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .nav-bottom .container {
+                max-width: 100% !important;
+            }
+            .nav.page-navigation {
+                overflow-x: auto !important; /* Allow scroll if still too wide */
+                padding-bottom: 5px;
+            }
+            /* Hide scrollbar for clean look */
+            .nav.page-navigation::-webkit-scrollbar {
+                display: none;
+            }
+            .nav.page-navigation {
+                -ms-overflow-style: none;  /* IE and Edge */
+                scrollbar-width: none;  /* Firefox */
+            }
+        }
+
+        /* ✅ Fix Submenu Closing Issue - Bridge the gap between tab and dropdown */
+        .nav.page-navigation .nav-item {
+            position: relative !important;
+        }
+
+        .nav.page-navigation .nav-item .submenu {
+            top: 100% !important;
+            margin-top: -20px !important; /* Overlap the parent nav-item to eliminate gap */
+            padding-top: 20px !important; /* Cushion inside the menu */
+            transition: none !important; /* Remove transition for instant tab switching */
+            z-index: 999 !important;
+        }
+
+        /* Ensure the current hovered item is always on top */
+        .nav.page-navigation .nav-item:hover {
+            z-index: 1000 !important;
+        }
     </style>
 
     @yield('css')
@@ -221,7 +288,7 @@
     *===========================-->
         <nav class="rt_nav_header horizontal-layout col-lg-12 col-12 p-0">
             <div class="top_nav flex-grow-1">
-                <div class="container d-flex flex-row h-100 align-items-center">
+                <div class="container-fluid d-flex flex-row h-100 align-items-center" style="padding-left: 30px; padding-right: 30px;">
                     <!--=========================*
                               Logo
                 *===========================-->
@@ -275,8 +342,8 @@
                     </div>
                 </div>
             </div>
-            <div class="nav-bottom">
-                <div class="container">
+            <div class="nav-bottom" style="overflow-x: hidden;">
+                <div class="container-fluid" style="padding-left: 30px; padding-right: 30px;">
                     <ul class="nav page-navigation">
                         <!--=========================*
                               Home
@@ -653,6 +720,25 @@
 
     <!-- html2pdf.js (required for reports) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Navbar Hover Logic - Instant Tab Switching -->
+    <script>
+    $(document).ready(function() {
+        var $navItems = $('.nav.page-navigation .nav-item');
+        
+        $navItems.on('mouseenter', function() {
+            // When entering a new tab, immediately hide all other submenus
+            // This allows the current one to show without waiting for CSS transitions or delays
+            $navItems.not(this).removeClass('show').find('.submenu').hide();
+            $(this).addClass('show').find('.submenu').show();
+        });
+
+        // Optional: Hide when leaving the whole navigation area to be safe
+        $('.nav.page-navigation').on('mouseleave', function() {
+             // Let the default CSS handle the final close or force it here if needed
+        });
+    });
+    </script>
 
     @yield('js')
 

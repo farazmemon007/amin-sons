@@ -1,5 +1,8 @@
  @extends('admin_panel.layout.app')
  @section('content')
+@section('css')
+     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+@endsection
      
 <div class="main-content">
     <div class="main-content-inner">
@@ -8,7 +11,7 @@
                 <div class="col-lg-12">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3>Sub Category</h3>
-            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal"
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal"
                 id="reset">Create</button>
         </div>
         <div class="border mt-1 shadow rounded " style="background-color: white;">
@@ -82,27 +85,20 @@
                         </select>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     <input type="submit" class="btn btn-primary save-btn">
                 </div>
                 </form>
             </div>
         </div>
     </div> 
-<!-- DataTable CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+@endsection
 
-<!-- jQuery -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
+@section('js')
 <!-- DataTable JS -->
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script  src="{{ asset('assets/js/mycode.js') }}">  </script>
  <script>
     $(document).on('submit', '.myform', function(e) {

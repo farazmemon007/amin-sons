@@ -167,10 +167,10 @@
                 <h4 class="m-0 fw-800 text-slate-800">Purchase Invoice View</h4>
             </div>
             <div class="d-flex gap-2">
-                <button onclick="window.print()" class="btn btn-dark shadow-sm">
+                <button onclick="window.print()" class="btn btn-dark shadow-sm me-2" style="margin-right: 8px;">
                     <i class="fas fa-print me-1"></i> Print
                 </button>
-                <button onclick="exportPDF()" class="btn btn-danger shadow-sm">
+                <button onclick="exportPDF()" class="btn btn-danger shadow-sm me-2" style="margin-right: 8px;">
                     <i class="fas fa-file-pdf me-1"></i> PDF
                 </button>
                 <button onclick="shareWhatsApp()" class="btn btn-success shadow-sm" style="background: #25D366; border-color: #25D366;">

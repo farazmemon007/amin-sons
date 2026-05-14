@@ -1,5 +1,5 @@
 @extends('admin_panel.layout.app')
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 
 <style>
     :root {
@@ -77,8 +77,7 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@section('js')
 <script>
     $(document).ready(function() {
         $('.select2').select2({
@@ -95,6 +94,7 @@
         });
     });
 </script>
+@endsection
 @else
     <div class="container py-4">
         <div class="alert alert-danger">You do not have permission to create Purchases.</div>

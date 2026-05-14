@@ -28,8 +28,8 @@ jQuery(document).ready(function() {
     //CACHE JQUERY OBJECTS
     var $window = $(window);
 
-    $window.on('load', function() {
-        /*======== Preloader =========*/
+    /*======== Preloader =========*/
+    $(function() {
 
         $(".loading-text").fadeOut();
         $(".loading").delay(350).fadeOut("slow");

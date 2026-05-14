@@ -198,17 +198,17 @@
                 <h4><i class="fas fa-users"></i> Vendor Management</h4>
             </div>
             <div class="page-btn">
-                <button class="btn btn-premium btn-add" data-bs-toggle="modal" data-bs-target="#vendorModal" onclick="clearVendor()">
-                    <i class="fas fa-plus-circle me-2"></i> Add New Vendor
+                <button class="btn btn-premium btn-add" data-toggle="modal" data-target="#vendorModal" onclick="clearVendor()">
+                    <i class="fas fa-plus-circle mr-2"></i> Add New Vendor
                 </button>
-                <a href="{{ url('vendors-ledger') }}" class="btn btn-premium btn-outline-danger ms-2">
-                    <i class="fas fa-book me-2"></i> Ledger
+                <a href="{{ url('vendors-ledger') }}" class="btn btn-premium btn-outline-danger ml-2">
+                    <i class="fas fa-book mr-2"></i> Ledger
                 </a>
-                <a href="{{ route('vendor.payments') }}" class="btn btn-premium btn-outline-primary ms-2">
-                    <i class="fas fa-money-bill-wave me-2"></i> Payments
+                <a href="{{ route('vendor.payments') }}" class="btn btn-premium btn-outline-primary ml-2">
+                    <i class="fas fa-money-bill-wave mr-2"></i> Payments
                 </a>
-                <a href="{{ url('vendor/bilties') }}" class="btn btn-premium btn-outline-info ms-2">
-                    <i class="fas fa-truck me-2"></i> Bilty
+                <a href="{{ url('vendor/bilties') }}" class="btn btn-premium btn-outline-info ml-2">
+                    <i class="fas fa-truck mr-2"></i> Bilty
                 </a>
             </div>
         </div>
@@ -228,12 +228,12 @@
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-primary w-100 btn-premium">
-                        <i class="fas fa-filter me-2"></i> Filter
+                        <i class="fas fa-filter mr-2"></i> Filter
                     </button>
                 </div>
                 <div class="col-md-2">
                     <a href="{{ url('vendorlist') }}" class="btn btn-outline-secondary w-100 btn-premium">
-                        <i class="fas fa-sync-alt me-2"></i> Reset
+                        <i class="fas fa-sync-alt mr-2"></i> Reset
                     </a>
                 </div>
             </form>
@@ -248,8 +248,10 @@
             <div class="table-container">
                 @if (session()->has('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <strong><i class="fas fa-check-circle me-2"></i> Success!</strong> {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <strong><i class="fas fa-check-circle mr-2"></i> Success!</strong> {{ session('success') }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 @endif
 
@@ -272,7 +274,7 @@
                                 <td class="text-center fw-bold text-secondary">{{ $key + 1 }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <div class="avatar-sm me-3 bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
+                                        <div class="avatar-sm mr-3 bg-light rounded-circle d-flex align-items-center justify-content-center" style="width: 35px; height: 35px;">
                                             <i class="fas fa-user text-primary"></i>
                                         </div>
                                         <div>
@@ -285,7 +287,7 @@
                                      @if($v->company_names)
                                          <div class="mb-1">
                                              @foreach($v->company_names as $company)
-                                                 <span class="badge bg-soft-info text-info border me-1" style="font-size: 10px;">{{ $company }}</span>
+                                                 <span class="badge bg-soft-info text-info border mr-1" style="font-size: 10px;">{{ $company }}</span>
                                              @endforeach
                                          </div>
                                      @endif
@@ -295,7 +297,7 @@
                                          @endphp
                                          <div>
                                              @foreach($vendorBrands as $brandName)
-                                                 <span class="badge bg-soft-success text-success border me-1" style="font-size: 10px;">{{ $brandName }}</span>
+                                                 <span class="badge bg-soft-success text-success border mr-1" style="font-size: 10px;">{{ $brandName }}</span>
                                              @endforeach
                                          </div>
                                      @endif
@@ -306,6 +308,10 @@
                                 <td class="text-center">
                                      <button class="btn btn-sm btn-primary btn-action btn-edit-vendor" 
                                          data-id="{{ $v->id }}" 
+                                         data-name="{{ $v->name }}"
+                                         data-phone="{{ $v->phone }}"
+                                         data-address="{{ $v->address }}"
+                                         data-balance="{{ $v->current_balance }}"
                                          data-branch-id="{{ $v->branch_id }}"
                                          data-companies="{{ json_encode($v->company_names ?? []) }}"
                                          data-brands="{{ json_encode($v->brand_ids ?? []) }}"
@@ -339,9 +345,11 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title fw-bold text-primary">
-                        <i class="fas fa-user-plus me-2"></i> Vendor Details
+                        <i class="fas fa-user-plus mr-2"></i> Vendor Details
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <div class="modal-body p-4">
                     <div class="mb-3">
@@ -396,9 +404,9 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary btn-premium" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-secondary btn-premium" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-premium">
-                        <i class="fas fa-save me-2"></i> Save Vendor
+                        <i class="fas fa-save mr-2"></i> Save Vendor
                     </button>
                 </div>
             </div>
@@ -456,26 +464,23 @@ $(document).ready(function () {
         $('#vaddress').val('');
         $('#vcompanies_raw').val('');
         $('#vbrands').val(null).trigger('change');
-        $('.modal-title').html('<i class="fas fa-user-plus me-2"></i> Add New Vendor');
+        $('.modal-title').html('<i class="fas fa-user-plus mr-2"></i> Add New Vendor');
     };
 
     // Edit Vendor functionality
     $(document).on('click', '.btn-edit-vendor', function () {
-        var row = $(this).closest('tr');
-        var id = $(this).data('id');
+        var id       = $(this).data('id');
+        var name     = $(this).data('name');
+        var phone    = $(this).data('phone');
+        var address  = $(this).data('address');
+        var balance  = $(this).data('balance');
         var branchId = $(this).data('branch-id');
         
-        // Extract data accurately
-        var name = row.find('td:eq(1) .fw-bold').text().trim();
-        var phone = row.find('td:eq(3)').text().trim();
-        var balance = row.find('td:eq(4)').text().trim().replace(/,/g, '');
-        var address = row.find('td:eq(5)').text().trim();
-
         // Populate modal
         $('#vendor_id').val(id);
         $('#vname').val(name);
         $('#vphone').val(phone);
-        $('#opening_balance').val(balance).prop('readonly', true);
+        $('#opening_balance').val(balance);
         
         if($('#vbranch_id').length) {
             $('#vbranch_id').val(branchId).trigger('change');
@@ -497,7 +502,7 @@ $(document).ready(function () {
         if (typeof brands === 'string') brands = JSON.parse(brands);
         $('#vbrands').val(brands).trigger('change');
         
-        $('.modal-title').html('<i class="fas fa-edit me-2"></i> Edit Vendor');
+        $('.modal-title').html('<i class="fas fa-edit mr-2"></i> Edit Vendor');
 
         // Show modal
         $('#vendorModal').modal('show');

@@ -4,7 +4,9 @@
 @can('product.edit')
 
 {{-- Select2 CSS only (jQuery already in layout) --}}
+@section('css')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+@endsection
 
 <style>
     .osm-wrap { font-family:'Inter',sans-serif; background:#f1f5f9; min-height:100vh; padding:1.5rem; }
@@ -137,7 +139,9 @@
 </div>
 
 {{-- Load Select2 AFTER jQuery (jQuery is in layout footer) --}}
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@endsection
+
+@section('js')
 <script>
 $(document).ready(function() {
 
@@ -195,11 +199,12 @@ $(document).ready(function() {
             </td>
             <td style="vertical-align:top;">
                 <div class="fi-label">Wholesale</div>
-                <input type="number" class="fi fi-num" name="rows[${idx}][wholesale_price]" placeholder="0.00" step="0.01" min="0">
+                <input type="number" class="fi fi-num price-wholesale" name="rows[${idx}][wholesale_price]" placeholder="0.00" step="0.01" min="0">
             </td>
             <td style="vertical-align:top;">
                 <div class="fi-label">Retail</div>
-                <input type="number" class="fi fi-num" name="rows[${idx}][retail_price]" placeholder="0.00" step="0.01" min="0">
+                <input type="number" class="fi fi-num price-retail" name="rows[${idx}][retail_price]" placeholder="0.00" step="0.01" min="0">
+                <div class="price-warning-msg" style="display:none; color:#dc2626; font-size:10px; font-weight:700; margin-top:4px;">⚠ Retail < Wholesale</div>
             </td>
             <td style="vertical-align:top;">
                 <div class="fi-label">Alert Qty</div>
@@ -403,8 +408,25 @@ $(document).ready(function() {
                 showRowError(idx, 'Add at least one location with qty > 0.');
                 ok = false; return false;
             }
+
+            // Price validation check: Retail >= Wholesale
+            var wholesale = parseFloat($(this).find('.price-wholesale').val()) || 0;
+            var retail = parseFloat($(this).find('.price-retail').val()) || 0;
+            if (wholesale > 0 && retail > 0 && retail < wholesale) {
+                showRowError(idx, 'Retail price cannot be less than Wholesale price.');
+                $(this).find('.price-wholesale, .price-retail').css('border-color', '#dc2626');
+                ok = false; return false;
+            }
         });
-        if (!ok) return;
+        if (!ok) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Pricing',
+                text: 'Please correct the Wholesale and Retail prices. Retail cannot be less than Wholesale.',
+                confirmButtonColor: '#6366f1'
+            });
+            return;
+        }
 
         var $btn = $('.btn-save-all');
         $btn.prop('disabled', true).text('Saving…');
@@ -443,6 +465,22 @@ $(document).ready(function() {
                 showGlobalMsg(msg, 'error');
             }
         });
+    });
+
+    /* ── Price Validation Logic ── */
+    $(document).on('input change', '.price-wholesale, .price-retail', function() {
+        var row = $(this).closest('tr');
+        var wholesale = parseFloat(row.find('.price-wholesale').val()) || 0;
+        var retail = parseFloat(row.find('.price-retail').val()) || 0;
+        var warningMsg = row.find('.price-warning-msg');
+
+        if (wholesale > 0 && retail > 0 && retail < wholesale) {
+            row.find('.price-wholesale, .price-retail').css('border-color', '#dc2626').css('background', '#fff1f2');
+            warningMsg.show();
+        } else {
+            row.find('.price-wholesale, .price-retail').css('border-color', '').css('background', '');
+            warningMsg.hide();
+        }
     });
 
     /* ── Init ── */

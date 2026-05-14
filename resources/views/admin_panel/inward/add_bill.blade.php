@@ -40,6 +40,7 @@
 
     .payment-badge { padding: 0.5rem 1rem; border-radius: 2rem; cursor: pointer; transition: all 0.2s; font-weight: 600; border: 2px solid transparent; background: #f1f5f9; color: #64748b; }
     .payment-badge.active { background: #eef2ff; color: #4f46e5; border-color: #4f46e5; }
+    .fi-table { padding: 0.75rem 0.5rem !important; }
 </style>
 
 <div class="main-content">
@@ -84,14 +85,14 @@
                         <table class="table table-premium" style="min-width: 1200px;">
                             <thead>
                                 <tr>
-                                    <th style="width: 20%;">Product Details</th>
-                                    <th style="width: 12%;">Packing Type</th>
-                                    <th style="width: 24%; text-align: center;">Packing Details</th>
+                                    <th style="width: 18%;">Product Details</th>
+                                    <th style="width: 10%;">Packing Type</th>
+                                    <th style="width: 20%; text-align: center;">Packing Details</th>
                                     <th style="width: 8%; text-align: center;">Total Qty</th>
                                     <th style="width: 12%;">Cost Price</th>
                                     <th style="width: 10%;">Disc</th>
-                                    <th style="width: 8%;">Disc Amt</th>
-                                    <th style="width: 14%; text-align: right;">Line Total</th>
+                                    <th style="width: 7%;">Disc Amt</th>
+                                    <th style="width: 15%; text-align: right;">Line Total</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -180,25 +181,25 @@
                                     
                                     <td>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-tag text-primary"></i></span>
-                                            <input type="number" class="fi master-price-input border-start-0" style="border-left: none; background:#fff; color:#1e293b; font-weight: 700;" step="0.01" min="0" value="{{ $first->last_purchase_price }}" required>
+                                            <span class="input-group-text bg-white border-end-0 px-2"><i class="fas fa-tag text-primary" style="font-size: 0.8rem;"></i></span>
+                                            <input type="number" class="fi fi-table master-price-input border-start-0" style="border-left: none; background:#fff; color:#1e293b; font-weight: 700;" step="0.01" min="0" value="{{ $first->last_purchase_price }}" required>
                                         </div>
                                     </td>
 
                                     <td>
                                         <div class="input-group" style="flex-wrap: nowrap;">
-                                            <input type="number" class="fi master-disc-input-visual" style="border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0;" step="0.01" min="0" value="0">
-                                            <button class="btn btn-outline-secondary disc-type-toggle" type="button" data-type="amount" style="border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; border: 1.5px solid #e2e8f0; border-left: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; width: 45px; color: #4f46e5;">Rs</button>
+                                            <input type="number" class="fi fi-table master-disc-input-visual" style="border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0;" step="0.01" min="0" value="0">
+                                            <button class="btn btn-outline-secondary disc-type-toggle px-2" type="button" data-type="amount" style="border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; border: 1.5px solid #e2e8f0; border-left: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; width: 40px; color: #4f46e5; font-size: 0.8rem;">Rs</button>
                                             <input type="hidden" class="master-disc-type-input" value="amount">
                                         </div>
                                     </td>
 
                                     <td>
-                                        <input type="text" class="fi text-end fw-bold group-disc-amt-display" value="0.00" readonly style="background:#f8fafc; color:#64748b; font-size:0.9rem;">
+                                        <input type="text" class="fi fi-table text-end fw-bold group-disc-amt-display" value="0.00" readonly style="background:#f8fafc; color:#64748b; font-size:0.9rem;">
                                     </td>
 
                                     <td class="text-end">
-                                        <input type="text" class="fi text-end fw-900 group-line-total" value="0.00" readonly style="background:#f0fdf4; color:#15803d; font-size:1.1rem;">
+                                        <input type="text" class="fi fi-table text-end fw-900 group-line-total" value="0.00" readonly style="background:#f0fdf4; color:#15803d; font-size:1.1rem; min-width: 120px;">
                                     </td>
                                 </tr>
                                 @endforeach
@@ -344,10 +345,10 @@ $(document).ready(function() {
             });
 
             // Update UI for the group
-            $groupRow.find('.group-disc-amt-display').val(groupDiscAmt.toLocaleString('en-PK', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $groupRow.find('.group-disc-amt-display').val(groupDiscAmt.toFixed(2));
             
             const groupLineTotal = (totalGroupQty * masterPrice) - groupDiscAmt;
-            $groupRow.find('.group-line-total').val(groupLineTotal.toLocaleString('en-PK', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+            $groupRow.find('.group-line-total').val(groupLineTotal.toFixed(2));
             
             subtotal += groupLineTotal;
         });

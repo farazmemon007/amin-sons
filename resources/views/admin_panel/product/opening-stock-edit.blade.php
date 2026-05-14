@@ -92,7 +92,29 @@
             @endif
             <a href="{{ route('opening.stocks.edit', $product->id) }}" style="color:#93c5fd;font-size:11px;margin-left:auto;text-decoration:underline;">Reset</a>
         </div>
+        @if($isSuperAdmin && count($globalStockSummary) > 0)
+        <div style="background:#f8fafc; padding:1rem 1.5rem; border-bottom:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:0.8rem;">
+                <i class="las la-globe" style="color:#6366f1; font-size:18px;"></i>
+                <span style="color:#475569; font-size:11px; font-weight:800; text-transform:uppercase;">System-Wide Stock Distribution:</span>
+            </div>
+            <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+                @foreach($globalStockSummary as $row)
+                    <div style="display:flex; align-items:center; gap:6px; background:#fff; border:1px solid #e2e8f0; padding:4px 10px; border-radius:6px; font-size:12px;">
+                        <span style="color:#64748b; font-weight:600;">{{ $row->branch_name }}:</span>
+                        <span style="color:#1e293b; font-weight:800;">{{ number_format($row->qty, 2) }}</span>
+                        @if($row->branch_id != $selectedBranchId)
+                            <a href="{{ route('opening.stocks.edit', $product->id) }}?branch_id={{ $row->branch_id }}" style="margin-left:4px; font-size:10px; color:#6366f1; text-decoration:underline;">Switch</a>
+                        @else
+                            <span class="badge bg-success" style="font-size:9px; padding:2px 6px;">Active Branch</span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </div>
         @endif
+        @endif
+
 
         {{-- Current Stock Summary --}}
         <div class="stock-info-bar">
@@ -140,13 +162,16 @@
                     </div>
                     <div class="fg">
                         <label>Wholesale Price ₨</label>
-                        <input type="number" name="wholesale_price" class="fi fi-num"
+                        <input type="number" id="wholesale_price" name="wholesale_price" class="fi fi-num"
                                value="{{ $product->wholesale_price ?? 0 }}" step="0.01" min="0">
                     </div>
                     <div class="fg">
                         <label>Retail Price ₨</label>
-                        <input type="number" name="retail_price" class="fi fi-num"
+                        <input type="number" id="retail_price" name="retail_price" class="fi fi-num"
                                value="{{ $product->price ?? 0 }}" step="0.01" min="0">
+                        <div id="price_warning" style="display:none; color:#dc2626; font-size:11px; font-weight:700; margin-top:5px;">
+                            ⚠ Retail price should not be less than wholesale
+                        </div>
                     </div>
                 </div>
             </div>
@@ -168,28 +193,34 @@
                     <div id="alloc_edit_rows">
 
                         {{-- Pre-fill: show rows where quantity > 0 --}}
-                        @forelse($currentAllocs->where('quantity', '>', 0) as $alloc)
-                        <div class="alloc-grid-row">
-                            <select class="alloc-type-sel" onchange="updateEditAllocStatus()">
-                                <option value="shop" {{ is_null($alloc->warehouse_id) ? 'selected' : '' }}>
-                                    🏪 Branch / Shop Stock
-                                </option>
-                                @foreach($warehouses as $wh)
-                                <option value="wh_{{ $wh->id }}"
-                                    {{ (string)$alloc->warehouse_id === (string)$wh->id ? 'selected' : '' }}>
-                                    📦 {{ $wh->warehouse_name }}
-                                </option>
-                                @endforeach
-                            </select>
-                            <input type="number" class="alloc-qty-in fi-num"
-                                   value="{{ number_format((float)$alloc->quantity, 2, '.', '') }}"
-                                   step="0.01" min="0"
-                                   oninput="updateEditAllocStatus()">
-                            <button type="button" class="btn-del-alloc"
-                                    onclick="$(this).closest('.alloc-grid-row').remove();updateEditAllocStatus();">✕</button>
-                        </div>
-                        @empty
-                        {{-- No allocation yet — show one empty branch row --}}
+                        @php $hasAllocations = false; @endphp
+                        @foreach($currentAllocs as $alloc)
+                            @if($alloc->quantity > 0)
+                                @php $hasAllocations = true; @endphp
+                                <div class="alloc-grid-row">
+                                    <select class="alloc-type-sel" onchange="updateEditAllocStatus()">
+                                        <option value="shop" {{ is_null($alloc->warehouse_id) ? 'selected' : '' }}>
+                                            🏪 Branch / Shop Stock
+                                        </option>
+                                        @foreach($warehouses as $wh)
+                                        <option value="wh_{{ $wh->id }}"
+                                            {{ (string)$alloc->warehouse_id === (string)$wh->id ? 'selected' : '' }}>
+                                            📦 {{ $wh->warehouse_name }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    <input type="number" class="alloc-qty-in fi-num"
+                                           value="{{ number_format((float)$alloc->quantity, 2, '.', '') }}"
+                                           step="0.01" min="0"
+                                           oninput="updateEditAllocStatus()">
+                                    <button type="button" class="btn-del-alloc"
+                                            onclick="$(this).closest('.alloc-grid-row').remove();updateEditAllocStatus();">✕</button>
+                                </div>
+                            @endif
+                        @endforeach
+
+                        @if(!$hasAllocations)
+                        {{-- No allocation yet — show one default row with total stock --}}
                         <div class="alloc-grid-row">
                             <select class="alloc-type-sel" onchange="updateEditAllocStatus()">
                                 <option value="shop" selected>🏪 Branch / Shop Stock</option>
@@ -204,7 +235,7 @@
                             <button type="button" class="btn-del-alloc"
                                     onclick="$(this).closest('.alloc-grid-row').remove();updateEditAllocStatus();">✕</button>
                         </div>
-                        @endforelse
+                        @endif
 
                     </div>
 
@@ -291,6 +322,19 @@ $(document).ready(function() {
 
     // ── Build allocation JSON before submit ───────────────────────────────
     $('#editForm').on('submit', function() {
+        // Price validation: Retail >= Wholesale
+        var wholesale = parseFloat($('#wholesale_price').val()) || 0;
+        var retail    = parseFloat($('#retail_price').val()) || 0;
+        if (wholesale > 0 && retail > 0 && retail < wholesale) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Invalid Pricing',
+                text: 'Retail price cannot be less than Wholesale price.',
+                confirmButtonColor: '#6366f1'
+            });
+            return false;
+        }
+
         var data = [];
         $('#alloc_edit_rows .alloc-grid-row').each(function() {
             var type = $(this).find('.alloc-type-sel').val();
@@ -316,9 +360,29 @@ $(document).ready(function() {
         window.location.href = url.toString();
     });
 
+    // ── Price Validation ────────────────────────────────────────────────
+    function validatePrices() {
+        var wholesale = parseFloat($('#wholesale_price').val()) || 0;
+        var retail    = parseFloat($('#retail_price').val()) || 0;
+        var warning   = $('#price_warning');
+
+        if (wholesale > 0 && retail > 0 && retail < wholesale) {
+            $('#wholesale_price, #retail_price').css('border-color', '#dc2626').css('background', '#fff1f2');
+            warning.show();
+            return false;
+        } else {
+            $('#wholesale_price, #retail_price').css('border-color', '').css('background', '');
+            warning.hide();
+            return true;
+        }
+    }
+
+    $('#wholesale_price, #retail_price').on('input change', validatePrices);
+
     // ── Init ─────────────────────────────────────────────────────────────
     calcDelta();
     updateEditAllocStatus();
+    validatePrices();
 });
 </script>
 

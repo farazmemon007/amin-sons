@@ -31,52 +31,54 @@
             </div>
 
             {{-- FILTER CARD --}}
-            <div class="card shadow-sm mb-3" style="border-radius:10px;border:none;">
-                <div class="card-body py-3">
+            <div class="card filter-card mb-4">
+                <div class="card-body p-4">
                     <form id="ledgerForm" class="row g-3 align-items-end">
                         @php $user = Auth::user(); @endphp
-
+                        
                         @if($user && $user->hasRole('super admin'))
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold mb-1">Branch</label>
-                                <select id="branch_id" class="form-select form-select-sm">
-                                    <option value="">-- Select Branch --</option>
-                                    @foreach($branches as $b)
-                                        <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="d-flex flex-column">
+                                    <label class="filter-label">Select Branch</label>
+                                    <select id="branch_id" class="form-select modern-input">
+                                        <option value="">-- Choose Branch --</option>
+                                        @foreach($branches as $b)
+                                            <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                         @else
                             <input type="hidden" id="branch_id" value="{{ $user->branch_id }}">
                         @endif
 
                         <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1">Vendor</label>
-                            <select id="vendor_id" class="form-select form-select-sm">
-                                <option value="">-- Select Vendor --</option>
-                                @foreach($vendors as $v)
-                                    <option value="{{ $v->id }}">
-                                        {{ $v->name }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            <div class="d-flex flex-column">
+                                <label class="filter-label">Select Vendor</label>
+                                <select id="vendor_id" class="form-select modern-input">
+                                    <option value="">-- Choose Vendor --</option>
+                                    @foreach($vendors as $v)
+                                        <option value="{{ $v->id }}">{{ $v->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
 
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">From Date</label>
-                            <input type="date" id="start_date" class="form-control form-control-sm"
-                                value="{{ $startDate ?? '' }}">
+                            <div class="d-flex flex-column">
+                                <label class="filter-label">From Date</label>
+                                <input type="date" id="start_date" class="form-control modern-input" value="{{ $startDate ?? '' }}">
+                            </div>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">To Date</label>
-                            <input type="date" id="end_date" class="form-control form-control-sm"
-                                value="{{ $endDate ?? '' }}">
+                            <div class="d-flex flex-column">
+                                <label class="filter-label">To Date</label>
+                                <input type="date" id="end_date" class="form-control modern-input" value="{{ $endDate ?? '' }}">
+                            </div>
                         </div>
                         <div class="col-md-2">
-                            <button type="button" id="btnSearch"
-                                class="btn btn-primary btn-sm w-100"
-                                style="background:#0066cc;border-color:#0066cc;padding:7px;">
-                                <i class="fas fa-search me-1"></i> Generate Report
+                            <button type="button" id="btnSearch" class="btn btn-primary btn-generate w-100" style="background:#0066cc;border-color:#0066cc;">
+                                <i class="fas fa-sync-alt me-2"></i> GENERATE
                             </button>
                         </div>
                     </form>
@@ -166,6 +168,46 @@
 .lbl  { font-size:11px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.4px; }
 .val  { font-size:13px;font-weight:600;color:#1a1a2e; }
 
+/* Modern Filter Styles */
+.filter-card {
+    background: #ffffff;
+    border-radius: 15px;
+    border: 1px solid #edf2f7;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+.modern-input {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 0.6rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    transition: all 0.2s ease;
+    background-color: #f8fafc !important;
+}
+.modern-input:focus {
+    background-color: #fff !important;
+    border-color: #0066cc !important;
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1) !important;
+    outline: none !important;
+}
+.filter-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #64748b;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    line-height: 1;
+}
+.btn-generate {
+    border-radius: 8px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 0.6rem 1.5rem !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 102, 204, 0.2);
+}
+
 /* Row colors */
 tr.r-open    td { background:#d4edff !important; font-weight:700; border-color:#aad4f5 !important; }
 tr.r-sale    td { background:#fff8e1 !important; font-weight:600; border-color:#ffe082 !important; }
@@ -231,7 +273,23 @@ $(document).ready(function () {
         return '<td style="text-align:' + align + ';border:1px solid #ddd;" ' + attrs + '>' + val + '</td>';
     }
 
-    /* ---------- branch -> vendor loader (super admin) removed since vendors are global ---------- */
+    /* ---------- branch -> vendor loader (super admin) ---------- */
+    $('#branch_id').on('change', function() {
+        var bid = $(this).val();
+        if (!bid) {
+            $('#vendor_id').html('<option value="">-- Choose Vendor --</option>');
+            return;
+        }
+
+        // Fetch vendors for this branch
+        $.get("{{ route('vendors-by-branch') }}", { branch_id: bid }, function(res) {
+            var html = '<option value="">-- Choose Vendor --</option>';
+            $.each(res, function(i, v) {
+                html += '<option value="' + v.id + '">' + v.customer_name + '</option>';
+            });
+            $('#vendor_id').html(html);
+        });
+    });
 
     /* ---------- search ---------- */
     $('#btnSearch').on('click', function () {

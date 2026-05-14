@@ -58,7 +58,10 @@ class VendorController extends Controller
 
         if ($request->id) {
             $vendor = Vendor::findOrFail($request->id);
-            $updateData = $request->except('opening_balance');
+            $oldOpening = (float)$vendor->opening_balance;
+            $newOpening = (float)($request->opening_balance ?? 0);
+
+            $updateData = $request->all();
             
             // If not super admin, prevent changing branch
             if (!$isSuperAdmin) {
@@ -76,6 +79,38 @@ class VendorController extends Controller
             // Handle Brands
             $vendor->brand_ids = $request->brand_ids ?? [];
             $vendor->save();
+
+            // ✅ If opening balance changed, cascade the change through the ledger
+            if ($oldOpening !== $newOpening) {
+                $diff = $newOpening - $oldOpening;
+
+                // Find the first ledger entry (the opening balance entry)
+                $firstLedger = VendorLedger::where('vendor_id', $vendor->id)
+                    ->orderBy('id', 'asc')
+                    ->first();
+
+                if ($firstLedger) {
+                    // Update the first entry
+                    $firstLedger->update([
+                        'opening_balance' => $newOpening,
+                        'credit_amount'  => $newOpening,
+                        'closing_balance' => $newOpening
+                    ]);
+
+                    // Update all subsequent entries to maintain the running balance
+                    $subsequentLedgers = VendorLedger::where('vendor_id', $vendor->id)
+                        ->where('id', '>', $firstLedger->id)
+                        ->get();
+
+                    foreach ($subsequentLedgers as $ledger) {
+                        $ledger->update([
+                            'previous_balance' => $ledger->previous_balance + $diff,
+                            'opening_balance'  => $ledger->opening_balance + $diff,
+                            'closing_balance'  => $ledger->closing_balance + $diff
+                        ]);
+                    }
+                }
+            }
         } else {
             // Create a new vendor and ledger entry
             $data = $request->all();

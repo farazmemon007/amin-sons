@@ -47,7 +47,9 @@
         @if(session()->has('success'))
             <div class="alert alert-success alert-dismissible fade show">
                 ✅ {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         @endif
         <div class="table-responsive">
@@ -155,10 +157,11 @@
                                 👁 View
                             </button>
                             <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-bs-toggle="dropdown">More</button>
+                                <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-toggle="dropdown">More</button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow custom-dropdown">
                                     @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
-                                        <li><a class="dropdown-item" href="{{ route('opening.stocks.edit', $product->id) }}">✏ Edit Product</a></li>
+                                        <li><a class="dropdown-item" href="{{ route('products.edit', $product->id) }}">📋 Edit Profile</a></li>
+                                        <li><a class="dropdown-item" href="{{ route('opening.stocks.edit', $product->id) }}">💰 Edit Stock & Pricing</a></li>
                                     @endif
                                     <li><a class="dropdown-item" href="{{ route('generate-barcode-image', $product->id) }}">🏷 Generate Barcode</a></li>
                                     @if($product->is_assembled)
@@ -191,7 +194,9 @@
                         <small class="opacity-75" id="pvm_header_sub">Loading...</small>
                     </div>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
 
             {{-- BODY --}}
@@ -326,7 +331,7 @@
 
             {{-- FOOTER --}}
             <div class="modal-footer bg-white py-2 px-4">
-                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-outline-secondary px-4" data-dismiss="modal">Close</button>
                 @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
                     <a href="#" id="pvm_edit_btn" class="btn btn-primary px-4">✏ Edit Product</a>
                 @endif
@@ -438,15 +443,18 @@ $(document).on('click', '.viewProductBtn', function () {
 
             // Packaging
             $('#pvm_pack_type').text(p.pack_type || '-');
-            $('#pvm_unit').text(p.unit ? p.unit.name : '-');
             $('#pvm_pack_qty').text(p.pack_qty || '-');
             $('#pvm_piece_per_pack').text(p.piece_per_pack || '-');
             $('#pvm_loose_piece').text(p.loose_piece || '-');
 
             if (p.pack_type === 'Standard') {
                 $('#productViewModal .standard-field').addClass('d-show');
+                $('#pvm_unit').text('Piece');
             } else if (p.pack_type === 'Customize') {
                 $('#productViewModal .customize-field').addClass('d-show');
+                $('#pvm_unit').text(p.unit ? p.unit.name : '-');
+            } else {
+                $('#pvm_unit').text(p.unit ? p.unit.name : '-');
             }
 
             // Edit link — opens the Opening Stock Edit page for this product

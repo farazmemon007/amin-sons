@@ -1,12 +1,8 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link rel="stylesheet"
-        href="https://cdnjs.cloudflare.com/ajax/libs/line-awesome/1.3.0/line-awesome/css/line-awesome.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    @stack('scripts')
+@section('css')
+@endsection
 
     <style>
         .image-preview-wrapper {
@@ -223,9 +219,10 @@
 
                         {{-- ////////////////////////////////////// --}}
 
-                        <div class="d-flex">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="page-title mb-0">📋 Edit Product Profile</h5>
                             <a href="{{ route('product') }}" class="btn btn-sm btn-outline--primary">
-                                <i class="la la-undo"></i> Back
+                                <i class="la la-undo"></i> Back to List
                             </a>
                         </div>
                     </div>
@@ -284,7 +281,7 @@
                                                             </select>
 
                                                             <button type="button" class="btn btn-primary add-btn"
-                                                                data-bs-toggle="modal" data-bs-target="#categoryModal"
+                                                                data-toggle="modal" data-target="#categoryModal"
                                                                 title="Add New Category">
                                                                 <i class="fa-solid fa-plus"></i>
                                                             </button>
@@ -309,11 +306,16 @@
                                                                 @endforeach
                                                             </select>
                                                             <button type="button" class="btn btn-primary add-btn"
-                                                                data-bs-toggle="modal" data-bs-target="#subcategoryModal"
+                                                                data-toggle="modal" data-target="#subcategoryModal"
                                                                 title="Add New Category">
                                                                 <i class="fa-solid fa-plus"></i>
                                                             </button>
                                                         </div>
+                                                    </div>
+
+                                                    <div class="col-sm-4">
+                                                        <label class="form-label">Item Code</label>
+                                                        <input type="text" value="{{ $product->item_code }}" class="form-control" readonly style="background-color: #e9ecef; cursor: not-allowed;">
                                                     </div>
 
                                                     <div class="col-sm-4">
@@ -338,7 +340,7 @@
                                                                 @endforeach
                                                             </select>
                                                             <button type="button" class="btn btn-primary add-btn"
-                                                                data-bs-toggle="modal" data-bs-target="#brandcategoryModal"
+                                                                data-toggle="modal" data-target="#brandcategoryModal"
                                                                 title="Add New Category">
                                                                 <i class="fa-solid fa-plus"></i>
                                                             </button>
@@ -424,7 +426,7 @@
                                                                 @endforeach
                                                             </select>
                                                             <button type="button" class="btn btn-primary add-btn" id="unit_add_btn"
-                                                                data-bs-toggle="modal" data-bs-target="#unitModal"
+                                                                data-toggle="modal" data-target="#unitModal"
                                                                 title="Add New Unit" style="display:none;">
                                                                 <i class="fa-solid fa-plus"></i>
                                                             </button>
@@ -459,35 +461,8 @@
                                                     </div>
 
 
-                                                    <div class="col-sm-4">
-                                                        <label class="form-label">Opening Stock (pcs)</label>
-                                                        <input type="number" id="opening_stock" name="Stock"
-                                                            class="form-control" value="{{ optional($product->stock)->qty ?? 0 }}"
-                                                            min="0">
-                                                        <div class="small-help">This will create an opening entry in stock
-                                                            ledger.</div>
-                                                    </div>
-
-                                                    <div class="col-sm-4">
-                                                        <label class="form-label">Alert Quantity</label>
-                                                        <input type="number" name="alert_quantity" class="form-control"
-                                                            value="{{ $product->alert_quantity }}" min="0">
-                                                    </div>
-
-                                                    <div class="col-sm-4">
-                                                        <label class="form-label">Wholesale Price</label>
-                                                        <input type="number" name="wholesale_price" class="form-control"
-                                                            value="{{ $product->wholesale_price ?? 0 }}" step="0.01"
-                                                            min="0">
-                                                    </div>
-
-                                                    <div class="col-sm-4">
-                                                        <label class="form-label">Retail Price</label>
-                                                        <input type="number" name="retail_price" class="form-control"
-                                                            value="{{ $product->price ?? 0 }}" step="0.01"
-                                                            min="0">
-                                                    </div>
-                                                </div>
+                                                     {{-- Pricing and Stock fields removed - handled in Opening Stock Edit --}}
+                                                 </div>
 
                                                 <hr class="my-4">
 
@@ -526,9 +501,9 @@
                                         </div>
 
                                         <div class="mt-4">
-                                            <button type="submit" class="btn btn-primary w-100 py-2">
-                                                <i class="las la-save"></i> Update Product
-                                            </button>
+                                             <button type="submit" class="btn btn-primary w-100 py-3 fw-bold">
+                                                 <i class="las la-save"></i> UPDATE PRODUCT PROFILE
+                                             </button>
                                         </div>
                                     </form>
 
@@ -548,7 +523,7 @@
 
                     <div class="modal-header">
                         <h5 class="modal-title"><span class="type"></span> <span>Add Category</span></h5>
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <i class="las la-times"></i>
                         </button>
                     </div>
@@ -643,7 +618,7 @@
                    
                     <div class="modal-header">
                         <h5 class="modal-title"><span class="type"></span> <span>Add Brand</span></h5>
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <i class="las la-times"></i>
                         </button>
                     </div>
@@ -675,7 +650,7 @@
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
 
                         <h5 class="modal-title">Add Unit</h5>
-                        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <i class="las la-times"></i>
                         </button>
                     </div>
@@ -689,7 +664,7 @@
                             </div>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                             <button type="submit" class="btn btn--primary h-45">Submit</button>
                         </div>
                     </form>
@@ -732,7 +707,7 @@
 
                     <div class="modal-header">
                         <h6 class="modal-title"><i class="las la-cubes me-1"></i> Define Parts (BOM)</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"></button>
                     </div>
 
                     <div class="modal-body">
@@ -773,7 +748,7 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                         <button class="btn btn-primary" id="saveBom"><i class="las la-save"></i> Save Parts</button>
                     </div>
                 </div>
@@ -782,49 +757,32 @@
     </div>
     </div>
 
-    {{-- Scripts --}}
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@section('js')
     <script>
         function calculateOpeningStock() {
-
             let packingQty = parseFloat(document.getElementById('packing_qty').value) || 0;
             let unitPerPackage = parseFloat(document.getElementById('piece_per_pack').value) || 0;
             let loosePiece = parseFloat(document.getElementById('loose_piece').value) || 0;
-
             let packedStock = 0;
-
-            // Multiply only if both are entered
             if (packingQty > 0 && unitPerPackage > 0) {
                 packedStock = packingQty * unitPerPackage;
-            }
-            // If only one is entered
-            else {
+            } else {
                 packedStock = packingQty + unitPerPackage;
             }
-
             let totalStock = packedStock + loosePiece;
-
-            document.getElementById('opening_stock').value = totalStock;
+            if(document.getElementById('opening_stock')) {
+                document.getElementById('opening_stock').value = totalStock;
+            }
         }
+        if(document.getElementById('packing_qty')) document.getElementById('packing_qty').addEventListener('input', calculateOpeningStock);
+        if(document.getElementById('piece_per_pack')) document.getElementById('piece_per_pack').addEventListener('input', calculateOpeningStock);
+        if(document.getElementById('loose_piece')) document.getElementById('loose_piece').addEventListener('input', calculateOpeningStock);
 
-        document.getElementById('packing_qty').addEventListener('input', calculateOpeningStock);
-        document.getElementById('piece_per_pack').addEventListener('input', calculateOpeningStock);
-        document.getElementById('loose_piece').addEventListener('input', calculateOpeningStock);
-    </script>
-
-
-
-    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const input = document.getElementById('barcodeInput');
             const btn = document.getElementById('generateBarcodeBtn');
-
-            let manualMode = false; // 👈 flag
-
-            // 1️⃣ Auto-generate ONLY on page load
-            if (input.value.trim() === '') {
+            let manualMode = false;
+            if (input && input.value.trim() === '') {
                 fetch('{{ route('generate-barcode-image') }}')
                     .then(res => res.json())
                     .then(data => {
@@ -833,21 +791,16 @@
                         }
                     });
             }
-
-            // 2️⃣ Button click → clear field & allow manual typing
-            btn.addEventListener('click', function() {
-                manualMode = true; // ❌ stop auto
-                input.value = ''; // clear
-                input.focus(); // cursor ready
-            });
+            if(btn) {
+                btn.addEventListener('click', function() {
+                    manualMode = true;
+                    input.value = '';
+                    input.focus();
+                });
+            }
         });
-    </script>
 
-
-
-    <script>
-        // Barcode generate
-        document.getElementById('generateBarcodeBtn').addEventListener('click', function() {
+        $(document).on('click', '#generateBarcodeBtn', function() {
             let currentValue = document.getElementById('barcodeInput').value.trim();
             const hit = (url) => fetch(url).then(r => r.json()).then(data => {
                 document.getElementById('barcodeInput').value = data.barcode_number;
@@ -859,104 +812,75 @@
             }
         });
 
-
-        // Image preview/clear
         const imageInput = document.getElementById('imageInput');
         const preview = document.getElementById('preview');
         const clearImageBtn = document.getElementById('clearImageBtn');
-        imageInput.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    preview.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        clearImageBtn.addEventListener('click', function() {
-            preview.src = "";
-            imageInput.value = "";
-        });
+        if(imageInput) {
+            imageInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        preview.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+        if(clearImageBtn) {
+            clearImageBtn.addEventListener('click', function() {
+                preview.src = "";
+                imageInput.value = "";
+            });
+        }
 
-        // Packing Type conditional visibility - Reusable function
         function updatePackingTypeDisplay() {
             var packingType = $('#packing_type').val();
-
             if (packingType === 'Standard') {
-                // Show unitSection
                 $('#unitSection').show();
-                // Find the ID of the 'Piece' option
                 var pieceOptionId = $('#unit_select option').filter(function() { 
                     var txt = $(this).text().toLowerCase();
                     return txt === 'piece' || txt === 'pcs' || txt === 'pieces'; 
                 }).first().val();
-                
-                // Set to Piece and show readonly, hide select
                 $('#unit_readonly').val('Piece').show().prop('disabled', false);
                 $('#unit_hidden').val(pieceOptionId).prop('disabled', false);
                 $('#unit_select').prop('disabled', true).hide();
                 $('#unit_select').closest('.input-group').find('.select2-container').hide();
                 $('#unit_add_btn').hide();
-
-                // Hide Customize fields
                 $('#packingQtySection').hide();
                 $('#unitPerPackingSection').hide();
                 $('#loosepiece_section').hide();
-
-                // Set customize fields to 0 (not empty)
                 $('#packing_qty').val('0');
                 $('#piece_per_pack').val('0');
                 $('#loose_piece').val('0');
-
             } else if (packingType === 'Customize') {
-                // Show unitSection
                 $('#unitSection').show();
-                // Show select, hide readonly
                 $('#unit_readonly').hide().prop('disabled', true);
                 $('#unit_hidden').prop('disabled', true);
                 $('#unit_select').prop('disabled', false).show();
                 $('#unit_select').closest('.input-group').find('.select2-container').show();
-                // unit_add_btn is hidden by default in edit mode but we can show it if it exists and is un-commented
                 $('#unit_add_btn').show();
-
-                // Show Customize fields
                 $('#packingQtySection').show();
                 $('#unitPerPackingSection').show();
                 $('#loosepiece_section').show();
-
             } else {
-                // Hide all conditional fields
                 $('#unitSection').hide();
                 $('#packingQtySection').hide();
                 $('#unitPerPackingSection').hide();
                 $('#loosepiece_section').hide();
-                
-                // Set all to 0
                 $('#packing_qty').val('0');
                 $('#piece_per_pack').val('0');
                 $('#loose_piece').val('0');
             }
         }
-
-        // Call on change event
         $('#packing_type').on('change', updatePackingTypeDisplay);
 
-        // Form submission: Ensure all empty numeric fields are set to 0
         $('#productForm').on('submit', function(e) {
-            // Set empty packing fields to 0
-            if ($('#packing_qty').val().trim() === '') {
-                $('#packing_qty').val('0');
-            }
-            if ($('#piece_per_pack').val().trim() === '') {
-                $('#piece_per_pack').val('0');
-            }
-            if ($('#loose_piece').val().trim() === '') {
-                $('#loose_piece').val('0');
-            }
+            if ($('#packing_qty').val().trim() === '') $('#packing_qty').val('0');
+            if ($('#piece_per_pack').val().trim() === '') $('#piece_per_pack').val('0');
+            if ($('#loose_piece').val().trim() === '') $('#loose_piece').val('0');
         });
 
-        // Dependent Subcategory
         $('#category-dropdown').on('change', function() {
             var categoryId = $(this).val();
             if (categoryId) {
@@ -965,11 +889,9 @@
                     type: "GET",
                     dataType: "json",
                     success: function(data) {
-                        $('#subcategory-dropdown').empty().append(
-                            '<option selected disabled>Select Subcategory</option>');
+                        $('#subcategory-dropdown').empty().append('<option selected disabled>Select Subcategory</option>');
                         $.each(data, function(_, v) {
-                            $('#subcategory-dropdown').append('<option value="' + v.id + '">' +
-                                v.name + '</option>');
+                            $('#subcategory-dropdown').append('<option value="' + v.id + '">' + v.name + '</option>');
                         });
                     }
                 });
@@ -978,9 +900,7 @@
             }
         });
 
-        // Initialize on page load
         $(document).ready(function() {
-            // Prefill subcategories for edit
             var categoryId = $('#category-dropdown').val();
             if (categoryId) {
                 $.ajax({
@@ -990,35 +910,19 @@
                     success: function(data) {
                         $('#subcategory-dropdown').empty();
                         $.each(data, function(_, v) {
-                            var selected = {{ $product->sub_category_id }} == v.id ?
-                                'selected' : '';
-                            $('#subcategory-dropdown').append('<option value="' + v.id + '" ' +
-                                selected + '>' +
-                                v.name + '</option>');
+                            var selected = {{ $product->sub_category_id }} == v.id ? 'selected' : '';
+                            $('#subcategory-dropdown').append('<option value="' + v.id + '" ' + selected + '>' + v.name + '</option>');
                         });
                     }
                 });
             }
-
-            // Initialize packing type display on page load
             updatePackingTypeDisplay();
-
-            // Prefill colors if they exist
             var colors = {!! json_encode($product->color ? json_decode($product->color) : []) !!};
-            if (colors.length > 0) {
-                $('#color-select').val(colors).trigger('change');
-            }
-
-            // Prefill checkbox states
-            if ({{ $product->is_part ?? 0 }}) {
-                $('#isPart').prop('checked', true);
-            }
-            if ({{ $product->is_assembled ?? 0 }}) {
-                $('#isAssembled').prop('checked', true).trigger('change');
-            }
+            if (colors.length > 0) $('#color-select').val(colors).trigger('change');
+            if ({{ $product->is_part ?? 0 }}) $('#isPart').prop('checked', true);
+            if ({{ $product->is_assembled ?? 0 }}) $('#isAssembled').prop('checked', true).trigger('change');
         });
 
-        // Color select2
         $(document).ready(function() {
             $('#color-select').select2({
                 tags: true,
@@ -1028,86 +932,45 @@
             });
         });
 
-        // ===== Unit Form Submission (AJAX) =====
         $('#unitForm').on('submit', function(e) {
             e.preventDefault();
-
             const unitName = $('#unitName').val().trim();
             if (!unitName) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Required Field',
-                    text: 'Please enter unit name'
-                });
+                Swal.fire({ icon: 'warning', title: 'Required Field', text: 'Please enter unit name' });
                 return false;
             }
-
             $.ajax({
                 url: $(this).attr('action'),
                 type: 'POST',
                 data: $(this).serialize(),
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Unit created:', response);
-
-                    // Close modal and reset form immediately
-                    const unitModal = document.getElementById('unitModal');
-                    const modal = bootstrap.Modal.getInstance(unitModal);
-                    if (modal) {
-                        modal.hide();
-                    }
-
-                    // Remove backdrop
-                    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                    document.body.classList.remove('modal-open');
-
+                    $('#unitModal').modal('hide');
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open');
                     $('#unitForm')[0].reset();
-
-                    // Fetch and update units dropdown
                     $.ajax({
                         url: "{{ route('get-units') }}",
                         type: 'GET',
                         dataType: 'json',
                         success: function(units) {
-                            console.log('Units fetched:', units);
                             let unitOptions = '<option value="">Select Unit</option>';
                             if (units && units.length > 0) {
                                 units.forEach(function(unit) {
-                                    unitOptions += '<option value="' + unit.id +
-                                        '">' + unit.name + '</option>';
+                                    unitOptions += '<option value="' + unit.id + '">' + unit.name + '</option>';
                                 });
                             }
                             $('#unit_select').html(unitOptions);
-                        },
-                        error: function(error) {
-                            console.error('Error fetching units:', error);
                         }
                     });
-
-                    // Show success message
                     setTimeout(function() {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success',
-                            text: 'Unit created successfully!'
-                        });
+                        Swal.fire({ icon: 'success', title: 'Success', text: 'Unit created successfully!' });
                     }, 100);
-                },
-                error: function(error) {
-                    console.error('Error creating unit:', error);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Failed to create unit'
-                    });
                 }
             });
         });
 
-        // ===== BOM logic =====
-        const partsModal = new bootstrap.Modal(document.getElementById('partsModal'));
-        let bomItems = []; // {part_id, code, name, unit, required_per_unit, available_qty, needed_for_row, shortage}
-
+        let bomItems = []; 
         const num = n => isNaN(parseFloat(n)) ? 0 : parseFloat(n);
 
         function toggleBomUI() {
@@ -1127,75 +990,33 @@
             $('#bomStockPieces').text(stockPieces);
             renderBomTable();
             recalcAssemblePossible();
-            partsModal.show();
+            $('#partsModal').modal('show');
         });
-
-        $('input[name="Stock"]').on('input', function() {
-            if ($('#partsModal').hasClass('show')) {
-                $('#bomStockPieces').text(num($(this).val()));
-                $('#bomRows tr').each(function() {
-                    recalcRow($(this));
-                });
-                recalcAssemblePossible();
-            }
-        });
-
-        function emptyItem() {
-            return {
-                part_id: null,
-                code: '',
-                name: '',
-                unit: '',
-                required_per_unit: 1,
-                available_qty: 0,
-                needed_for_row: 0,
-                shortage: 0
-            };
-        }
-
-        function rowTemplate(i, it) {
-            return `
-<tr data-index="${i}">
-  <td>
-    <select class="form-control form-control-sm part-select" style="width:100%"></select>
-    <div class="small text-muted mt-1">Search part by name/code</div>
-  </td>
-  <td><input type="number" step="0.01" class="form-control form-control-sm req-per-unit" value="${num(it.required_per_unit)}" min="0"></td>
-  <td><input type="number" class="form-control form-control-sm available" value="${num(it.available_qty)}" readonly></td>
-  <td><input type="number" class="form-control form-control-sm needed" value="${num(it.needed_for_row)}" readonly></td>
-  <td><input type="number" class="form-control form-control-sm shortage" value="${num(it.shortage)}" readonly></td>
-  <td><button type="button" class="btn btn-sm btn-outline-danger del-bom-row">X</button></td>
-</tr>`;
-        }
 
         function renderBomTable() {
             const $tb = $('#bomRows');
             $tb.empty();
             if (!bomItems.length) {
-                bomItems.push(emptyItem());
+                bomItems.push({part_id: null, code: '', name: '', unit: '', required_per_unit: 1, available_qty: 0, needed_for_row: 0, shortage: 0});
             }
             bomItems.forEach((it, idx) => {
-                const tr = $(rowTemplate(idx, it));
+                const tr = $(`
+                    <tr data-index="${idx}">
+                      <td>
+                        <select class="form-control form-control-sm part-select" style="width:100%"></select>
+                        <div class="small text-muted mt-1">Search part by name/code</div>
+                      </td>
+                      <td><input type="number" step="0.01" class="form-control form-control-sm req-per-unit" value="${num(it.required_per_unit)}" min="0"></td>
+                      <td><input type="number" class="form-control form-control-sm available" value="${num(it.available_qty)}" readonly></td>
+                      <td><input type="number" class="form-control form-control-sm needed" value="${num(it.needed_for_row)}" readonly></td>
+                      <td><input type="number" class="form-control form-control-sm shortage" value="${num(it.shortage)}" readonly></td>
+                      <td><button type="button" class="btn btn-sm btn-outline-danger del-bom-row">X</button></td>
+                    </tr>`);
                 $tb.append(tr);
-                initPartSelect2(tr.find('.part-select'), it.part_id ? {
-                    id: it.part_id,
-                    text: (it.name || '') + ' - ' + (it.code || '')
-                } : null);
+                initPartSelect2(tr.find('.part-select'), it.part_id ? {id: it.part_id, text: it.name + ' - ' + it.code} : null);
                 recalcRow(tr);
             });
         }
-
-        $('#addBomRow').on('click', function() {
-            bomItems.push(emptyItem());
-            renderBomTable();
-        });
-
-        $(document).on('click', '.del-bom-row', function() {
-            const idx = $(this).closest('tr').data('index');
-            bomItems.splice(idx, 1);
-            renderBomTable();
-            recalcAssemblePossible();
-        });
 
         function initPartSelect2($el, presetOption = null) {
             $el.select2({
@@ -1206,42 +1027,23 @@
                     delay: 200,
                     url: "{{ route('search-part-name') }}",
                     dataType: 'json',
-                    data: params => ({
-                        q: params.term || ''
-                    }),
+                    data: params => ({ q: params.term || '' }),
                     processResults: data => ({
                         results: (data || []).map(p => ({
-                            id: p.id,
-                            text: `${p.item_name} - ${p.item_code}`,
-                            code: p.item_code,
-                            name: p.item_name,
-                            unit: p.unit ?? '',
-                            available_qty: Number(p.available_qty || 0)
-                        })),
-                        pagination: {
-                            more: false
-                        }
+                            id: p.id, text: p.item_name + ' - ' + p.item_code, code: p.item_code, name: p.item_name, unit: p.unit ?? '', available_qty: Number(p.available_qty || 0)
+                        }))
                     }),
                     cache: true
                 }
             });
-
             if (presetOption) {
-                const option = new Option(presetOption.text, presetOption.id, true, true);
-                $el.append(option).trigger('change');
+                $el.append(new Option(presetOption.text, presetOption.id, true, true)).trigger('change');
             }
-
             $el.on('select2:select', function(e) {
                 const d = e.params.data;
                 const $tr = $(this).closest('tr');
                 const idx = $tr.data('index');
-
-                bomItems[idx].part_id = d.id;
-                bomItems[idx].code = d.code;
-                bomItems[idx].name = d.name;
-                bomItems[idx].unit = d.unit;
-                bomItems[idx].available_qty = Number(d.available_qty || 0);
-
+                bomItems[idx] = { ...bomItems[idx], part_id: d.id, code: d.code, name: d.name, unit: d.unit, available_qty: Number(d.available_qty || 0) };
                 $tr.find('.available').val(bomItems[idx].available_qty);
                 recalcRow($tr);
                 recalcAssemblePossible();
@@ -1274,81 +1076,23 @@
             $('#bomRows tr').each(function() {
                 const rpu = num($(this).find('.req-per-unit').val());
                 const avail = num($(this).find('.available').val());
-                if (rpu > 0) {
-                    minPossible = Math.min(minPossible, Math.floor(avail / rpu));
-                }
+                if (rpu > 0) minPossible = Math.min(minPossible, Math.floor(avail / rpu));
             });
             if (minPossible === Infinity) minPossible = 0;
             $('#assemblePossible').text(minPossible);
         }
 
-        // Save BOM from modal → hidden input
         $('#saveBom').on('click', function() {
             const cleaned = bomItems.filter(x => x.part_id);
             $('#bom_json').val(JSON.stringify(cleaned));
-            if (cleaned.length) {
-                $('#bomBadge').removeClass('d-none').text(`${cleaned.length} parts`);
-            } else {
-                $('#bomBadge').addClass('d-none').text('0 parts');
-            }
-            partsModal.hide();
+            if (cleaned.length) $('#bomBadge').removeClass('d-none').text(cleaned.length + ' parts');
+            else $('#bomBadge').addClass('d-none').text('0 parts');
+            $('#partsModal').modal('hide');
+        });
+
+        document.querySelectorAll('[data-toggle="tooltip"]').forEach(el => {
+            $(el).tooltip();
         });
     </script>
-    <script>
-        // Duplicate product name and model validation
-        // $('#productForm').on('submit', function (e) {
-        //     e.preventDefault();
-
-        //     const productName = $('#product_name').val().trim();
-        //     const productModel = $('#model').val().trim();
-
-        //     if (!productName) {
-        //         Swal.fire({
-        //             icon: 'warning',
-        //             title: 'Required Field',
-        //             text: 'Please enter product name',
-        //         });
-        //         return false;
-        //     }
-
-        //     if (!productModel) {
-        //         Swal.fire({
-        //             icon: 'warning',
-        //             title: 'Required Field',
-        //             text: 'Please enter product model',
-        //         });
-        //         return false;
-        //     }
-
-        //     // Check if product with this name or model already exists
-        //     $.ajax({
-        //         url: "{{ route('check-product-name') }}",
-        //         type: 'GET',
-        //         data: { name: productName, model: productModel },
-        //         success: function (response) {
-        //             if (response.exists) {
-        //                 Swal.fire({
-        //                     icon: 'warning',
-        //                     title: 'Duplicate Product',
-        //                     text: 'A product with this name or model already exists!',
-        //                     confirmButtonText: 'OK'
-        //                 });
-        //                 return false;
-        //             } else {
-        //                 // Product name and model are unique, submit form
-        //                 document.getElementById('productForm').submit();
-        //             }
-        //         },
-        //         error: function () {
-        //             // If check fails, allow submission to proceed
-        //             document.getElementById('productForm').submit();
-        //         }
-        //     });
-        // });
-    </script>
-    <script>
-        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-            new bootstrap.Tooltip(el)
-        })
-    </script>
+@endsection
 @endsection
