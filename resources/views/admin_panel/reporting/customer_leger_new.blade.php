@@ -38,8 +38,8 @@
 
                         @if($user && $user->hasRole('super admin'))
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold mb-1">Branch</label>
-                                <select id="branch_id" class="form-select form-select-sm">
+                                <label class="form-label fw-bold text-secondary small mb-1">Branch</label>
+                                <select id="branch_id" class="form-select fi-premium shadow-none">
                                     <option value="">-- Select Branch --</option>
                                     @foreach($branches as $b)
                                         <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
@@ -47,15 +47,15 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold mb-1">Customer</label>
-                                <select id="customer_id" class="form-select form-select-sm">
+                                <label class="form-label fw-bold text-secondary small mb-1">Customer</label>
+                                <select id="customer_id" class="form-select fi-premium shadow-none">
                                     <option value="">-- Select Customer --</option>
                                 </select>
                             </div>
                         @else
                             <div class="col-md-4">
-                                <label class="form-label fw-semibold mb-1">Customer</label>
-                                <select id="customer_id" class="form-select form-select-sm">
+                                <label class="form-label fw-bold text-secondary small mb-1">Customer</label>
+                                <select id="customer_id" class="form-select fi-premium shadow-none">
                                     <option value="">-- Select Customer --</option>
                                     @foreach($customers as $c)
                                         <option value="{{ $c->id }}">
@@ -68,20 +68,20 @@
                         @endif
 
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">From Date</label>
-                            <input type="date" id="start_date" class="form-control form-control-sm"
+                            <label class="form-label fw-bold text-secondary small mb-1">From Date</label>
+                            <input type="date" id="start_date" class="form-control fi-premium shadow-none"
                                 value="{{ $startDate ?? '' }}">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">To Date</label>
-                            <input type="date" id="end_date" class="form-control form-control-sm"
+                            <label class="form-label fw-bold text-secondary small mb-1">To Date</label>
+                            <input type="date" id="end_date" class="form-control fi-premium shadow-none"
                                 value="{{ $endDate ?? '' }}">
                         </div>
                         <div class="col-md-2">
                             <button type="button" id="btnSearch"
-                                class="btn btn-primary btn-sm w-100"
-                                style="background:#0066cc;border-color:#0066cc;padding:7px;">
-                                <i class="fas fa-search me-1"></i> Generate Report
+                                class="btn btn-primary btn-sm w-100 fw-bold"
+                                style="background:#0066cc; border:none; border-radius:8px; padding: 10px 0; box-shadow: 0 4px 6px -1px rgba(0, 102, 204, 0.2);">
+                                <i class="fas fa-file-invoice me-1"></i> Generate Report
                             </button>
                         </div>
                     </form>
@@ -188,6 +188,27 @@ tr.r-discount td { background:#fff3e0 !important; border-color:#ffb74d !importan
 tr.r-total   td { background:#e9ecef !important; font-weight:700; border-top:2px solid #1a1a2e !important; font-size:13px; }
 tr.r-close   td { background:#1a1a2e !important; color:#fff !important; font-weight:700; font-size:14px; }
 tr.r-grand   td { background:#0a3060 !important; color:#fff !important; font-weight:700; font-size:13px; }
+
+/* Premium Input Styling */
+.fi-premium {
+    border-radius: 8px !important;
+    border: 1.5px solid #e3e6f0 !important;
+    background-color: #ffffff !important;
+    padding: 0.6rem 0.75rem !important;
+    font-size: 0.9rem !important;
+    transition: all 0.2s ease-in-out;
+}
+.fi-premium:focus {
+    border-color: #0066cc !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.1) !important;
+    background-color: #fff !important;
+}
+.select2-container--default .select2-selection--single {
+    border: 1.5px solid #e3e6f0 !important;
+    border-radius: 8px !important;
+    height: 45px !important;
+    padding-top: 8px !important;
+}
 
 /* Balance colors */
 .b-dr   { color:#c62828; font-weight:700; }
