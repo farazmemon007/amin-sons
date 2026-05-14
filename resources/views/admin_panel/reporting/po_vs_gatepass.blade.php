@@ -31,6 +31,20 @@
             <div class="card shadow-sm mb-3" style="border-radius:10px;border:none;">
                 <div class="card-body py-3">
                     <form id="filterForm" class="row g-3 align-items-end">
+                        @if(Auth::user()->hasRole('super admin'))
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1">Select Branch</label>
+                            <select name="branch_id" id="branch_id" class="form-control form-control-sm select2">
+                                <option value="all">-- All Branches --</option>
+                                @foreach($branches as $b)
+                                    <option value="{{ $b->id }}" {{ Auth::user()->branch_id == $b->id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @else
+                            <input type="hidden" name="branch_id" id="branch_id" value="{{ Auth::user()->branch_id }}">
+                        @endif
+
                         <div class="col-md-3">
                             <label class="form-label fw-semibold mb-1">Select Vendor</label>
                             <select name="vendor_id" id="vendor_id" class="form-control form-control-sm select2">
@@ -173,6 +187,7 @@
 
 <script>
     $(document).ready(function() {
+        const currentUserIsSuperAdmin = {{ Auth::user()->hasRole('super admin') ? 'true' : 'false' }};
         
         function n(v) { return parseFloat(v) || 0; }
         
@@ -180,6 +195,7 @@
             var start_date = $('#start_date').val();
             var end_date = $('#end_date').val();
             var vendor_id = $('#vendor_id').val();
+            var branch_id = $('#branch_id').val();
 
             // Update PDF Header Info
             $('#pdfPeriod').text(start_date + ' to ' + end_date);
@@ -195,7 +211,8 @@
                 data: {
                     start_date: start_date,
                     end_date: end_date,
-                    vendor_id: vendor_id
+                    vendor_id: vendor_id,
+                    branch_id: branch_id
                 },
                 success: function(response) {
                     $('#loader').hide();
@@ -206,6 +223,49 @@
                     alert('Error fetching report data');
                 }
             });
+        }
+
+        // Fetch vendors when branch changes
+        $('#branch_id').on('change', function() {
+            var branchId = $(this).val();
+            
+            // If "All Branches" is selected, we could either show all vendors or clear the list.
+            // For ERP standards, we usually show All Vendors.
+            if (branchId === 'all') {
+                // Optionally fetch ALL vendors here if needed, but for now we reset to all
+                location.reload(); // Simplest way to reset to initial state with all vendors
+                return;
+            }
+
+            $.ajax({
+                url: "{{ route('report.get_vendors_by_branch') }}",
+                type: "GET",
+                data: { branch_id: branchId },
+                success: function(data) {
+                    var options = '<option value="all">-- All Vendors --</option>';
+                    if (data && data.length > 0) {
+                        data.forEach(function(v) {
+                            options += `<option value="${v.id}">${v.name}</option>`;
+                        });
+                    }
+                    // Update HTML and trigger Select2 refresh
+                    $('#vendor_id').html(options).trigger('change');
+                },
+                error: function(xhr) {
+                    console.error('Vendor Fetch Error:', xhr);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Fetch Error',
+                        text: 'Could not load vendors for this branch.'
+                    });
+                }
+            });
+        });
+
+        // Trigger change on load if a branch is already selected (for Super Admin pre-selection)
+        if ($('#branch_id').val() !== 'all' && currentUserIsSuperAdmin) {
+            // $('#branch_id').trigger('change'); 
+            // Actually, the controller already passes the vendors for the user's branch by default.
         }
 
         function renderRows(rows) {

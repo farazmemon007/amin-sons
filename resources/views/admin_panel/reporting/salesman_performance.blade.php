@@ -21,7 +21,7 @@
                 <div class="card-body py-3">
                     <form id="performanceFilterForm" class="row g-3 align-items-end">
                         @if($isSuper)
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label fw-semibold mb-1">Select Branch</label>
                             <select name="branch_id" id="branch_id" class="form-control form-control-sm select2 branch-trigger">
                                 <option value="">-- All Branches --</option>
@@ -33,11 +33,8 @@
                         @else
                         <input type="hidden" name="branch_id" id="branch_id" value="{{ $userBranchId }}">
                         @endif
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
-                        </div>
-                        <div class="col-md-2">
+
+                        <div class="col-md-3">
                             <label class="form-label fw-semibold mb-1">Select Salesman</label>
                             <select name="salesman_id" id="salesman_id" class="form-control form-control-sm select2">
                                 <option value="">-- All (Summary) --</option>
@@ -47,18 +44,28 @@
                                 @endforeach
                             </select>
                         </div>
+
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold mb-1">End Date</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                        </div>
+
                         <div class="col-md-1">
                             <button type="button" id="btnSearch" class="btn btn-primary btn-sm w-100" style="background:#0066cc;border-color:#0066cc;padding:7px;">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
-                        <div class="col-md-4 text-end">
+                        <div class="col-md-2 text-end">
                             <div class="btn-group shadow-sm" role="group">
-                                <button type="button" onclick="showExportOptions()" class="btn btn-outline-info btn-sm" style="background: #fff; border-color: #17a2b8; color: #17a2b8; padding: 7px 15px;">
-                                    <i class="fas fa-file-export me-1"></i> Export
+                                <button type="button" onclick="showExportOptions()" class="btn btn-outline-info btn-sm" style="background: #fff; border-color: #17a2b8; color: #17a2b8; padding: 7px 10px;" title="Export">
+                                    <i class="fas fa-file-export"></i>
                                 </button>
-                                <button type="button" onclick="shareOnWhatsApp()" class="btn btn-outline-success btn-sm" style="background: #fff; border-color: #28a745; color: #28a745; padding: 7px 15px;">
-                                    <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                                <button type="button" onclick="shareOnWhatsApp()" class="btn btn-outline-success btn-sm" style="background: #fff; border-color: #28a745; color: #28a745; padding: 7px 10px;" title="WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
                                 </button>
                             </div>
                         </div>

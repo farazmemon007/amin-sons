@@ -603,6 +603,7 @@ Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expensepri
     // ✅ PO vs Gatepass Report
     Route::get('report/po-vs-gatepass', [ReportingController::class, 'po_vs_gatepass_report'])->middleware('permission:report.purchase.view')->name('report.po_vs_gatepass');
     Route::get('report/po-vs-gatepass/fetch', [ReportingController::class, 'fetch_po_vs_gatepass_report'])->middleware('permission:report.purchase.view')->name('report.po_vs_gatepass.fetch');
+    Route::get('report/get-vendors-by-branch', [ReportingController::class, 'getVendorsByBranch'])->name('report.get_vendors_by_branch');
 
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->middleware('permission:report.sale.view')->name('report.sale');
     Route::get('report/sale/fetch', [ReportingController::class, 'fetchsaleReport'])->middleware('permission:report.sale.view')->name('report.sale.fetch');

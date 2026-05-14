@@ -32,8 +32,8 @@
 
                         @if($user && $user->hasRole('super admin'))
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold text-muted small mb-1">Select Branch</label>
-                                <select id="branch_id" class="form-select border-0 bg-light shadow-none" style="border-radius:8px;">
+                                <label class="form-label fw-bold text-secondary small mb-1">Select Branch</label>
+                                <select id="branch_id" class="form-select fi-premium shadow-none">
                                     <option value="">-- All Branches --</option>
                                     @foreach($branches as $b)
                                         <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
@@ -45,23 +45,23 @@
                         @endif
 
                         <div class="col-md-3">
-                            <label class="form-label fw-semibold text-muted small mb-1">Shop / Market Name (Search)</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-light border-0"><i class="fas fa-search text-muted"></i></span>
-                                <input type="text" id="shop_name" class="form-control border-0 bg-light shadow-none" style="border-radius:0 8px 8px 0;" placeholder="Enter shop name...">
+                            <label class="form-label fw-bold text-secondary small mb-1">Shop / Market Name (Search)</label>
+                            <div class="input-group input-group-premium">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="shop_name" class="form-control shadow-none" placeholder="Enter shop name...">
                             </div>
                         </div>
 
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold text-muted small mb-1">From Date</label>
-                            <input type="date" id="start_date" class="form-control border-0 bg-light shadow-none" style="border-radius:8px;" value="{{ $startDate }}">
+                            <label class="form-label fw-bold text-secondary small mb-1">From Date</label>
+                            <input type="date" id="start_date" class="form-control fi-premium shadow-none" value="{{ $startDate }}">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold text-muted small mb-1">To Date</label>
-                            <input type="date" id="end_date" class="form-control border-0 bg-light shadow-none" style="border-radius:8px;" value="{{ $endDate }}">
+                            <label class="form-label fw-bold text-secondary small mb-1">To Date</label>
+                            <input type="date" id="end_date" class="form-control fi-premium shadow-none" value="{{ $endDate }}">
                         </div>
                         <div class="col-md-2">
-                            <button type="button" id="btnSearch" class="btn btn-primary btn-sm w-100 fw-bold py-2" style="background:#4f46e5; border:none; border-radius:8px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
+                            <button type="button" id="btnSearch" class="btn btn-primary btn-sm w-100 fw-bold" style="background:#4f46e5; border:none; border-radius:8px; padding: 10px 0; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">
                                 <i class="fas fa-filter me-1"></i> Apply Filters
                             </button>
                         </div>
@@ -217,6 +217,40 @@
     .table tbody tr:hover { background-color: #f8fafc; }
     .invoice-link { color: #4f46e5; text-decoration: none; font-weight: 600; }
     .invoice-link:hover { text-decoration: underline; }
+
+    /* Premium Input Styling */
+    .fi-premium {
+        border-radius: 8px !important;
+        border: 1.5px solid #e3e6f0 !important;
+        background-color: #ffffff !important;
+        padding: 0.6rem 0.75rem !important;
+        font-size: 0.9rem !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .fi-premium:focus {
+        border-color: #4f46e5 !important;
+        box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.1) !important;
+        background-color: #fff !important;
+    }
+    .input-group-premium {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1.5px solid #e3e6f0;
+        transition: all 0.2s ease-in-out;
+    }
+    .input-group-premium:focus-within {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.1);
+    }
+    .input-group-premium .input-group-text {
+        background-color: #f8fafc;
+        border: none;
+        color: #94a3b8;
+    }
+    .input-group-premium .form-control {
+        border: none !important;
+        padding: 0.6rem 0.75rem;
+    }
     
     @media print {
         .card-body.py-4, button, .main-content-inner { padding: 0 !important; }

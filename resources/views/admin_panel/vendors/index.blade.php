@@ -438,19 +438,28 @@ $(document).ready(function () {
         });
     }
 
-    // Initialize Select2 for Branch filter (Main Page)
-    $('.select2').not('#vbranch_id').select2();
+    // Initialize Select2 for Branch filter (Main Page) - Only target the filter section
+    $('.filter-section .select2').select2({
+        placeholder: "All Branches",
+        allowClear: true
+    });
 
     // Initialize Select2 for Branch (In Modal)
-    $('#vbranch_id').select2({
-        dropdownParent: $('#vendorModal')
-    });
+    if($('#vbranch_id').length) {
+        $('#vbranch_id').select2({
+            dropdownParent: $('#vendorModal'),
+            width: '100%'
+        });
+    }
 
     // Initialize Select2 Multiple for Brands
-    $('#vbrands').select2({
-        dropdownParent: $('#vendorModal'),
-        placeholder: "Select Brands"
-    });
+    if($('#vbrands').length) {
+        $('#vbrands').select2({
+            dropdownParent: $('#vendorModal'),
+            placeholder: "Select Brands",
+            width: '100%'
+        });
+    }
 
     // Clear modal fields function
     window.clearVendor = function () {

@@ -1520,18 +1520,40 @@ class ReportingController extends Controller
      */
     public function po_vs_gatepass_report()
     {
+        $user = auth()->user();
         $startDate = now()->startOfMonth()->format('Y-m-d');
         $endDate = now()->format('Y-m-d');
-        $vendors = \App\Models\Vendor::orderBy('name')->get();
         
-        return view('admin_panel.reporting.po_vs_gatepass', compact('startDate', 'endDate', 'vendors'));
+        // Determine which branches user can view
+        if ($user->hasRole('super admin')) {
+            $branches = \App\Models\Branch::orderBy('name')->get();
+            $defaultBranchId = $user->branch_id ?? ($branches->first()?->id ?? 0);
+        } else {
+            $branches = \App\Models\Branch::where('id', $user->branch_id)->get();
+            $defaultBranchId = $user->branch_id;
+        }
+
+        // Vendors are now BRANCH-SPECIFIC
+        // Default to the vendors of the initially selected branch
+        $vendors = \App\Models\Vendor::where('branch_id', $defaultBranchId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'phone']);
+        
+        return view('admin_panel.reporting.po_vs_gatepass', compact('startDate', 'endDate', 'vendors', 'branches', 'user'));
     }
 
     public function fetch_po_vs_gatepass_report(Request $request)
     {
+        $user      = auth()->user();
         $startDate = $request->start_date;
         $endDate   = $request->end_date;
         $vendorId  = $request->vendor_id;
+        $branchId  = $request->branch_id;
+
+        // Security: Non-admin can only see their own branch
+        if (!$user->hasRole('super admin')) {
+            $branchId = $user->branch_id;
+        }
 
         // ✅ Query: PO Items compared with their receipt status
         // Only includes POs that have been used to create a Gatepass
@@ -1545,6 +1567,12 @@ class ReportingController extends Controller
                 $q->select(DB::raw(1))
                     ->from('inward_gatepasses')
                     ->whereRaw('inward_gatepasses.purchase_order_id = purchase_orders.id');
+            })
+            ->when($branchId && $branchId !== 'all', function($q) use ($branchId) {
+                return $q->where('purchase_orders.branch_id', $branchId);
+            })
+            ->when($vendorId && $vendorId !== 'all', function($q) use ($vendorId) {
+                return $q->where('purchase_orders.vendor_id', $vendorId);
             })
             ->select(
                 'purchase_orders.id as po_id',
@@ -1574,21 +1602,21 @@ class ReportingController extends Controller
             $query->whereBetween('purchase_orders.order_date', [$startDate, $endDate]);
         }
 
-        if ($vendorId && $vendorId !== 'all') {
-            $query->where('purchase_orders.vendor_id', $vendorId);
-        }
-
-        // Apply branch-level restriction
-        $user = auth()->user();
-        if ($user && !$user->hasRole('super admin')) {
-            $query->where('purchase_orders.branch_id', $user->branch_id);
-        }
-
         $data = $query->orderBy('purchase_orders.order_date', 'desc')->get();
 
         return response()->json([
             'data' => $data
         ]);
+    }
+
+    public function getVendorsByBranch(Request $request)
+    {
+        $branchId = $request->branch_id;
+        $vendors = \App\Models\Vendor::where('branch_id', $branchId)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+            
+        return response()->json($vendors);
     }
 
     public function sale_report()
