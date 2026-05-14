@@ -264,8 +264,9 @@
         let currentBranchId = null;
         let originalCheckedState = {};
 
-        $('#mapModal').on('show.bs.modal', function (e) {
-            var btn = $(e.relatedTarget);
+        // Use a direct click listener instead of show.bs.modal to ensure it always fires
+        $(document).on('click', '.btn-edit-modern', function () {
+            var btn = $(this);
             currentBranchId = btn.data('branch-id');
             var branchName = btn.data('branch-name');
             var raw = btn.data('warehouses') || '';
