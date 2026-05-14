@@ -95,9 +95,9 @@
         <i class="las la-code-branch" style="font-size:20px;color:#6366f1;"></i>
         <label>Branch:</label>
         <select id="branch_selector" style="border:1.5px solid #6366f1;border-radius:8px;padding:7px 12px;font-size:14px;min-width:220px;">
-            <option disabled selected>Select Branch</option>
+            <option value="">-- Select Branch --</option>
             @foreach($branches as $b)
-                <option value="{{ $b->id }}" {{ $b->id == $userBranchId ? 'selected':'' }}>{{ $b->name }}</option>
+                <option value="{{ $b->id }}" {{ $b->id == $userBranchId ? 'selected' : '' }}>{{ $b->name }}</option>
             @endforeach
         </select>
         <span style="font-size:12px;color:#94a3b8;">Stock will be stored in selected branch</span>
@@ -336,15 +336,31 @@ $(document).ready(function() {
     $('#branch_selector').on('change', function() {
         var bid = $(this).val();
         $('#form_branch_id').val(bid);
-        // Fetch warehouses for new branch
+
         if (bid) {
             $.getJSON(warehouseUrl, {branch_id: bid}, function(data) {
                 warehousesData = data;
+                // Rebuild ALL existing location dropdowns with new warehouse options
+                rebuildAllocDropdowns();
             });
+        } else {
+            warehousesData = [];
+            rebuildAllocDropdowns();
         }
         // Reset all product selects
         $('#osm_rows .product-sel').val(null).trigger('change');
     });
+
+    /* Rebuild every alloc-type select to reflect current warehousesData */
+    function rebuildAllocDropdowns() {
+        var newOpts = buildLocOpts();
+        $('#osm_rows .alloc-type').each(function() {
+            var currentVal = $(this).val();
+            $(this).html(newOpts);
+            // Try to restore previous selection (it will fall back to empty if not available)
+            if (currentVal) { $(this).val(currentVal); }
+        });
+    }
 
     /* ── Form submit validation ── */
     /* ── Inline error/success display ── */
@@ -400,13 +416,19 @@ $(document).ready(function() {
             success: function(res) {
                 $btn.prop('disabled', false).text('Save All Opening Stocks');
                 if (res && res.success) {
-                    showGlobalMsg(res.message || 'Opening stocks saved!', 'success');
-                    // Optionally reset: addRow() or keep data
+                    showGlobalMsg(res.message || 'Opening stocks saved! Redirecting...', 'success');
+                    // Redirect to the products page after a short delay
+                    setTimeout(function() {
+                        window.location.href = "{{ route('product') }}";
+                    }, 1200);
                 } else if (res && res.error) {
                     showGlobalMsg(res.error, 'error');
                     if (res.row_idx) showRowError(res.row_idx, res.error);
                 } else {
-                    showGlobalMsg('Saved successfully!', 'success');
+                    showGlobalMsg('Saved successfully! Redirecting...', 'success');
+                    setTimeout(function() {
+                        window.location.href = "{{ route('product') }}";
+                    }, 1200);
                 }
             },
             error: function(xhr) {

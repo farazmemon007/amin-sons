@@ -39,6 +39,7 @@ class ProductBooking extends Model
         'weight',
         'status',
         'branch_id',
+        'salesman_id',
     ];
 
     // Relation to sale items
@@ -51,6 +52,11 @@ class ProductBooking extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function salesman()
+    {
+        return $this->belongsTo(SalesOfficer::class, 'salesman_id');
     }
    
 }

@@ -421,6 +421,29 @@
     </div>
 
     <div class="container">
+
+        {{-- ✅ BRANCH FILTER BAR (super admin OR user with multi-branch access) --}}
+        @if($showBranchFilter)
+        <div style="background:#1e293b;border-radius:12px;padding:1rem 1.5rem;margin-bottom:24px;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,.15);">
+            <span style="font-size:18px;">&#127968;</span>
+            <span style="color:#94a3b8;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Filter by Branch:</span>
+            <select id="branch_filter_sel"
+                    style="border:2px solid #6366f1;border-radius:8px;padding:8px 16px;font-size:14px;font-weight:700;color:#1e293b;background:#eef2ff;min-width:220px;cursor:pointer;">
+                <option value="0" {{ $selectedBranchId == 0 ? 'selected' : '' }}>&#127760; All Branches</option>
+                @foreach($availableBranches as $br)
+                    <option value="{{ $br->id }}" {{ $br->id == $selectedBranchId ? 'selected' : '' }}>
+                        &#127968; {{ $br->name }}
+                    </option>
+                @endforeach
+            </select>
+            <span style="color:#64748b;font-size:11px;">
+                Showing: <strong style="color:#c7d2fe;">
+                    {{ $selectedBranchId == 0 ? 'All Branches' : ($availableBranches->firstWhere('id', $selectedBranchId)?->name ?? 'All') }}
+                </strong>
+            </span>
+        </div>
+        @endif
+
         <!-- Summary Statistics -->
         <div class="stats-grid">
             <div class="stat-card available">
@@ -450,15 +473,21 @@
             <div class="section-header">
                 <i class="fas fa-warehouse"></i>
                 <h3 class="section-title">Warehouse Distribution</h3>
+                @if($showBranchFilter)
+                    <span style="background:#e0e7ff;color:#4f46e5;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px;">
+                        {{ $selectedBranchId == 0 ? '&#127760; All Branches' : ('&#127968; ' . ($availableBranches->firstWhere('id', $selectedBranchId)?->name ?? '')) }}
+                    </span>
+                @endif
                 <span style="margin-left: auto; color: var(--muted);">{{ count($warehouses) }} location{{ count($warehouses) != 1 ? 's' : '' }}</span>
             </div>
+
 
             @forelse($warehouses as $warehouse)
                 <div class="warehouse-item">
                     <div class="warehouse-name">
                         <i class="fas fa-map-marker-alt"></i>
                         {{ $warehouse['warehouse_name'] }}
-                        @if($isSuperAdmin && isset($warehouse['branch_name']))
+                        @if(isset($warehouse['branch_name']) && $warehouse['branch_name'])
                             <span style="margin-left: 10px; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">
                                 🏢 {{ $warehouse['branch_name'] }}
                             </span>
@@ -543,6 +572,18 @@ function toggleCustomerReserved(element) {
     element.classList.toggle('expanded');
     list.classList.toggle('show');
 }
+
+// Branch filter: reload page with ?branch_id=X
+document.addEventListener('DOMContentLoaded', function() {
+    var sel = document.getElementById('branch_filter_sel');
+    if (sel) {
+        sel.addEventListener('change', function() {
+            var url = new URL(window.location.href);
+            url.searchParams.set('branch_id', this.value);
+            window.location.href = url.toString();
+        });
+    }
+});
 </script>
 
 @endsection

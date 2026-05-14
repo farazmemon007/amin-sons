@@ -476,6 +476,99 @@
             margin: 0;
         }
 
+        .user-actions .btn-warehouse {
+            background: #ecfdf5;
+            color: #059669;
+            border: none;
+        }
+
+        .user-actions .btn-warehouse:hover {
+            background: #059669;
+            color: white;
+        }
+
+        /* Warehouse Assignment Modal */
+        .wh-branch-block {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .wh-branch-header {
+            background: linear-gradient(135deg, #0066cc, #0044aa);
+            color: white;
+            padding: 10px 16px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .wh-branch-body {
+            padding: 12px;
+            background: #f8fafc;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 8px;
+        }
+
+        .wh-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s;
+        }
+
+        .wh-item:hover {
+            border-color: #0066cc;
+        }
+
+        .wh-item.selected {
+            border-color: #0066cc;
+            background: #eff6ff;
+        }
+
+        .wh-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0066cc;
+            cursor: pointer;
+        }
+
+        .wh-item label {
+            flex: 1;
+            font-size: 0.875rem;
+            color: #1e293b;
+            cursor: pointer;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        .wh-star-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #cbd5e1;
+            transition: color 0.15s;
+            line-height: 1;
+        }
+
+        .wh-star-btn.active {
+            color: #f59e0b;
+        }
+
+        .wh-star-btn:hover {
+            color: #f59e0b;
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -601,6 +694,14 @@
                                                 <i class="fa fa-pen"></i>
                                             </button>
                                         {{-- @endcan --}}
+                                        @can('warehouse.manage')
+                                            <button class="btn btn-warehouse assign-warehouses-btn"
+                                                data-user-id="{{ $user->id }}"
+                                                data-user-name="{{ $user->name }}"
+                                                title="Assign Warehouses">
+                                                <i class="fa fa-warehouse"></i>
+                                            </button>
+                                        @endcan
                                         {{-- @can('users.delete') --}}
                                             <button class="btn btn-delete delete-user-btn" data-id="{{ $user->id }}"
                                                 title="Delete User">
@@ -779,9 +880,47 @@
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- ✅ ERP: Assign Warehouses to User Modal -->
+    <div class="modal fade" id="assignWarehousesModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border-radius:16px;overflow:hidden;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#0066cc,#004499);color:#fff;padding:20px 28px;">
+                    <h5 class="modal-title">
+                        <i class="fa fa-warehouse me-2"></i>
+                        Assign Warehouses — <span id="awUserName" class="fw-bold"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+
+                    <div class="alert border-0 mb-3" style="background:#eff6ff;color:#1e40af;">
+                        <i class="fa fa-info-circle me-1"></i>
+                        <strong>Multi-Branch Assignment:</strong> Check any warehouse across branches.
+                        Click <i class="fa fa-star" style="color:#f59e0b"></i> to mark as <strong>Incharge</strong> of that warehouse.
+                    </div>
+
+                    <div id="awLoading" class="text-center py-4">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted small">Loading branches & warehouses...</p>
+                    </div>
+
+                    <div id="awContent" style="display:none;">
+                        <input type="hidden" id="awUserId">
+                        <div id="awBranchList" style="max-height:420px;overflow-y:auto;"></div>
+                    </div>
+
+                </div>
+                <div class="modal-footer" style="background:#f8fafc;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" id="awSaveBtn">
+                        <i class="fa fa-save me-1"></i> Save Assignments
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script src="{{ asset('assets/js/mycode.js') }}"></script>
 
     <script>
@@ -940,6 +1079,166 @@
                     input.attr('type', 'password');
                     icon.removeClass('fa-eye-slash').addClass('fa-eye');
                 }
+            });
+            // ── Assign Warehouses Button ─────────────────────────────────
+            function getAwModal() {
+                return $('#assignWarehousesModal');
+            }
+
+            $(document).on('click', '.assign-warehouses-btn', function () {
+                var userId   = $(this).data('user-id');
+                var userName = $(this).data('user-name');
+
+                $('#awUserId').val(userId);
+                $('#awUserName').text(userName);
+                $('#awLoading').show();
+                $('#awContent').hide();
+                $('#awBranchList').empty();
+                // Reset save button
+                $('#awSaveBtn').prop('disabled', false).html('<i class="fa fa-save me-1"></i> Save Assignments');
+
+                getAwModal().modal('show');
+
+                // AJAX: load branches + warehouses + current assignments
+                $.get('/users/' + userId + '/warehouse-assignments', function (data) {
+                    $('#awLoading').hide();
+                    $('#awContent').show();
+
+                    if (!data.branches || data.branches.length === 0) {
+                        $('#awBranchList').html('<p class="text-muted">No branches or warehouses found.</p>');
+                        return;
+                    }
+
+                    // Use Sets for O(1) lookup — entries are "branchId_warehouseId" strings
+                    var assignedSet = new Set(data.assigned_entries);
+                    var inchargeSet = new Set(data.incharge_entries);
+
+                    data.branches.forEach(function (branch) {
+                        if (!branch.warehouses || branch.warehouses.length === 0) return;
+
+                        var warehouseItems = '';
+                        branch.warehouses.forEach(function (wh) {
+                            // Use "branchId_warehouseId" pair for exact pre-selection
+                            var entry = branch.id + '_' + wh.id;
+                            var isAssigned = assignedSet.has(entry);
+                            var isIncharge = inchargeSet.has(entry);
+                            // Unique element ID = branch_id + warehouse_id (avoids duplicate HTML ids)
+                            var elemId = 'b' + branch.id + '_wh' + wh.id;
+                            warehouseItems += `
+                                <div class="wh-item ${isAssigned ? 'selected' : ''}" id="wh-item-${elemId}">
+                                    <input type="checkbox" class="wh-checkbox"
+                                        id="${elemId}"
+                                        value="${branch.id}_${wh.id}"
+                                        data-branch-id="${branch.id}"
+                                        ${isAssigned ? 'checked' : ''}>
+                                    <label for="${elemId}">${wh.name}</label>
+                                    <button type="button"
+                                        class="wh-star-btn ${isIncharge ? 'active' : ''}"
+                                        data-entry="${branch.id}_${wh.id}"
+                                        title="Mark as Incharge of this warehouse">
+                                        <i class="fa fa-star"></i>
+                                    </button>
+                                </div>`;
+                        });
+
+                        var block = `
+                            <div class="wh-branch-block">
+                                <div class="wh-branch-header">
+                                    <i class="fa fa-building"></i>
+                                    ${branch.name}
+                                    <span class="ms-auto badge bg-white text-primary">${branch.warehouses.length} warehouses</span>
+                                </div>
+                                <div class="wh-branch-body">${warehouseItems}</div>
+                            </div>`;
+                        $('#awBranchList').append(block);
+                    });
+
+                }).fail(function () {
+                    $('#awLoading').hide();
+                    $('#awContent').show();
+                    $('#awBranchList').html('<p class="text-danger">Failed to load. Please try again.</p>');
+                });
+            });
+
+            // ── Checkbox & Star handlers (attached ONCE outside AJAX) ─────
+            // Using delegated events on #awBranchList to avoid duplicate bindings
+
+            // Checkbox toggle: highlight selected state, unstar if unchecked
+            $('#assignWarehousesModal').on('change', '.wh-checkbox', function () {
+                var $item = $(this).closest('.wh-item');
+                $item.toggleClass('selected', $(this).is(':checked'));
+                if (!$(this).is(':checked')) {
+                    $item.find('.wh-star-btn').removeClass('active');
+                }
+            });
+
+            // Star (incharge) toggle — auto-checks the warehouse too
+            $('#assignWarehousesModal').on('click', '.wh-star-btn', function () {
+                var $btn  = $(this);
+                var $item = $btn.closest('.wh-item');
+                var $chk  = $item.find('.wh-checkbox');
+
+                $btn.toggleClass('active');
+                if ($btn.hasClass('active')) {
+                    $chk.prop('checked', true);
+                    $item.addClass('selected');
+                }
+            });
+
+            // ── Save Warehouse Assignments ───────────────────────────────
+            $('#awSaveBtn').on('click', function () {
+                var userId = $('#awUserId').val();
+
+                // Collect "branchId_warehouseId" entries (deduplicated with Set)
+                var entrySet         = new Set();
+                var inchargeEntrySet = new Set();
+
+                // Collect checked entries (scoped inside the modal)
+                $('#assignWarehousesModal .wh-checkbox:checked').each(function () {
+                    entrySet.add($(this).val());  // value is already "branchId_warehouseId"
+                });
+                $('#assignWarehousesModal .wh-star-btn.active').each(function () {
+                    inchargeEntrySet.add($(this).data('entry'));
+                });
+
+                var entries         = Array.from(entrySet);
+                var inchargeEntries = Array.from(inchargeEntrySet);
+
+                $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-1"></i> Saving...');
+
+                $.ajax({
+                    url: '{{ route("users.assign.warehouses") }}',
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                    data: {
+                        user_id:          userId,
+                        entries:          entries,
+                        incharge_entries: inchargeEntries,
+                    },
+                    success: function (res) {
+                        if (res.success) {
+                            getAwModal().modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Saved!',
+                                text: res.success,
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => location.reload());
+                        }
+                    },
+                    error: function (xhr) {
+                        var msg = 'Could not save assignments.';
+                        if (xhr.responseJSON) {
+                            msg = xhr.responseJSON.message || JSON.stringify(xhr.responseJSON.errors) || msg;
+                        }
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                    },
+                    complete: function () {
+                        $('#awSaveBtn').prop('disabled', false)
+                            .html('<i class="fa fa-save me-1"></i> Save Assignments');
+                    }
+                });
             });
         });
     </script>

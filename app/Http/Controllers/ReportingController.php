@@ -14,6 +14,7 @@ use App\Models\SaleItem;
 use App\Models\SalesReturn;
 use App\Models\Warehouse;
 use App\Models\WarehouseStock;
+use App\Models\SalesOfficer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -256,6 +257,8 @@ class ReportingController extends Controller
         // ══════════════════════════════════════════════════════════════════
         $paymentVouchersRaw = DB::table('payment_vouchers')
             ->leftJoin('narrations', 'narrations.id', '=', 'payment_vouchers.narration_id')
+            ->leftJoin('accounts', 'accounts.id', '=', 'payment_vouchers.row_account_id')
+            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('payment_vouchers.party_id', $customerId)
             ->whereBetween(DB::raw('DATE(payment_vouchers.receipt_date)'), [$start, $end])
             ->select(
@@ -265,7 +268,9 @@ class ReportingController extends Controller
                 'payment_vouchers.amount       as credit_amount',
                 'payment_vouchers.reference_no as reference_no',
                 'payment_vouchers.remarks      as remarks',
-                'narrations.narration          as narration_text'
+                'narrations.narration          as narration_text',
+                'account_heads.name            as head_name',
+                'accounts.title                as account_title'
             )
             ->orderBy('payment_vouchers.receipt_date', 'asc')
             ->get();
@@ -322,7 +327,9 @@ class ReportingController extends Controller
 
         // Add Receipt Vouchers
         foreach ($receiptsRaw as $rec) {
-            $isBank = $rec->head_name && strtolower($rec->head_name) === 'bank';
+            $isBank = ($rec->head_name && str_contains(strtolower($rec->head_name), 'bank')) 
+                || ($rec->account_title && str_contains(strtolower($rec->account_title), 'bank'))
+                || ($rec->account_title && in_array(strtoupper($rec->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
             $vno    = $rec->rvid ?? ('BRV-' . $rec->id);
             // Description: narration or remarks or default
             $desc   = $rec->narration_text
@@ -345,6 +352,9 @@ class ReportingController extends Controller
 
         // Add Payment Vouchers (discounts, tour expense, etc.)
         foreach ($paymentVouchersRaw as $pv) {
+            $isBank = ($pv->head_name && str_contains(strtolower($pv->head_name), 'bank')) 
+                || ($pv->account_title && str_contains(strtolower($pv->account_title), 'bank'))
+                || ($pv->account_title && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
             $vno  = $pv->pvid ?? ('PV-' . $pv->id);
             $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT VOUCHER');
             $events[] = [
@@ -357,6 +367,7 @@ class ReportingController extends Controller
                     'description'  => strtoupper($desc),
                     'txn_date'     => $pv->txn_date,
                     'credit'       => floatval($pv->credit_amount ?? 0),
+                    'is_bank'      => $isBank,
                 ],
             ];
         }
@@ -374,6 +385,10 @@ class ReportingController extends Controller
         $runningBalance = $openingBalance;
         $totalDebit     = 0;
         $totalCredit    = 0;
+        $brCounter      = 0;
+        $crCounter      = 0;
+        $bpCounter      = 0;
+        $cpCounter      = 0;
 
         foreach ($events as $event) {
             $type = $event['type'];
@@ -468,10 +483,15 @@ class ReportingController extends Controller
                 $runningBalance -= $credit;
                 $totalCredit    += $credit;
 
+                $isBank = $d['is_bank'] ?? false;
+                $prefix = $isBank ? 'BR' : 'CR';
+                $count  = $isBank ? ++$brCounter : ++$crCounter;
+                $displayVno = $d['vno'] . " ($prefix-$count)";
+
                 $transactions[] = [
                     'row_type'    => 'receipt',
                     'date'        => date('d-m-y', strtotime($d['txn_date'])),
-                    'vno'         => $d['vno'],
+                    'vno'         => $displayVno,
                     'bill'        => $d['reference_no'],
                     'dc_no'       => '-',
                     'gp_no'       => '-',
@@ -489,10 +509,15 @@ class ReportingController extends Controller
                 $runningBalance -= $credit;
                 $totalCredit    += $credit;
 
+                $isBank = $d['is_bank'] ?? false;
+                $prefix = $isBank ? 'BP' : 'CP';
+                $count  = $isBank ? ++$bpCounter : ++$cpCounter;
+                $displayVno = $d['vno'] . " ($prefix-$count)";
+
                 $transactions[] = [
                     'row_type'    => 'payment_voucher',
                     'date'        => date('d-m-y', strtotime($d['txn_date'])),
-                    'vno'         => $d['vno'],
+                    'vno'         => $displayVno,
                     'bill'        => $d['reference_no'],
                     'dc_no'       => '-',
                     'gp_no'       => '-',
@@ -538,6 +563,598 @@ class ReportingController extends Controller
                 'mobile'         => $customer->mobile ?? '-',
                 'email'          => $customer->email_address ?? '-',
                 'credit_limit'   => floatval($customer->credit_limit ?? 0),
+                'opening_balance'=> $openingBalance,
+            ],
+            'period' => [
+                'start' => $start,
+                'end'   => $end,
+            ],
+            'opening_balance' => $openingBalance,
+            'total_debit'     => $totalDebit,
+            'total_credit'    => $totalCredit,
+            'closing_balance' => $runningBalance,
+            'transactions'    => $transactions,
+        ]);
+    }
+
+    public function vendor_ledger_new()
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        // Determine which branches user can view
+        if ($user->hasRole('super admin')) {
+            $branches = \App\Models\Branch::orderBy('name')->get();
+        } else {
+            $branches = \App\Models\Branch::where('id', $user->branch_id)->get();
+        }
+
+        // Vendors are now BRANCH-SPECIFIC
+        $vendorQuery = \App\Models\Vendor::select('id', 'name', 'phone', 'email', 'opening_balance');
+        
+        if (!$user->hasRole('super admin')) {
+            $vendorQuery->where('branch_id', $user->branch_id ?? 0);
+        }
+        
+        $vendors = $vendorQuery->orderBy('name')->get();
+
+        $startDate = date('Y-m-01');
+        $endDate   = date('Y-m-d');
+
+        return view('admin_panel.Reporting.vendor_ledger_new', compact('branches', 'vendors', 'startDate', 'endDate'));
+    }
+
+    public function vendorsByBranch(Request $request)
+    {
+        $branchId = $request->branch_id ?? null;
+        if (!$branchId) {
+            return response()->json([], 200);
+        }
+
+        $vendors = \App\Models\Vendor::where('branch_id', $branchId)
+            ->select('id', 'name', 'phone')
+            ->orderBy('name')
+            ->get();
+            
+        // Map to match customer format
+        $result = $vendors->map(function($v) {
+            return [
+                'id' => $v->id,
+                'customer_name' => $v->name, // Using customer_name key so JS doesn't break
+                'customer_type' => '-'
+            ];
+        });
+            
+        return response()->json($result);
+    }
+
+    public function fetch_vendor_ledger_new(Request $request)
+    {
+        $user       = auth()->user();
+        $vendorId   = (int) $request->vendor_id;
+        $branchId   = (int) $request->branch_id; // Add branchId filtering
+        $start      = $request->start_date;
+        $end        = $request->end_date;
+
+        if (!$vendorId || !$branchId || !$start || !$end) {
+            return response()->json(['error' => 'Missing required parameters (vendor, branch, dates)'], 422);
+        }
+
+        $vendor       = \App\Models\Vendor::findOrFail($vendorId);
+        
+        // Ensure branch isolation
+        if (!$user->hasRole('super admin') && $vendor->branch_id != ($user->branch_id ?? 0)) {
+            return response()->json(['error' => 'Unauthorized vendor access'], 403);
+        }
+        $allowed      = false;
+
+        if ($user && $user->hasRole('super admin')) {
+            $allowed = true;
+        } elseif ($user && ($user->branch_id ?? null) && $user->branch_id == $branchId) {
+            $allowed = true;
+        } elseif ($user && $user->can('report.vendor.ledger.branch.view')) {
+            $allowed = true;
+        }
+
+        if (!$allowed) {
+            return response()->json(['error' => 'Unauthorized branch access'], 403);
+        }
+
+        // ── Branch-Specific Opening Balance Calculation ──────────
+        // Since vendors are global, the running balance for a branch is the sum of all its prior transactions
+        
+        // 1. Prior Purchases (Credit)
+        $priorPurchases = DB::table('purchases')
+            ->where('vendor_id', $vendorId)
+            ->where('branch_id', $branchId)
+            ->where('created_at', '<', $start . ' 00:00:00')
+            ->sum('net_amount');
+            
+        // 2. Prior Purchase Returns (Debit)
+        // Since purchase_returns lacks a direct branch_id, we will show all returns globally for this vendor
+        $priorReturns = DB::table('purchase_returns')
+            ->where('vendor_id', $vendorId)
+            ->where('created_at', '<', $start . ' 00:00:00')
+            ->sum('net_amount');
+
+        // 3. Prior Payment Vouchers (Debit)
+        // Note: payment_vouchers table does not have a branch_id column, so we count all payments globally or exclude them?
+        // Since we cannot filter by branch, we will not filter by branch_id here to avoid SQL errors.
+        $priorPayments = DB::table('payment_vouchers')
+            ->where('party_id', $vendorId)
+            ->where('type', 'vendor')
+            ->where('receipt_date', '<', $start)
+            ->sum('amount');
+
+        // 4. Prior Receipt Vouchers (Credit)
+        $priorReceipts = DB::table('receipts_vouchers')
+            ->where('party_id', $vendorId)
+            ->where('type', 'vendor')
+            ->where('receipt_date', '<', $start)
+            ->sum('amount');
+
+        // 5. Prior Vendor Payments (Legacy) (Debit)
+        // Check if vendor_payments has branch_id, assuming no for now as it uses admin_or_user_id. 
+        // We will exclude legacy vendor_payments from branch logic if it has no branch_id, or assume 0 for branch.
+        $priorLegacyPayments = 0; 
+        
+        // Net Branch Opening Balance = (Initial) + (Credits) - (Debits)
+        // Vendors are now branch-specific, so we include their base opening balance
+        $openingBalance = (float)($vendor->opening_balance ?? 0) + ($priorPurchases + $priorReceipts) - ($priorReturns + $priorPayments);
+
+        // ── Gate Pass lookup map for Purchases: purchase_id → {dc_no, gp_no} ───
+        $gpMap = [];
+        $gpRows = DB::table('inward_gatepasses')
+            ->whereNotNull('purchase_id')
+            ->select('purchase_id', 'gatepass_no', 'bilty_no') // Assuming bilty_no might be used as DC
+            ->get();
+        foreach ($gpRows as $gp) {
+            $gpMap[$gp->purchase_id] = [
+                'dc_no'  => $gp->bilty_no ?? '-',
+                'gp_no'  => $gp->gatepass_no ?? '-',
+            ];
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 1 – PURCHASES (Credit)
+        // ══════════════════════════════════════════════════════════════════
+        $purchasesRaw = DB::table('purchases')
+            ->leftJoin('purchase_items', 'purchase_items.purchase_id', '=', 'purchases.id')
+            ->leftJoin('products', 'products.id', '=', 'purchase_items.product_id')
+            ->where('purchases.vendor_id', $vendorId)
+            ->where('purchases.branch_id', $branchId)
+            ->whereBetween(DB::raw('DATE(purchases.created_at)'), [$start, $end])
+            ->select(
+                'purchases.id          as purchase_id',
+                'purchases.invoice_no  as invoice_no',
+                DB::raw('COALESCE(purchases.net_amount, 0) as total_net'),
+                'purchases.discount    as additional_discount',
+                'purchases.extra_cost  as extra_charges',
+                'purchases.created_at  as txn_date',
+                'products.item_name    as item_name',
+                'purchase_items.qty    as qty',
+                'purchase_items.item_discount as item_discount',
+                'purchase_items.price   as rate',
+                'purchase_items.line_total as line_amount'
+            )
+            ->orderBy('purchases.created_at', 'asc')
+            ->orderBy('purchases.id', 'asc')
+            ->get();
+
+        $purchasesGrouped = [];
+        foreach ($purchasesRaw as $row) {
+            if (!isset($purchasesGrouped[$row->purchase_id])) {
+                $purchasesGrouped[$row->purchase_id]['header'] = [
+                    'invoice_no'          => $row->invoice_no,
+                    'total_net'           => floatval($row->total_net ?? 0),
+                    'additional_discount' => floatval($row->additional_discount ?? 0),
+                    'extra_charges'       => floatval($row->extra_charges ?? 0),
+                    'txn_date'            => $row->txn_date,
+                ];
+            }
+            if ($row->item_name) {
+                $purchasesGrouped[$row->purchase_id]['items'][] = [
+                    'item_name'    => $row->item_name,
+                    'qty'          => floatval($row->qty ?? 0),
+                    'rate'         => floatval($row->rate ?? 0),
+                    'item_discount'=> floatval($row->item_discount ?? 0),
+                    'line_amount'  => floatval($row->line_amount ?? 0),
+                ];
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 2 – PURCHASE RETURNS (Debit)
+        // ══════════════════════════════════════════════════════════════════
+        $returnsRaw = DB::table('purchase_returns')
+            ->where('vendor_id', $vendorId)
+            ->whereBetween(DB::raw('DATE(created_at)'), [$start, $end])
+            ->select(
+                'id',
+                'return_invoice as invoice_no',
+                'return_reason as return_note',
+                'net_amount as debit_amount',
+                'created_at as txn_date'
+            )
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 3 – PAYMENT VOUCHERS (Payments TO vendor - Debit)
+        // ══════════════════════════════════════════════════════════════════
+        $paymentVouchersRaw = DB::table('payment_vouchers')
+            ->leftJoin('narrations', 'narrations.id', '=', 'payment_vouchers.narration_id')
+            ->leftJoin('accounts', 'accounts.id', '=', 'payment_vouchers.row_account_id')
+            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id') // Corrected column name
+            ->where('payment_vouchers.party_id', $vendorId)
+            ->where('payment_vouchers.type', 'vendor')
+            ->whereBetween(DB::raw('DATE(payment_vouchers.receipt_date)'), [$start, $end])
+            ->select(
+                'payment_vouchers.id           as id',
+                'payment_vouchers.pvid         as pvid',
+                'payment_vouchers.receipt_date as txn_date',
+                'payment_vouchers.amount       as amount',
+                'payment_vouchers.total_amount as debit_amount',
+                'payment_vouchers.reference_no as reference_no',
+                'payment_vouchers.remarks      as remarks',
+                'payment_vouchers.row_account_id as row_account_id',
+                'narrations.narration          as narration_text',
+                'account_heads.name            as head_name',
+                'accounts.title                as account_title'
+            )
+            ->orderBy('payment_vouchers.receipt_date', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 4 – RECEIPT VOUCHERS (Refunds FROM vendor - Credit)
+        // ══════════════════════════════════════════════════════════════════
+        $receiptsRaw = DB::table('receipts_vouchers')
+            ->leftJoin('narrations', 'narrations.id', '=', 'receipts_vouchers.narration_id')
+            ->leftJoin('accounts', 'accounts.id', '=', 'receipts_vouchers.row_account_id')
+            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
+            ->where('receipts_vouchers.party_id', $vendorId)
+            ->where('receipts_vouchers.type', 'vendor')
+            ->whereBetween(DB::raw('DATE(receipts_vouchers.receipt_date)'), [$start, $end])
+            ->select(
+                'receipts_vouchers.id           as id',
+                'receipts_vouchers.rvid         as rvid',
+                'receipts_vouchers.receipt_date as txn_date',
+                'receipts_vouchers.amount       as amount',
+                'receipts_vouchers.total_amount as credit_amount',
+                'receipts_vouchers.reference_no as reference_no',
+                'receipts_vouchers.remarks      as remarks',
+                'receipts_vouchers.row_account_id as row_account_id',
+                'narrations.narration           as narration_text',
+                'account_heads.name             as head_name'
+            )
+            ->orderBy('receipts_vouchers.receipt_date', 'asc')
+            ->get();
+            
+        // ══════════════════════════════════════════════════════════════════
+        // PART 5 – VENDOR PAYMENTS (Legacy alternative - Debit)
+        // ══════════════════════════════════════════════════════════════════
+        $vendorPaymentsRaw = DB::table('vendor_payments')
+            ->where('vendor_id', $vendorId)
+            ->whereBetween(DB::raw('DATE(payment_date)'), [$start, $end])
+            ->select(
+                'id',
+                'payment_date as txn_date',
+                'amount as debit_amount',
+                'payment_method',
+                'note as remarks'
+            )
+            ->orderBy('payment_date', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // BUILD UNIFIED EVENT LIST
+        // ══════════════════════════════════════════════════════════════════
+        $events = [];
+
+        // Add Purchases
+        foreach ($purchasesGrouped as $purchaseId => $purchaseData) {
+            $header  = $purchaseData['header'];
+            $items   = $purchaseData['items'] ?? [];
+            $gp      = $gpMap[$purchaseId] ?? ['dc_no' => '-', 'gp_no' => '-'];
+
+            $events[] = [
+                'sort_date'   => $header['txn_date'],
+                'type'        => 'purchase',
+                'priority'    => 1,
+                'data'        => [
+                    'invoice_no'  => $header['invoice_no'],
+                    'bill_no'     => '-',
+                    'dc_no'       => $gp['dc_no'],
+                    'gp_no'       => $gp['gp_no'],
+                    'txn_date'    => $header['txn_date'],
+                    'credit'      => $header['total_net'], // Purchases are Credit for Vendor
+                    'add_disc'    => $header['additional_discount'] ?? 0,
+                    'extra_chg'   => $header['extra_charges'] ?? 0,
+                    'items'       => $items,
+                ],
+            ];
+        }
+
+        // Add Purchase Returns
+        foreach ($returnsRaw as $ret) {
+            $events[] = [
+                'sort_date' => $ret->txn_date,
+                'type'      => 'return',
+                'priority'  => 2,
+                'data'      => [
+                    'invoice_no'  => $ret->invoice_no ?? '-',
+                    'return_note' => $ret->return_note ?? 'RETURN',
+                    'txn_date'    => $ret->txn_date,
+                    'debit'       => floatval($ret->debit_amount ?? 0), // Returns are Debit
+                    'item_name'   => 'PURCHASE RETURN',
+                    'qty'         => null,
+                    'rate'        => null,
+                ],
+            ];
+        }
+
+        // Add Receipt Vouchers (Refunds FROM vendor - Credit)
+        foreach ($receiptsRaw as $rec) {
+            $isBank = ($rec->head_name && str_contains(strtolower($rec->head_name), 'bank'))
+                || ($rec->account_title && str_contains(strtolower($rec->account_title), 'bank')) // Using account_title join if available
+                || ($rec->remarks && str_contains(strtolower($rec->remarks), 'bank'));
+            $vno  = $rec->rvid ?? ('RV-' . $rec->id);
+            $desc = $rec->narration_text ?? ($rec->remarks ?: 'REFUND RECEIVED');
+            
+            $accIds = json_decode($rec->row_account_id, true) ?: [$rec->row_account_id];
+            $amounts = json_decode($rec->amount, true) ?: [];
+            $accountInfo = null;
+            if (!empty($accIds)) {
+                $accounts = DB::table('accounts')
+                    ->whereIn('id', $accIds)
+                    ->select('id', 'title', 'account_code')
+                    ->get()
+                    ->keyBy('id');
+                
+                $accDetails = [];
+                // If amounts is a flat array corresponding to accIds indices
+                foreach ($accIds as $idx => $id) {
+                    if (isset($accounts[$id])) {
+                        $acc = $accounts[$id];
+                        $amt = isset($amounts[$idx]) ? number_format($amounts[$idx], 2) : '0.00';
+                        $accDetails[] = $acc->title . ($acc->account_code ? " ({$acc->account_code})" : "") . ": " . $amt;
+                    }
+                }
+                $accountInfo = implode(", ", $accDetails);
+            }
+
+            $events[] = [
+                'sort_date' => $rec->txn_date,
+                'type'      => 'receipt',
+                'priority'  => 3,
+                'data'      => [
+                    'vno'          => $vno,
+                    'reference_no' => $rec->reference_no ?? '-',
+                    'description'  => strtoupper($desc),
+                    'account_info' => $accountInfo,
+                    'txn_date'     => $rec->txn_date,
+                    'credit'       => floatval($rec->credit_amount ?? 0),
+                    'is_bank'      => $isBank,
+                ],
+            ];
+        }
+
+        // Add Payment Vouchers (Payments TO vendor - Debit)
+        foreach ($paymentVouchersRaw as $pv) {
+            $isBank = ($pv->head_name && str_contains(strtolower($pv->head_name), 'bank')) 
+                || ($pv->account_title && str_contains(strtolower($pv->account_title), 'bank'))
+                || ($pv->account_title && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
+            $vno  = $pv->pvid ?? ('PV-' . $pv->id);
+            $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT TO VENDOR');
+            
+            $accIds = json_decode($pv->row_account_id, true) ?: [$pv->row_account_id];
+            $amounts = json_decode($pv->amount, true) ?: [];
+            $accountInfo = null;
+            if (!empty($accIds)) {
+                $accounts = DB::table('accounts')
+                    ->whereIn('id', $accIds)
+                    ->select('id', 'title', 'account_code')
+                    ->get()
+                    ->keyBy('id');
+                
+                $accDetails = [];
+                foreach ($accIds as $idx => $id) {
+                    if (isset($accounts[$id])) {
+                        $acc = $accounts[$id];
+                        $amt = isset($amounts[$idx]) ? number_format($amounts[$idx], 2) : '0.00';
+                        $accDetails[] = $acc->title . ($acc->account_code ? " ({$acc->account_code})" : "") . ": " . $amt;
+                    }
+                }
+                $accountInfo = implode(", ", $accDetails);
+            }
+
+            $events[] = [
+                'sort_date' => $pv->txn_date,
+                'type'      => 'payment_voucher',
+                'priority'  => 4,
+                'data'      => [
+                    'vno'          => $vno,
+                    'reference_no' => $pv->reference_no ?? '-',
+                    'description'  => strtoupper($desc),
+                    'account_info' => $accountInfo,
+                    'txn_date'     => $pv->txn_date,
+                    'debit'        => floatval($pv->debit_amount ?? 0),
+                    'is_bank'      => $isBank,
+                ],
+            ];
+        }
+
+        // Add Legacy Vendor Payments
+        foreach ($vendorPaymentsRaw as $vp) {
+            $events[] = [
+                'sort_date' => $vp->txn_date,
+                'type'      => 'legacy_payment',
+                'priority'  => 5,
+                'data'      => [
+                    'vno'          => 'PAY-' . $vp->id,
+                    'description'  => strtoupper($vp->remarks ?: 'LEGACY PAYMENT'),
+                    'account_info' => strtoupper($vp->payment_method ?? 'CASH/BANK'),
+                    'txn_date'     => $vp->txn_date,
+                    'debit'        => floatval($vp->debit_amount ?? 0),
+                ],
+            ];
+        }
+
+        // Sort all events chronologically
+        usort($events, function ($a, $b) {
+            $dateCompare = strcmp($a['sort_date'], $b['sort_date']);
+            return $dateCompare !== 0 ? $dateCompare : ($a['priority'] - $b['priority']);
+        });
+
+        // ══════════════════════════════════════════════════════════════════
+        // BUILD FINAL TRANSACTION ROWS WITH RUNNING BALANCE
+        // ══════════════════════════════════════════════════════════════════
+        $transactions   = [];
+        $runningBalance = $openingBalance;
+        $totalDebit     = 0;
+        $totalCredit    = 0;
+        $brCounter      = 0;
+        $crCounter      = 0;
+        $bpCounter      = 0;
+        $cpCounter      = 0;
+
+        foreach ($events as $event) {
+            $type = $event['type'];
+            $d    = $event['data'];
+
+            if ($type === 'purchase') {
+                $credit         = $d['credit']; // Vendor liability increases
+                $runningBalance += $credit;
+                $totalCredit    += $credit;
+
+                // Parent summary row
+                $transactions[] = [
+                    'row_type'    => 'sale_header', // Kept as 'sale_header' so JS coloring works same
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['invoice_no'],
+                    'bill'        => $d['bill_no'],
+                    'dc_no'       => $d['dc_no'],
+                    'gp_no'       => $d['gp_no'],
+                    'description' => 'PURCHASE',
+                    'item_name'   => null,
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+
+                $invoiceTotalQty = 0;
+                foreach ($d['items'] as $item) {
+                    $invoiceTotalQty += $item['qty'];
+                    $transactions[] = [
+                        'row_type'     => 'sale_item',
+                        'date'         => null,
+                        'vno'          => null,
+                        'bill'         => null,
+                        'dc_no'        => null,
+                        'gp_no'        => null,
+                        'description'  => null,
+                        'item_name'    => $item['item_name'],
+                        'qty'          => $item['qty'],
+                        'rate'         => $item['rate'],
+                        'item_discount'=> $item['item_discount'] ?? 0,
+                        'line_amount'  => $item['line_amount']   ?? 0,
+                        'debit'        => null,
+                        'credit'       => null,
+                        'balance'      => null,
+                    ];
+                }
+
+                $transactions[] = [
+                    'row_type'  => 'sale_total',
+                    'total_qty' => $invoiceTotalQty,
+                    'add_disc'  => $d['add_disc'] ?? 0,
+                    'extra_chg' => $d['extra_chg'] ?? 0,
+                    'total_net' => $d['credit'], // Use credit as total net for formatting
+                ];
+
+            } elseif ($type === 'return') {
+                $debit           = $d['debit'];
+                $runningBalance -= $debit; // Vendor liability decreases
+                $totalDebit     += $debit;
+
+                $transactions[] = [
+                    'row_type'    => 'return',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['invoice_no'],
+                    'bill'        => $d['return_note'],
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => 'PURCHASE RETURN',
+                    'item_name'   => $d['item_name'],
+                    'qty'         => $d['qty'] > 0 ? $d['qty'] : null,
+                    'rate'        => $d['rate'] > 0 ? $d['rate'] : null,
+                    'debit'       => $debit,
+                    'credit'      => 0,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'payment_voucher' || $type === 'legacy_payment') {
+                $debit           = $d['debit'];
+                $runningBalance -= $debit; // We pay them, liability decreases
+                $totalDebit     += $debit;
+
+                $isBank = $d['is_bank'] ?? false;
+                $prefix = $isBank ? 'BP' : 'CP';
+                $count  = $isBank ? ++$bpCounter : ++$cpCounter;
+                $displayVno = $d['vno'] . " ($prefix-$count)";
+
+                $transactions[] = [
+                    'row_type'    => 'payment_voucher',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $displayVno,
+                    'bill'        => $d['reference_no'] ?? '-',
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => $d['account_info'] ?? null,
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => $debit,
+                    'credit'      => 0,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'receipt') {
+                $credit          = $d['credit'];
+                $runningBalance += $credit; // Refund to us increases liability
+                $totalCredit    += $credit;
+
+                $isBank = $d['is_bank'] ?? false;
+                $prefix = $isBank ? 'BR' : 'CR';
+                $count  = $isBank ? ++$brCounter : ++$crCounter;
+                $displayVno = $d['vno'] . " ($prefix-$count)";
+
+                $transactions[] = [
+                    'row_type'    => 'receipt',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $displayVno,
+                    'bill'        => $d['reference_no'] ?? '-',
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => $d['account_info'] ?? null,
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+            }
+        }
+
+        return response()->json([
+            'vendor' => [
+                'id'             => $vendor->id,
+                'name'           => $vendor->name,
+                'company'        => $vendor->company_name ?? '-',
+                'mobile'         => $vendor->phone ?? '-',
+                'email'          => $vendor->email ?? '-',
                 'opening_balance'=> $openingBalance,
             ],
             'period' => [
@@ -662,6 +1279,42 @@ class ReportingController extends Controller
         }
         $products = $productsQuery->orderBy('item_name')->get();
 
+        // ================= PRE-AGGREGATE DATA FOR ACCURACY & PERFORMANCE =================
+        
+        // 1. Pre-calculate DELIVERED quantities from Outward Gatepasses (JSON items)
+        // This is the source of truth for items physically removed from stock
+        $deliveredQtyMap = [];
+        $deliveredAmountMap = [];
+        
+        $gpQuery = DB::table('outward_gatepasses')->whereNotNull('items');
+        if (!$user->hasRole('super admin')) {
+            $gpQuery->where('branch_id', $allowedBranchId);
+        }
+        
+        foreach ($gpQuery->select('items')->cursor() as $gp) {
+            $items = json_decode($gp->items, true);
+            if (is_array($items)) {
+                foreach ($items as $item) {
+                    $pid = $item['product_id'] ?? null;
+                    if ($pid) {
+                        $deliveredQtyMap[$pid] = ($deliveredQtyMap[$pid] ?? 0) + floatval($item['qty'] ?? 0);
+                        $deliveredAmountMap[$pid] = ($deliveredAmountMap[$pid] ?? 0) + floatval($item['amount'] ?? 0);
+                    }
+                }
+            }
+        }
+
+        // 2. Pre-calculate TOTAL BOOKED quantities from Sale Items
+        $bookedQtyMap = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->when(!$user->hasRole('super admin'), function($q) use ($allowedBranchId) {
+                return $q->where('sales.branch_id', $allowedBranchId);
+            })
+            ->select('sale_items.product_id', DB::raw('SUM(sale_items.sales_qty) as total_qty'))
+            ->groupBy('sale_items.product_id')
+            ->pluck('total_qty', 'product_id')
+            ->toArray();
+
         $rows = [];
         $grandTotalValue = 0;
 
@@ -673,31 +1326,20 @@ class ReportingController extends Controller
                 ->get();
 
             // ================= CALCULATE TOTAL BALANCE FROM warehouse_stocks FOR THIS BRANCH =================
-            // If no warehouse stock exists yet, balance is 0
-            // (This can happen for newly purchased products not yet received in warehouse)
             $totalBalance = floatval($warehouseStocks->sum('quantity') ?? 0);
 
-            // ================= GET OPENING STOCK (from products.initial_stock) =================
-            // ✅ ERP STANDARD: Opening stock comes from the products table
-            // Opening stock is ONLY shown for the branch that created the product
-            // For other branches: Opening stock = 0 (until they explicitly set it)
-            
+            // ================= GET OPENING STOCK =================
             if ($product->branch_id == $allowedBranchId) {
-                // Product created in THIS branch - use initial_stock from products table
                 $openingStock = floatval($product->initial_stock ?? 0);
             } else {
-                // Product created in a DIFFERENT branch - no opening stock for this branch
                 $openingStock = 0;
             }
 
-            // ================= GET PURCHASED QTY & AMOUNT (ERP STANDARD) =================
-            // For super admin: Show ALL purchases (cross-branch visibility for reporting)
-            // For branch users: Show purchases for their branch only
+            // ================= GET PURCHASED QTY & AMOUNT =================
             $purchaseQuery = DB::table('purchase_items')
                 ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
                 ->where('purchase_items.product_id', $product->id);
             
-            // Only filter by branch for non-super-admin users
             if (!$user->hasRole('super admin')) {
                 $purchaseQuery->where('purchases.branch_id', $allowedBranchId);
             }
@@ -711,48 +1353,17 @@ class ReportingController extends Controller
             $purchased = floatval($purchaseData->total_qty ?? 0);
             $purchaseAmount = floatval($purchaseData->total_amount ?? 0);
 
-            // ================= GET SOLD QTY & AMOUNT (HISTORICAL - ERP STANDARD) =================
-            // SOLD = Items that have been delivered (outward gatepass created)
-            // This is the proper ERP definition: delivered items, not just ordered
-            // For super admin: Show ALL sales (cross-branch visibility for reporting)
-            // For branch users: Show sales for their branch only
-            $saleQuery = DB::table('sale_items')
-                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->leftJoin('outward_gatepasses', 'sales.invoice_no', '=', 'outward_gatepasses.invoice_no')
-                ->where('sale_items.product_id', $product->id)
-                ->whereNotNull('outward_gatepasses.id');  // Only count if gatepass exists
-            
-            // Only filter by branch for non-super-admin users
-            if (!$user->hasRole('super admin')) {
-                $saleQuery->where('sales.branch_id', $allowedBranchId);
-            }
-            
-            $saleData = $saleQuery->select(
-                    DB::raw('COALESCE(SUM(sale_items.sales_qty), 0) as total_qty'),
-                    DB::raw('COALESCE(SUM(sale_items.amount), 0) as total_amount')
-                )
-                ->first();
+            // ================= GET SOLD QTY & AMOUNT (DELIVERED) =================
+            // ✅ ERP STANDARD: Sold = Physically Delivered via Gatepass
+            $sold = floatval($deliveredQtyMap[$product->id] ?? 0);
+            $saleAmount = floatval($deliveredAmountMap[$product->id] ?? 0);
 
-            $sold = floatval($saleData->total_qty ?? 0);
-            $saleAmount = floatval($saleData->total_amount ?? 0);
+            // ================= GET RESERVED QTY (PENDING DELIVERY) =================
+            // ✅ ERP STANDARD: Reserved = Total Ordered - Total Delivered
+            $totalBooked = floatval($bookedQtyMap[$product->id] ?? 0);
+            $reservedQty = max(0, $totalBooked - $sold);
 
-            // ================= GET RESERVED QTY (ERP STANDARD: Items Sold but Not Yet Delivered) =================
-            // Reserve Qty = SaleItems qty that haven't been fulfilled/delivered yet
-            // Represents items in pending sales awaiting delivery/fulfillment
-            // For super admin: Show ALL reserved qty (cross-branch visibility for reporting)
-            // For branch users: Show reserved qty for their branch only
-            $reservedQuery = DB::table('sale_items')
-                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->where('sale_items.product_id', $product->id);
-            
-            // Only filter by branch for non-super-admin users
-            if (!$user->hasRole('super admin')) {
-                $reservedQuery->where('sales.branch_id', $allowedBranchId);
-            }
-            
-            $reservedQty = floatval($reservedQuery->sum('sale_items.sales_qty') ?? 0);
-
-            // ================= GET WAREHOUSE-WISE BREAKDOWN FOR THIS BRANCH =================
+            // ================= GET WAREHOUSE-WISE BREAKDOWN =================
             $warehouseBreakdown = WarehouseStock::where('product_id', $product->id)
                 ->where('branch_id', $allowedBranchId)
                 ->with('warehouse')
@@ -780,12 +1391,12 @@ class ReportingController extends Controller
                 'id' => $product->id,
                 'item_code' => $product->item_code,
                 'item_name' => $product->item_name,
-                'initial_stock' => $openingStock, // ✅ From stock_movements table
+                'initial_stock' => $openingStock,
                 'purchased' => $purchased,
                 'purchase_amount' => $purchaseAmount,
                 'sold' => $sold,
                 'sale_amount' => $saleAmount,
-                'reserved_qty' => $reservedQty, // ✅ Items sold but not yet delivered
+                'reserved_qty' => $reservedQty, // ✅ Pending delivery
                 'balance' => $totalBalance,
                 'price' => $wholesalePrice,
                 'stock_value' => $stockValue,
@@ -806,8 +1417,9 @@ class ReportingController extends Controller
         // ✅ ERP STANDARD: Auto-select current month date range
         $startDate = now()->startOfMonth()->format('Y-m-d');  // 1st of current month
         $endDate = now()->format('Y-m-d');                     // Today
+        $vendors = \App\Models\Vendor::orderBy('name')->get();
         
-        return view('admin_panel.reporting.purchase_report', compact('startDate', 'endDate'));
+        return view('admin_panel.reporting.purchase_report', compact('startDate', 'endDate', 'vendors'));
     }
 
 
@@ -815,22 +1427,42 @@ class ReportingController extends Controller
     {
         $startDate = $request->start_date;
         $endDate   = $request->end_date;
+        $vendorId  = $request->vendor_id;
 
         $query = DB::table('purchases')
-            ->join('purchase_items', 'purchases.id', '=', 'purchase_items.purchase_id')
-            ->join('products', 'purchase_items.product_id', '=', 'products.id')
-            ->join('vendors', 'purchases.vendor_id', '=', 'vendors.id') // join vendor table
+            ->leftJoin('purchase_items', 'purchases.id', '=', 'purchase_items.purchase_id')
+            ->leftJoin('products', 'purchase_items.product_id', '=', 'products.id')
+            ->leftJoin('vendors', 'purchases.vendor_id', '=', 'vendors.id')
             ->select(
                 'purchases.purchase_date',
                 'purchases.invoice_no',
-                'vendors.name as vendor_name', // vendor name
+                DB::raw('COALESCE(vendors.name, purchases.vendor_name, "Local Market") as vendor_name'),
                 'products.item_code',
                 'products.item_name',
-                'purchase_items.qty',
                 'purchase_items.unit',
                 'purchase_items.price',
-                'purchase_items.item_discount',
-                'purchase_items.line_total',
+                'purchases.subtotal',
+                'purchases.discount',
+                'purchases.extra_cost',
+                'purchases.net_amount',
+                'purchases.paid_amount',
+                'purchases.due_amount',
+                DB::raw('SUM(purchase_items.qty) as qty'),
+                DB::raw('SUM(purchase_items.item_discount) as item_discount'),
+                DB::raw('SUM(purchase_items.line_total) as line_total'),
+                DB::raw('GROUP_CONCAT(purchase_items.color SEPARATOR ", ") as colors')
+            )
+            ->groupBy(
+                'purchases.id',
+                'purchases.purchase_date',
+                'purchases.invoice_no',
+                'vendors.name',
+                'purchases.vendor_name',
+                'products.item_code',
+                'products.item_name',
+                'purchase_items.product_id',
+                'purchase_items.price',
+                'purchase_items.unit',
                 'purchases.subtotal',
                 'purchases.discount',
                 'purchases.extra_cost',
@@ -843,7 +1475,88 @@ class ReportingController extends Controller
             $query->whereBetween('purchases.purchase_date', [$startDate, $endDate]);
         }
 
+        if ($vendorId && $vendorId !== 'all') {
+            $query->where('purchases.vendor_id', $vendorId);
+        }
+
         $data = $query->orderBy('purchases.purchase_date', 'asc')->get();
+
+        return response()->json([
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * ✅ PO vs Gatepass Report (Procurement Tracking)
+     * Shows what was ordered (PO) vs what was actually received (Gatepass)
+     */
+    public function po_vs_gatepass_report()
+    {
+        $startDate = now()->startOfMonth()->format('Y-m-d');
+        $endDate = now()->format('Y-m-d');
+        $vendors = \App\Models\Vendor::orderBy('name')->get();
+        
+        return view('admin_panel.reporting.po_vs_gatepass', compact('startDate', 'endDate', 'vendors'));
+    }
+
+    public function fetch_po_vs_gatepass_report(Request $request)
+    {
+        $startDate = $request->start_date;
+        $endDate   = $request->end_date;
+        $vendorId  = $request->vendor_id;
+
+        // ✅ Query: PO Items compared with their receipt status
+        // Only includes POs that have been used to create a Gatepass
+        $query = DB::table('purchase_orders')
+            ->join('purchase_order_items', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
+            ->join('products', 'purchase_order_items.product_id', '=', 'products.id')
+            ->join('vendors', 'purchase_orders.vendor_id', '=', 'vendors.id')
+            ->leftJoin('branches', 'purchase_orders.branch_id', '=', 'branches.id')
+            // Filter to only those POs that have at least one inward gatepass
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('inward_gatepasses')
+                    ->whereRaw('inward_gatepasses.purchase_order_id = purchase_orders.id');
+            })
+            ->select(
+                'purchase_orders.id as po_id',
+                'purchase_orders.po_number',
+                'purchase_orders.order_date',
+                'vendors.name as vendor_name',
+                'branches.name as branch_name',
+                'products.item_code',
+                'products.item_name',
+                DB::raw('GROUP_CONCAT(CONCAT(IFNULL(purchase_order_items.color, "Default"), ": ", purchase_order_items.qty, " / ", purchase_order_items.received_qty) SEPARATOR "||") as color_breakdown'),
+                DB::raw('SUM(purchase_order_items.qty) as ordered_qty'),
+                DB::raw('SUM(purchase_order_items.received_qty) as received_qty'),
+                'purchase_orders.status as po_status'
+            )
+            ->groupBy(
+                'purchase_orders.id',
+                'purchase_orders.po_number',
+                'purchase_orders.order_date',
+                'vendors.name',
+                'branches.name',
+                'products.item_code',
+                'products.item_name',
+                'purchase_orders.status'
+            );
+
+        if ($startDate && $endDate) {
+            $query->whereBetween('purchase_orders.order_date', [$startDate, $endDate]);
+        }
+
+        if ($vendorId && $vendorId !== 'all') {
+            $query->where('purchase_orders.vendor_id', $vendorId);
+        }
+
+        // Apply branch-level restriction
+        $user = auth()->user();
+        if ($user && !$user->hasRole('super admin')) {
+            $query->where('purchase_orders.branch_id', $user->branch_id);
+        }
+
+        $data = $query->orderBy('purchase_orders.order_date', 'desc')->get();
 
         return response()->json([
             'data' => $data
@@ -856,8 +1569,19 @@ class ReportingController extends Controller
         $startDate = now()->startOfMonth()->format('Y-m-d');  // 1st of current month
         $endDate = now()->format('Y-m-d');                     // Today
         
+        $user = auth()->user();
         $branches = \App\Models\Branch::orderBy('name')->get();
-        return view('admin_panel.reporting.sale_report', compact('branches', 'startDate', 'endDate'));
+        
+        $customersQuery = \App\Models\Customer::where('status', 'active');
+        
+        // If not super admin, filter customers by branch
+        if ($user && !$user->hasRole('super admin')) {
+            $customersQuery->where('branch_id', $user->branch_id);
+        }
+        
+        $customers = $customersQuery->orderBy('customer_name')->get();
+
+        return view('admin_panel.reporting.sale_report', compact('branches', 'customers', 'startDate', 'endDate'));
     }
 
     /**
@@ -903,9 +1627,13 @@ class ReportingController extends Controller
                 }
             }
 
-            // ================= APPLY DATE FILTER =================
+            // ================= APPLY DATE & CUSTOMER FILTER =================
             if ($start && $end) {
                 $query->whereBetween(DB::raw('DATE(created_at)'), [$start, $end]);
+            }
+
+            if ($request->filled('customer_id') && $request->customer_id !== 'all') {
+                $query->where('customer_id', (int) $request->customer_id);
             }
 
             // ================= GET SALES & FETCH RETURNS =================
@@ -1220,14 +1948,13 @@ class ReportingController extends Controller
     public function customersByBranch(Request $request)
     {
         $branchId = $request->branch_id ?? null;
-        if (! $branchId) {
-            return response()->json([], 200);
+        $query = Customer::where('status', 'active');
+
+        if ($branchId) {
+            $query->where('branch_id', $branchId);
         }
 
-        $customers = Customer::where('branch_id', $branchId)
-            ->where('status', 'active')
-            ->where('customer_type', 'credit')
-            ->select('id', 'customer_name', 'customer_type', 'credit_limit', 'address', 'mobile')
+        $customers = $query->select('id', 'customer_name', 'customer_type', 'credit_limit', 'address', 'mobile')
             ->orderBy('customer_name')
             ->get();
 
@@ -1570,5 +2297,233 @@ class ReportingController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Error exporting stock hold audit: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * ✅ Salesman Performance Report View
+     */
+    public function salesman_performance_report()
+    {
+        $user = Auth::user();
+        $isSuper = $user->hasRole('super admin');
+        $userBranchId = $user->branch_id ?? null;
+
+        // ✅ ERP Standard: Branch List for Super Admin
+        $branches = $isSuper ? Branch::all() : Branch::where('id', $userBranchId)->get();
+
+        // ✅ If NOT super-admin, fetch only salesmen for their branch
+        if (!$isSuper && $userBranchId) {
+            $salesmanIds = Sale::where('branch_id', $userBranchId)
+                ->whereNotNull('salesman_id')
+                ->distinct()
+                ->pluck('salesman_id');
+                
+            $salesmen = \App\Models\SalesOfficer::whereIn('id', $salesmanIds)
+                ->orderBy('name')
+                ->get();
+        } else {
+            $salesmen = \App\Models\SalesOfficer::orderBy('name')->get();
+        }
+
+        return view('admin_panel.Reporting.salesman_performance', compact('branches', 'isSuper', 'salesmen', 'userBranchId'));
+    }
+
+    /**
+     * ✅ Fetch Salesmen by Branch (AJAX)
+     */
+    public function salesmenByBranch(Request $request)
+    {
+        $branchId = $request->branch_id;
+        
+        if (!$branchId) {
+            $salesmen = \App\Models\SalesOfficer::orderBy('name')->get();
+        } else {
+            // ✅ ERP Standard: Show salesmen who have actually made sales in this branch
+            $salesmanIds = Sale::where('branch_id', $branchId)
+                ->whereNotNull('salesman_id')
+                ->distinct()
+                ->pluck('salesman_id');
+                
+            $salesmen = \App\Models\SalesOfficer::whereIn('id', $salesmanIds)
+                ->orderBy('name')
+                ->get();
+        }
+
+        return response()->json($salesmen);
+    }
+
+    /**
+     * ✅ Fetch Salesman Performance Data
+     */
+    public function fetch_salesman_performance(Request $request)
+    {
+        $user = Auth::user();
+        $isSuper = $user->hasRole('super admin');
+        $branchId = $isSuper ? $request->branch_id : $user->branch_id;
+
+        $startDate = $request->start_date ? $request->start_date . ' 00:00:00' : now()->startOfMonth();
+        $endDate = $request->end_date ? $request->end_date . ' 23:59:59' : now()->endOfMonth();
+
+        try {
+            $query = DB::table('sales')
+                ->leftJoin('sales_officers', 'sales.salesman_id', '=', 'sales_officers.id')
+                ->leftJoin('branches', 'sales.branch_id', '=', 'branches.id')
+                ->select(
+                    DB::raw('IFNULL(sales_officers.name, "Direct Sale (No Salesman)") as salesman_name'),
+                    'branches.name as branch_name',
+                    DB::raw('COUNT(sales.id) as total_invoices'),
+                    DB::raw('SUM(sales.total_net) as total_amount'),
+                    DB::raw('DATE_FORMAT(sales.created_at, "%M %Y") as month_year')
+                )
+                ->whereBetween('sales.created_at', [$startDate, $endDate]);
+
+            if ($branchId) {
+                $query->where('sales.branch_id', $branchId);
+            }
+
+            $results = $query->groupBy('salesman_name', 'branches.name', 'sales.branch_id', 'month_year')
+                ->orderBy('total_amount', 'DESC')
+                ->get();
+
+            return response()->json($results);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
+    /**
+     * ✅ Fetch Detailed Salesman Ledger (Transaction List)
+     */
+    public function fetch_salesman_ledger(Request $request)
+    {
+        $user = Auth::user();
+        $isSuper = $user->hasRole('super admin');
+        $branchId = $isSuper ? $request->branch_id : $user->branch_id;
+
+        $salesmanId = $request->salesman_id;
+        $start = $request->start_date ? $request->start_date . ' 00:00:00' : now()->startOfMonth();
+        $end = $request->end_date ? $request->end_date . ' 23:59:59' : now()->endOfMonth();
+
+        try {
+            $query = Sale::with(['customer', 'branch'])
+                ->whereBetween('created_at', [$start, $end]);
+
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
+
+            if ($salesmanId === 'direct') {
+                $query->whereNull('salesman_id');
+            } elseif ($salesmanId) {
+                $query->where('salesman_id', $salesmanId);
+            }
+
+            $sales = $query->orderBy('created_at', 'ASC')->get();
+
+            $formatted = $sales->map(function ($s) {
+                return [
+                    'date' => $s->created_at->format('d-M-Y'),
+                    'invoice_no' => $s->invoice_no,
+                    'customer' => $s->customer ? $s->customer->customer_name : ($s->sub_customer ?? 'Walking Customer'),
+                    'total_amount' => (float)$s->total_net,
+                    'branch' => $s->branch ? $s->branch->name : '-',
+                ];
+            });
+
+            return response()->json($formatted);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * ✅ NEW: Local Purchase Report View
+     */
+    public function local_purchase_report()
+    {
+        $user = auth()->user();
+        if ($user->hasRole('super admin')) {
+            $branches = Branch::orderBy('name')->get();
+        } else {
+            $branches = Branch::where('id', $user->branch_id)->get();
+        }
+
+        $startDate = date('Y-m-01');
+        $endDate   = date('Y-m-d');
+
+        // ✅ Get accounts for payment modal
+        $bankAccounts = \App\Models\Account::where('status', 'active');
+        if (!$user->hasRole('super admin')) {
+            $bankAccounts->where('branch_id', $user->branch_id);
+        }
+        $bankAccounts = $bankAccounts->orderBy('title')->get();
+
+        return view('admin_panel.Reporting.local_purchase_report', compact('branches', 'startDate', 'endDate', 'bankAccounts'));
+    }
+
+    /**
+     * ✅ NEW: Fetch Local Purchase Report Data (AJAX)
+     */
+    public function fetch_local_purchase_report(Request $request)
+    {
+        $user      = auth()->user();
+        $start     = $request->start_date;
+        $end       = $request->end_date;
+        $branchId  = $request->branch_id;
+        $shopName  = $request->shop_name;
+
+        $query = DB::table('purchases')
+            ->whereNull('vendor_id')
+            ->where(function($q) use ($shopName) {
+                if ($shopName) {
+                    $q->where('vendor_name', 'LIKE', "%{$shopName}%");
+                }
+            })
+            ->whereBetween(DB::raw('DATE(purchase_date)'), [$start, $end]);
+
+        if (!$user->hasRole('super admin')) {
+            $query->where('branch_id', $user->branch_id);
+        } elseif ($branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $purchases = $query->select(
+                'id',
+                'invoice_no',
+                'vendor_name',
+                'purchase_date',
+                'net_amount',
+                'paid_amount',
+                'due_amount',
+                'branch_id'
+            )
+            ->orderBy('purchase_date', 'asc')
+            ->get();
+
+        $branches = Branch::pluck('name', 'id');
+        
+        $results = $purchases->map(function($p) use ($branches) {
+            return [
+                'id'            => $p->id,
+                'invoice_no'    => $p->invoice_no,
+                'shop_name'     => $p->vendor_name ?? 'Local Market',
+                'date'          => date('d-m-Y', strtotime($p->purchase_date)),
+                'branch'        => $branches[$p->branch_id] ?? '-',
+                'net_amount'    => (float)$p->net_amount,
+                'paid_amount'   => (float)$p->paid_amount,
+                'due_amount'    => (float)$p->due_amount,
+                'status'        => $p->due_amount <= 0 ? 'Paid' : ($p->paid_amount > 0 ? 'Partial' : 'Due'),
+            ];
+        });
+
+        return response()->json([
+            'data' => $results,
+            'summary' => [
+                'total_net'  => (float)$results->sum('net_amount'),
+                'total_paid' => (float)$results->sum('paid_amount'),
+                'total_due'  => (float)$results->sum('due_amount'),
+            ]
+        ]);
     }
 }

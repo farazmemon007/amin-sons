@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\AccountHead;
+use App\Models\AccountLedgerEntry;
 use App\Models\Customer;
 use App\Models\CustomerLedger;
 use App\Models\ExpenseVoucher;
@@ -357,40 +358,37 @@ public function getOpeningBalance($type, $id)
             $amount = (float)$request->total_amount;
 
             if ($request->vendor_type === 'vendor') {
-                $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->latest()->first();
+                $branchId = auth()->user()->branch_id ?? 0;
+                $lastLedger = VendorLedger::where('vendor_id', $request->vendor_id)
+                    ->where('branch_id', $branchId)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance - $amount;
-                    $ledger->save();
-                } else {
-                    VendorLedger::create([
-                        'vendor_id'        => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'date'             => now(),
-                        'description'      => "Receipt Voucher #$rvid",
-                        'opening_balance'  => 0,
-                        'debit'            => 0,
-                        'credit'           => $amount,
-                        'previous_balance' => 0,
-                        'closing_balance'  => -$amount,
-                    ]);
-                }
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Vendor::find($request->vendor_id)->opening_balance ?? 0);
+
+                VendorLedger::create([
+                    'vendor_id'        => $request->vendor_id,
+                    'branch_id'        => $branchId,
+                    'admin_or_user_id' => auth()->id(),
+                    'transaction_date' => now(),
+                    'description'      => "Receipt Voucher #$rvid",
+                    'opening_balance'  => $previousBalance,
+                    'previous_balance' => $previousBalance,
+                    'debit_amount'     => $amount,
+                    'credit_amount'    => 0,
+                    'closing_balance'  => $previousBalance - $amount,
+                ]);
             } elseif ($request->vendor_type == 'customer') {
-                $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance - $amount;
-                    $ledger->save();
-                } else {
-                    CustomerLedger::create([
-                        'customer_id'      => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'previous_balance' => 0,
-                        'opening_balance'  => 0,
-                        'closing_balance'  => -$amount,
-                    ]);
-                }
+                $lastLedger = CustomerLedger::where('customer_id', $request->vendor_id)->orderBy('id', 'desc')->first();
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Customer::find($request->vendor_id)->opening_balance ?? 0);
+
+                CustomerLedger::create([
+                    'customer_id'      => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance'  => $previousBalance,
+                    'closing_balance'  => $previousBalance - $amount,
+                ]);
             } else {
                 // Bank/Head case → pehle vendor/account side minus
                 $account = Account::find($request->vendor_id);
@@ -426,6 +424,16 @@ if ($request->row_account_id && $request->amount) {
     }
 }
 
+
+            // ✅ POST TO ACCOUNT LEDGER (Receipt = DEBIT to bank/cash accounts)
+            $savedVoucher = ReceiptsVoucher::latest('id')->first();
+            if ($request->row_account_id && $request->amount) {
+                foreach ($request->row_account_id as $index => $accId) {
+                    $rowAmount = (float)($request->amount[$index] ?? 0);
+                    if ($rowAmount <= 0 || !$accId) continue;
+                    $this->postLedgerEntry($accId, 'receipt', $rvid, $savedVoucher?->id, $request->receipt_date ?? now()->toDateString(), $request->remarks, $rowAmount, 0);
+                }
+            }
 
             DB::commit();
             return back()->with('success', 'Receipt Voucher saved successfully!');
@@ -529,45 +537,53 @@ if ($request->row_account_id && $request->amount) {
              * STEP 2: Party side (Vendor / Customer / Account Head) → PLUS
              */
             if ($request->vendor_type === 'vendor') {
-                $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance + $amount;
-                    $ledger->save();
-                } else {
-                    VendorLedger::create([
-                        'vendor_id'        => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'date'             => now(),
-                        'description'      => "Payment Voucher #$pvid",
-                        'opening_balance'  => 0,
-                        'debit'            => $amount,
-                        'credit'           => 0,
-                        'previous_balance' => 0,
-                        'closing_balance'  => $amount,
-                    ]);
-                }
+                $branchId = auth()->user()->branch_id ?? 0;
+                $lastLedger = VendorLedger::where('vendor_id', $request->vendor_id)
+                    ->where('branch_id', $branchId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Vendor::find($request->vendor_id)->opening_balance ?? 0);
+
+                VendorLedger::create([
+                    'vendor_id'        => $request->vendor_id,
+                    'branch_id'        => $branchId,
+                    'admin_or_user_id' => auth()->id(),
+                    'transaction_date' => now(),
+                    'description'      => "Payment Voucher #$pvid",
+                    'opening_balance'  => $previousBalance,
+                    'previous_balance' => $previousBalance,
+                    'debit_amount'     => $amount,
+                    'credit_amount'    => 0,
+                    'closing_balance'  => $previousBalance - $amount,
+                ]);
             } elseif ($request->vendor_type === 'customer') {
-                $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance + $amount;
-                    $ledger->save();
-                } else {
-                    CustomerLedger::create([
-                        'customer_id'      => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'previous_balance' => 0,
-                        'opening_balance'  => 0,
-                        'closing_balance'  => $amount,
-                    ]);
-                }
+                $lastLedger = CustomerLedger::where('customer_id', $request->vendor_id)->orderBy('id', 'desc')->first();
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Customer::find($request->vendor_id)->opening_balance ?? 0);
+
+                CustomerLedger::create([
+                    'customer_id'      => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance'  => $previousBalance,
+                    'closing_balance'  => $previousBalance + $amount,
+                ]);
             } else {
                 // agar vendor_type me account head/account ki id ayi
                 $account = Account::find($request->vendor_id);
                 if ($account) {
                     $account->opening_balance = $account->opening_balance + $amount;
                     $account->save();
+                }
+            }
+
+            // ✅ POST TO ACCOUNT LEDGER (Payment = CREDIT from bank/cash accounts)
+            $savedPVoucher = PaymentVoucher::latest('id')->first();
+            if ($request->row_account_id && $request->amount) {
+                foreach ($request->row_account_id as $index => $accId) {
+                    $rowAmount = (float)($request->amount[$index] ?? 0);
+                    if ($rowAmount <= 0 || !$accId) continue;
+                    $this->postLedgerEntry($accId, 'payment', $pvid, $savedPVoucher?->id, $request->receipt_date ?? now()->toDateString(), $request->remarks, 0, $rowAmount);
                 }
             }
 
@@ -780,45 +796,53 @@ if ($request->row_account_id && $request->amount) {
              * STEP 2: Party side → MINUS
              */
             if ($request->vendor_type === 'vendor') {
-                $ledger = VendorLedger::where('vendor_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance - $amount; // MINUS
-                    $ledger->save();
-                } else {
-                    VendorLedger::create([
-                        'vendor_id'        => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'date'             => now(),
-                        'description'      => "Expense Voucher #$evid",
-                        'opening_balance'  => 0,
-                        'debit'            => 0,
-                        'credit'           => $amount,
-                        'previous_balance' => 0,
-                        'closing_balance'  => -$amount,
-                    ]);
-                }
+                $branchId = auth()->user()->branch_id ?? 0;
+                $lastLedger = VendorLedger::where('vendor_id', $request->vendor_id)
+                    ->where('branch_id', $branchId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Vendor::find($request->vendor_id)->opening_balance ?? 0);
+
+                VendorLedger::create([
+                    'vendor_id'        => $request->vendor_id,
+                    'branch_id'        => $branchId,
+                    'admin_or_user_id' => auth()->id(),
+                    'transaction_date' => now(),
+                    'description'      => "Expense Voucher #$evid",
+                    'opening_balance'  => $previousBalance,
+                    'previous_balance' => $previousBalance,
+                    'debit_amount'     => 0,
+                    'credit_amount'    => $amount,
+                    'closing_balance'  => $previousBalance + $amount,
+                ]);
             } elseif ($request->vendor_type === 'customer') {
-                $ledger = CustomerLedger::where('customer_id', $request->vendor_id)->latest()->first();
-                if ($ledger) {
-                    $ledger->previous_balance = $ledger->closing_balance;
-                    $ledger->closing_balance  = $ledger->closing_balance - $amount; // MINUS
-                    $ledger->save();
-                } else {
-                    CustomerLedger::create([
-                        'customer_id'      => $request->vendor_id,
-                        'admin_or_user_id' => auth()->id(),
-                        'previous_balance' => 0,
-                        'opening_balance'  => 0,
-                        'closing_balance'  => -$amount,
-                    ]);
-                }
+                $lastLedger = CustomerLedger::where('customer_id', $request->vendor_id)->orderBy('id', 'desc')->first();
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Customer::find($request->vendor_id)->opening_balance ?? 0);
+
+                CustomerLedger::create([
+                    'customer_id'      => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance'  => $previousBalance,
+                    'closing_balance'  => $previousBalance + $amount,
+                ]);
             } else {
                 // yahan vendor_type numeric (1,2,3) hai → matlab Account ID
                 $account = Account::find($request->vendor_id);
                 if ($account) {
                     $account->opening_balance = $account->opening_balance - $amount; // MINUS
                     $account->save();
+                }
+            }
+
+            // ✅ POST TO ACCOUNT LEDGER (Expense = DEBIT to expense accounts, ROW side)
+            $savedEVoucher = ExpenseVoucher::latest('id')->first();
+            if ($request->row_account_id && $request->amount) {
+                foreach ($request->row_account_id as $index => $accId) {
+                    $rowAmount = (float)($request->amount[$index] ?? 0);
+                    if ($rowAmount <= 0 || !$accId) continue;
+                    $this->postLedgerEntry($accId, 'expense', $evid, $savedEVoucher?->id, $request->entry_date ?? now()->toDateString(), $request->remarks, $rowAmount, 0);
                 }
             }
 
@@ -944,5 +968,77 @@ if ($request->row_account_id && $request->amount) {
         }
 
         return view('admin_panel.vochers.expense_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+    }
+
+    // =========================================================================
+    // ✅ ERP STANDARD: Account Ledger Entry Posting Helper
+    // Called after every voucher save to log transactions into account_ledger_entries
+    // =========================================================================
+    private function postLedgerEntry(
+        int    $accountId,
+        string $voucherType,
+        string $voucherNo,
+        ?int   $voucherId,
+        string $date,
+        ?string $description,
+        float  $debit,
+        float  $credit
+    ): void {
+        $account = \App\Models\Account::find($accountId);
+        if (!$account) return;
+
+        // Get last running balance for this account
+        $lastEntry = \App\Models\AccountLedgerEntry::where('account_id', $accountId)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($lastEntry) {
+            $previousBalance = (float)$lastEntry->running_balance;
+        } else {
+            // First ever entry — use account's opening_balance as base
+            $openingBalance = (float)($account->opening_balance ?? 0);
+
+            if ($openingBalance != 0) {
+                // Post the opening balance as OB entry first
+                $obEntryNo = \App\Models\AccountLedgerEntry::generateEntryNo($accountId, 'opening_balance');
+                \App\Models\AccountLedgerEntry::create([
+                    'account_id'        => $accountId,
+                    'branch_id'         => $account->branch_id,
+                    'voucher_type'      => 'opening_balance',
+                    'voucher_no'        => null,
+                    'voucher_id'        => null,
+                    'entry_no'          => $obEntryNo,
+                    'transaction_date'  => now()->toDateString(),
+                    'description'       => 'Opening Balance',
+                    'debit'             => $openingBalance >= 0 ? $openingBalance : 0,
+                    'credit'            => $openingBalance < 0 ? abs($openingBalance) : 0,
+                    'running_balance'   => $openingBalance,
+                    'created_by'        => auth()->id(),
+                ]);
+            }
+
+            $previousBalance = $openingBalance;
+        }
+
+        // Calculate new running balance
+        $newBalance = $previousBalance + $debit - $credit;
+
+        // Generate sequential entry number (BR-1, CR-1, JV-1 etc.)
+        $entryNo = \App\Models\AccountLedgerEntry::generateEntryNo($accountId, $voucherType);
+
+        \App\Models\AccountLedgerEntry::create([
+            'account_id'        => $accountId,
+            'branch_id'         => $account->branch_id,
+            'voucher_type'      => $voucherType,
+            'voucher_no'        => $voucherNo,
+            'voucher_id'        => $voucherId,
+            'entry_no'          => $entryNo,
+            'transaction_date'  => $date,
+            'description'       => $description ?? ucfirst($voucherType) . ' Voucher #' . $voucherNo,
+            'debit'             => $debit,
+            'credit'            => $credit,
+            'running_balance'   => $newBalance,
+            'created_by'        => auth()->id(),
+        ]);
     }
 }

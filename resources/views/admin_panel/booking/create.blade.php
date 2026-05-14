@@ -83,7 +83,7 @@
                 <div class="card-body">
                     {{-- Top Form --}}
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Customer:</label>
                             <select name="customer" class="form-control form-control-sm">
                                 <option value="">Select Customer</option>
@@ -93,7 +93,17 @@
                             </select>
                         </div>
 
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Salesman (Optional):</label>
+                            <select name="salesman_id" class="form-control form-control-sm">
+                                <option value="">Select Salesman</option>
+                                @foreach ($salesmen as $sm)
+                                    <option value="{{ $sm->id }}">{{ $sm->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
                             <label class="form-label fw-bold">Reference #</label>
                             <input type="text" name="reference" class="form-control form-control-sm">
                         </div>

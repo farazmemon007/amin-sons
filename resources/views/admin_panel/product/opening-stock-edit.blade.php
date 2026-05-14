@@ -67,10 +67,32 @@
             <i class="las la-box" style="font-size:28px;color:#818cf8;"></i>
             <div style="flex:1;">
                 <h5>{{ $product->item_name }}</h5>
-                <small>SKU: {{ $product->item_code }} &nbsp;|&nbsp; Unit: {{ $product->unit?->name ?? 'PCS' }} &nbsp;|&nbsp; Branch: {{ $product->branch?->name ?? '—' }}</small>
+                <small>SKU: {{ $product->item_code }} &nbsp;|&nbsp; Unit: {{ $product->unit?->name ?? 'PCS' }} &nbsp;|&nbsp; Created in: {{ $product->branch?->name ?? '—' }}</small>
             </div>
             <span style="background:rgba(99,102,241,.3);color:#c7d2fe;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;">Edit Opening Stock</span>
         </div>
+
+        {{-- ✅ SUPER ADMIN: Branch Selector --}}
+        @if($isSuperAdmin)
+        <div style="background:linear-gradient(135deg,#1a3a6e,#1e40af);padding:1rem 1.5rem;border-bottom:1px solid #1e3a8a;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:18px;">&#127968;</span>
+                <span style="color:#93c5fd;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Editing Stock For Branch:</span>
+            </div>
+            <select id="branch_switcher"
+                    style="border:2px solid #3b82f6;border-radius:8px;padding:7px 14px;font-size:14px;font-weight:700;color:#1e293b;background:#eff6ff;min-width:220px;cursor:pointer;">
+                @foreach($availableBranches as $br)
+                    <option value="{{ $br->id }}" {{ $br->id == $selectedBranchId ? 'selected' : '' }}>
+                        {{ $br->name }}
+                    </option>
+                @endforeach
+            </select>
+            @if($availableBranches->count() > 1)
+            <span style="color:#fbbf24;font-size:11px;font-weight:700;">&#9888; This product has stock in {{ $availableBranches->count() }} branches &mdash; select the one you want to edit.</span>
+            @endif
+            <a href="{{ route('opening.stocks.edit', $product->id) }}" style="color:#93c5fd;font-size:11px;margin-left:auto;text-decoration:underline;">Reset</a>
+        </div>
+        @endif
 
         {{-- Current Stock Summary --}}
         <div class="stock-info-bar">
@@ -95,16 +117,20 @@
         {{-- Form --}}
         <form id="editForm" method="POST" action="{{ route('opening.stocks.update', $product->id) }}">
             @csrf
-            <input type="hidden" name="branch_id" value="{{ $product->branch_id }}">
+            {{-- Use selectedBranchId (chosen by super admin) not product->branch_id --}}
+            <input type="hidden" name="branch_id" value="{{ $selectedBranchId }}">
 
             {{-- Stock & Pricing --}}
             <div class="form-section">
                 <h6>📦 Stock &amp; Valuation</h6>
                 <div class="input-row">
                     <div class="fg">
-                        <label>New Total Stock Qty</label>
+                        <label>New Total Stock Qty <small style="font-size:10px;color:#6366f1;">(auto from allocations)</small></label>
                         <input type="number" id="new_qty" name="opening_qty" class="fi fi-num"
-                               value="{{ $currentStock }}" step="0.01" min="0" required oninput="calcDelta()">
+                               value="{{ $currentStock }}" step="0.01" min="0" required
+                               readonly
+                               style="background:#eef2ff;border-color:#a5b4fc;color:#4f46e5;font-weight:800;cursor:not-allowed;"
+                               title="Auto-calculated from warehouse allocations below">
                         <div class="delta-info delta-zero" id="delta_info">No change from current stock</div>
                     </div>
                     <div class="fg">
@@ -217,26 +243,35 @@ $(document).ready(function() {
         } else {
             el.text('▼ ' + delta.toFixed(2) + ' units will be REMOVED from stock').attr('class','delta-info delta-neg');
         }
-        updateEditAllocStatus();
     };
 
     // ── Allocation Status ─────────────────────────────────────────────────
     window.updateEditAllocStatus = function() {
-        var newQty = parseFloat($('#new_qty').val()) || 0;
-        var total  = 0;
+        /* 1. Sum all allocation qty inputs */
+        var total = 0;
         $('#alloc_edit_rows .alloc-qty-in').each(function() {
             total += parseFloat($(this).val()) || 0;
         });
-        var el = $('#edit_alloc_status');
-        var rows = $('#alloc_edit_rows .alloc-grid-row').length;
-        if (rows === 0) { el.text(''); return; }
-        if (Math.abs(total - newQty) < 0.001) {
-            el.text('✓ Allocations match (' + newQty + ')').css('color','#166534');
-        } else if (total > newQty) {
-            el.text('✗ Over-allocated: ' + total.toFixed(2) + ' / ' + newQty).css('color','#991b1b');
+
+        /* 2. Push sum into the readonly #new_qty field */
+        $('#new_qty').val(total > 0 ? total.toFixed(2) : '0.00');
+
+        /* 3. Recompute delta label against currentStock */
+        var delta = total - currentStock;
+        var deltaEl = $('#delta_info');
+        if (Math.abs(delta) < 0.001) {
+            deltaEl.text('No change from current stock (' + currentStock + ')').attr('class','delta-info delta-zero');
+        } else if (delta > 0) {
+            deltaEl.text('▲ +' + delta.toFixed(2) + ' units will be ADDED to stock').attr('class','delta-info delta-pos');
         } else {
-            el.text('⚠ Under-allocated: ' + total.toFixed(2) + ' / ' + newQty).css('color','#92400e');
+            deltaEl.text('▼ ' + delta.toFixed(2) + ' units will be REMOVED from stock').attr('class','delta-info delta-neg');
         }
+
+        /* 4. Show allocation total in status bar */
+        var rows = $('#alloc_edit_rows .alloc-grid-row').length;
+        var el = $('#edit_alloc_status');
+        if (rows === 0) { el.text(''); return; }
+        el.text('📦 Allocated Total: ' + total.toFixed(2) + ' units').css('color', total > 0 ? '#166534' : '#92400e');
     };
 
     // ── Add allocation row ────────────────────────────────────────────────
@@ -268,6 +303,17 @@ $(document).ready(function() {
         });
         $('#alloc_data_edit').val(JSON.stringify(data));
         console.log('Edit alloc_data:', JSON.stringify(data));
+    });
+
+    // ── Branch Switcher (Super Admin) ─────────────────────────────────────
+    // When the branch selector changes, reload the page with ?branch_id=X
+    // so the controller returns the correct stock & allocation data for that branch.
+    $('#branch_switcher').on('change', function() {
+        var branchId = $(this).val();
+        if (!branchId) return;
+        var url = new URL(window.location.href);
+        url.searchParams.set('branch_id', branchId);
+        window.location.href = url.toString();
     });
 
     // ── Init ─────────────────────────────────────────────────────────────

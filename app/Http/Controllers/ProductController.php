@@ -189,53 +189,65 @@ class ProductController extends Controller
     // ===== Product search (general) =====
 
 
-public function searchProducts(Request $request)
-{
-    $q = $request->get('q');
-
-    // ✅ GLOBAL PRODUCTS - Show all products from all branches
-    // But mark Primary/Secondary based on login branch stock
-    $query = Product::with(['brand','unit','stockproduct']);
-
-    // NO branch restriction - products are GLOBAL
-
-    $products = $query
-        ->where(function ($query) use ($q) {
-            $query->where('item_name', 'like', "%{$q}%")
-                  ->orWhere('item_code', 'like', "%{$q}%");
-        })
-        ->get()
-        ->map(function ($product) {
-            // ✅ Check if product has stock in login branch
-            $userBranchId = Auth::check() ? Auth::user()->branch_id : null;
-            $isPrimary = false;
-            
-            if ($userBranchId) {
-                // Check stocks table for branch-level stock
-                $stockRecord = DB::table('stocks')
-                    ->where('product_id', $product->id)
-                    ->where('branch_id', $userBranchId)
-                    ->first();
-                
-                // Product is Primary if qty > 0 in login branch
-                $isPrimary = ($stockRecord && $stockRecord->qty > 0);
-            }
-            
-            return [
-                'id'           => $product->id,
-                'item_name'    => $product->item_name,
-                'item_code'    => $product->item_code,
-                'brand_name'   => $product->brand->name ?? '',
-                'unit_name'    => $product->unit->name ?? '',
-                'unit_id'      => $product->unit_id,
-                'stock'        => $product->stockproduct->qty ?? 0,
-                'price'        => $product->price ?? 0,
-                'is_primary'   => $isPrimary,  // ✅ NEW - Primary/Secondary status
-            ];
-        });
-
-    return response()->json($products);
-}
+ public function searchProducts(Request $request)
+ {
+     $q = $request->get('q');
+     $vendorId = $request->get('vendor_id');
+ 
+     // ✅ GLOBAL PRODUCTS - Show all products from all branches
+     // But mark Primary/Secondary based on login branch stock
+     $query = Product::with(['brand','unit','stockproduct']);
+ 
+     // Filter by vendor brands if vendor_id is provided
+     if ($vendorId) {
+         $vendor = \App\Models\Vendor::find($vendorId);
+         if ($vendor && !empty($vendor->brand_ids)) {
+             $query->whereIn('brand_id', $vendor->brand_ids);
+         } else if ($vendor) {
+             // If vendor has NO brands assigned, they see NO products
+             // This enforces the "vendor must have brands" logic
+             $query->whereRaw('1=0');
+         }
+     }
+ 
+     $products = $query
+         ->where(function ($query) use ($q) {
+             $query->where('item_name', 'like', "%{$q}%")
+                   ->orWhere('item_code', 'like', "%{$q}%");
+         })
+         ->limit(20)
+         ->get()
+         ->map(function ($product) {
+             // ✅ Check if product has stock in login branch
+             $userBranchId = Auth::check() ? Auth::user()->branch_id : null;
+             $isPrimary = false;
+             
+             if ($userBranchId) {
+                 // Check stocks table for branch-level stock
+                 $stockRecord = DB::table('stocks')
+                     ->where('product_id', $product->id)
+                     ->where('branch_id', $userBranchId)
+                     ->first();
+                 
+                 // Product is Primary if qty > 0 in login branch
+                 $isPrimary = ($stockRecord && $stockRecord->qty > 0);
+             }
+             
+             return [
+                 'id'           => $product->id,
+                 'item_name'    => $product->item_name,
+                 'item_code'    => $product->item_code,
+                 'brand_name'   => $product->brand->name ?? '',
+                 'unit_name'    => $product->unit->name ?? '',
+                 'unit_id'      => $product->unit_id,
+                 'stock'        => $product->stockproduct->qty ?? 0,
+                 'price'        => $product->price ?? 0,
+                 'is_primary'   => $isPrimary,  // ✅ NEW - Primary/Secondary status
+             ];
+         });
+ 
+     return response()->json($products);
+ }
 
 public function searchProductsForSalebypagination(Request $request)
 {
@@ -1173,16 +1185,27 @@ public function searchProductsForSalebypagination(Request $request)
     {
         $user         = Auth::user();
         $isSuperAdmin = $user->hasRole('super admin');
-        $branches     = $isSuperAdmin ? Branch::orderBy('name')->get() : collect();
+        $branches     = $isSuperAdmin ? \App\Models\Branch::orderBy('name')->get() : collect();
         $userBranchId = $user->branch_id;
 
-        // Fetch ALL warehouses directly from DB (bypass Branch relationship)
-        $warehouses = DB::table('warehouses')->orderBy('warehouse_name')->get();
+        // Super Admin may have no branch_id — default to first branch
+        if ($isSuperAdmin && !$userBranchId) {
+            $userBranchId = $branches->first()?->id;
+        }
+
+        // Fetch warehouses assigned to the currently selected branch
+        $warehouses = collect();
+        if ($userBranchId) {
+            $warehouses = \App\Models\Warehouse::whereHas('branches', function ($q) use ($userBranchId) {
+                $q->where('branch_id', $userBranchId);
+            })->orderBy('warehouse_name')->get();
+        }
 
         return view('admin_panel.product.opening-stocks-manager', compact(
             'isSuperAdmin', 'branches', 'userBranchId', 'warehouses'
         ));
     }
+
 
     /**
      * AJAX: Search products for opening stock manager
@@ -1228,10 +1251,14 @@ public function searchProductsForSalebypagination(Request $request)
      */
     public function getWarehousesForBranch(Request $request)
     {
-        // Return ALL warehouses (global) — not branch-specific
-        $warehouses = DB::table('warehouses')
-            ->orderBy('warehouse_name')
-            ->get(['id', 'warehouse_name']);
+        $branchId = $request->get('branch_id');
+
+        $warehouses = collect();
+        if ($branchId) {
+            $warehouses = \App\Models\Warehouse::whereHas('branches', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })->orderBy('warehouse_name')->get(['id', 'warehouse_name']);
+        }
 
         return response()->json($warehouses->map(fn($w) => [
             'id'            => $w->id,
@@ -1370,41 +1397,76 @@ public function searchProductsForSalebypagination(Request $request)
 
     /**
      * Show edit form for a single product's opening stock
+     * Super admin: can choose which branch's stock to edit via ?branch_id query param
+     * Regular user: always their own branch
      */
-    public function editOpeningStock($id)
+    public function editOpeningStock(Request $request, $id)
     {
         $product      = Product::with(['unit', 'category_relation', 'branch'])->findOrFail($id);
         $user         = Auth::user();
         $isSuperAdmin = $user->hasRole('super admin');
-        $branches     = $isSuperAdmin ? Branch::orderBy('name')->get() : collect();
 
-        // Fetch ALL warehouses directly from DB — most reliable approach
+        // Fetch ALL warehouses
         $warehouses = DB::table('warehouses')->orderBy('warehouse_name')->get();
 
-        // Current warehouse allocations for this product + branch
+        if ($isSuperAdmin) {
+            $allBranches = Branch::orderBy('name')->get();
+
+            // Find every branch where this product has warehouse_stocks entries (any qty)
+            $branchIdsWithStock = DB::table('warehouse_stocks')
+                ->where('product_id', $id)
+                ->pluck('branch_id')
+                ->push($product->branch_id)   // always include the product's own branch
+                ->unique()
+                ->values();
+
+            $availableBranches = Branch::whereIn('id', $branchIdsWithStock)
+                ->orderBy('name')
+                ->get();
+
+            // Which branch is selected? Either from query param or default to product's branch
+            $selectedBranchId = (int) $request->get('branch_id', $product->branch_id);
+
+            // Validate: selected branch must be in the available list
+            if (!$branchIdsWithStock->contains($selectedBranchId)) {
+                $selectedBranchId = (int) $product->branch_id;
+            }
+
+        } else {
+            // Regular user: always their own branch — no choice
+            $allBranches       = collect();
+            $availableBranches = collect();
+            $selectedBranchId  = (int) $user->branch_id;
+
+            // Security: non-super-admin cannot view other branch's stock
+            if ($selectedBranchId !== (int) $product->branch_id) {
+                abort(403, 'You can only edit products from your own branch.');
+            }
+        }
+
+        // Current warehouse allocations for the SELECTED branch
         $currentAllocs = DB::table('warehouse_stocks')
             ->where('product_id', $id)
-            ->where('branch_id', $product->branch_id)
+            ->where('branch_id', $selectedBranchId)
             ->get();
 
-        // Use warehouse_stocks SUM as the source of truth for current stock
-        // (stocks table may be inflated by additive opening stock entries)
-        $currentStock = DB::table('warehouse_stocks')
+        // Current stock for the SELECTED branch
+        $currentStock = (float) DB::table('warehouse_stocks')
             ->where('product_id', $id)
-            ->where('branch_id', $product->branch_id)
-            ->sum('quantity') ?? 0;
+            ->where('branch_id', $selectedBranchId)
+            ->sum('quantity');
 
-        // Fallback to stocks table if warehouse_stocks has no records
+        // Fallback to stocks table if warehouse_stocks has no records for this branch
         if ($currentStock == 0) {
-            $currentStock = DB::table('stocks')
+            $currentStock = (float) (DB::table('stocks')
                 ->where('product_id', $id)
-                ->where('branch_id', $product->branch_id)
-                ->value('qty') ?? 0;
+                ->where('branch_id', $selectedBranchId)
+                ->value('qty') ?? 0);
         }
 
         return view('admin_panel.product.opening-stock-edit', compact(
-            'product', 'isSuperAdmin', 'branches', 'warehouses',
-            'currentAllocs', 'currentStock'
+            'product', 'isSuperAdmin', 'allBranches', 'availableBranches',
+            'warehouses', 'currentAllocs', 'currentStock', 'selectedBranchId'
         ));
     }
 

@@ -39,8 +39,9 @@ class AccountCodeService
             ->where('head_id', $head->id)
             ->count() + 1;
 
-        // Format as {PREFIX}-{NUMBER}
-        return $prefix . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        // Format as B{BRANCH_ID}-{PREFIX}-{NUMBER} to ensure global uniqueness 
+        // across the database while keeping the sequential numbering per branch
+        return 'B' . $branch->id . '-' . $prefix . '-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
     /**

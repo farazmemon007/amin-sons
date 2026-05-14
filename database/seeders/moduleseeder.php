@@ -14,6 +14,7 @@ class ModuleSeeder extends Seeder
 
         $modules = [
             
+    ["id" => 49, "module_name" => "report.vendor.ledger"],
     ["id" => 48, "module_name" => "Branch Wise Permission"],
     ["id" => 47, "module_name" => "find Dc"],
     ["id" => 46, "module_name" => "generate Dc"],

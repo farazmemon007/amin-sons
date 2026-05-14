@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Branch;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 
 class UserController extends Controller
 {
@@ -110,24 +113,141 @@ class UserController extends Controller
 
     }
 
- public function updateRoles(Request $request)
-{
-    $user = User::findOrFail($request->edit_id);
+    public function updateRoles(Request $request)
+    {
+        $user = User::findOrFail($request->edit_id);
+        $user->syncRoles($request->roles ?? []);
 
-    // Assign new roles (by name)
-    $user->syncRoles($request->roles ?? []);
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => 'User roles updated successfully!', 'reload' => true]);
+        }
+        return back()->with('success', 'User roles updated successfully!');
+    }
 
-    // If request is AJAX or expects JSON, return JSON so frontend JS (myAjax)
-    // can handle response without a full redirect/HTML page returned.
-    if ($request->ajax() || $request->wantsJson()) {
+    /**
+     * ERP: Get all branches & warehouses for the "Assign Warehouses" modal.
+     * Returns:
+     *   - branches[] with their warehouses[]
+     *   - assigned_entries[]  e.g. ["1_5", "2_8"]  (branchId_warehouseId)
+     *   - incharge_entries[]  same format, for incharge status
+     */
+    public function getUserWarehouseAssignments(int $userId)
+    {
+        $user = User::with('warehouses')->findOrFail($userId);
+
+        // Super Admin sees ALL branches; Branch Admin sees only their branch
+        $currentUser = Auth::user();
+        $branchQuery = Branch::with('warehouses');
+        if (!$currentUser->hasRole('super admin')) {
+            $branchQuery->where('id', $currentUser->branch_id);
+        }
+        $branches = $branchQuery->get()->map(function ($branch) {
+            return [
+                'id'         => (int) $branch->id,
+                'name'       => $branch->branch_name ?? $branch->name ?? 'Branch ' . $branch->id,
+                'warehouses' => $branch->warehouses->map(fn($w) => [
+                    'id'   => (int) $w->id,
+                    'name' => $w->warehouse_name,
+                ])->values(),
+            ];
+        });
+
+        // Build "branchId_warehouseId" entry strings for precise pre-selection
+        $assignedEntries = [];
+        $inchargeEntries = [];
+        foreach ($user->warehouses as $w) {
+            $pivotBranchId = (int) $w->pivot->branch_id;
+            $entry = $pivotBranchId . '_' . $w->id;
+            $assignedEntries[] = $entry;
+            if ($w->pivot->is_incharge) {
+                $inchargeEntries[] = $entry;
+            }
+        }
+
         return response()->json([
-            'success' => 'User roles updated successfully!',
-            // let frontend decide to reload or not; sending 'reload' true
-            // will trigger the existing myAjax handler to reload the page.
-            'reload' => true
+            'user_id'          => (int) $user->id,
+            'user_name'        => $user->name,
+            'branches'         => $branches,
+            'assigned_entries' => $assignedEntries,   // ["1_5", "2_8"]
+            'incharge_entries' => $inchargeEntries,   // ["1_5"]
         ]);
     }
 
-    return back()->with('success', 'User roles updated successfully!');
-}
+    /**
+     * ERP: Save user <-> warehouse assignments (many-to-many with is_incharge + branch_id).
+     * Receives entries as "branchId_warehouseId" strings so the same warehouse in
+     * different branches can be tracked independently.
+     * Also auto-syncs Spatie branch-level permissions.
+     */
+    public function assignUserWarehouses(Request $request)
+    {
+        $request->validate([
+            'user_id'          => 'required|exists:users,id',
+            'entries'          => 'nullable|array',
+            'incharge_entries' => 'nullable|array',
+        ]);
+
+        $user = User::findOrFail($request->user_id);
+
+        $entries         = $request->entries         ?? [];
+        $inchargeEntries = $request->incharge_entries ?? [];
+
+        // ── 1. Build sync data from "branchId_warehouseId" pairs ──────────
+        $syncData        = [];
+        $branchIdsForAssigned = [];
+
+        foreach ($entries as $entry) {
+            // entry format: "1_5" => branch_id=1, warehouse_id=5
+            $parts = explode('_', $entry, 2);
+            if (count($parts) !== 2) continue;
+
+            $branchId   = (int) $parts[0];
+            $warehouseId = (int) $parts[1];
+
+            $syncData[$warehouseId] = [
+                'is_incharge' => in_array($entry, $inchargeEntries),
+                'branch_id'   => $branchId,
+                'notes'       => null,
+            ];
+
+            $branchIdsForAssigned[] = $branchId;
+        }
+
+        $user->warehouses()->sync($syncData);
+
+        // ── 2. Auto-sync Spatie branch-level permissions ──────────────────
+        // Grant  warehouse.stock.view.{branch_id} for branches with assigned warehouses.
+        // Revoke warehouse.stock.view.{branch_id} for branches with no assigned warehouses
+        // (never revoke the user's own home branch).
+
+        $branchIdsForAssigned = array_unique($branchIdsForAssigned);
+        $allBranchIds = Branch::pluck('id')->map(fn($id) => (int) $id)->toArray();
+
+        foreach ($allBranchIds as $branchId) {
+            $permName = 'warehouse.stock.view.' . $branchId;
+
+            if (in_array($branchId, $branchIdsForAssigned)) {
+                $perm = Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);
+                if (!$user->hasDirectPermission($permName)) {
+                    $user->givePermissionTo($perm);
+                }
+            } else {
+                // Never revoke the user's own home branch
+                if ($branchId === (int) $user->branch_id) continue;
+
+                $perm = Permission::where('name', $permName)->where('guard_name', 'web')->first();
+                if ($perm && $user->hasDirectPermission($permName)) {
+                    $user->revokePermissionTo($perm);
+                }
+            }
+        }
+
+        // Clear Spatie's permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        return response()->json([
+            'success' => "Warehouse assignments updated for {$user->name}.",
+            'reload'  => true,
+        ]);
+    }
 }

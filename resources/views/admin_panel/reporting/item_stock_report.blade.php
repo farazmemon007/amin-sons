@@ -43,7 +43,12 @@
                         </div>
 
                         <div class="col-md-4 text-end">
-                            <button type="button" id="btnExportCsv" class="btn btn-outline-secondary">Export CSV</button>
+                            <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-outline-success shadow-sm me-1" style="border-color:#25D366; color:#25D366; background: #fff;">
+                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                            </button>
+                            <button type="button" onclick="showExportOptions()" class="btn btn-outline-info shadow-sm" style="background: #fff;">
+                                <i class="fas fa-download me-1"></i> Export
+                            </button>
                         </div>
                         @else
                         {{-- Non-Admin User: Branch Display Only --}}
@@ -70,14 +75,19 @@
                         </div>
 
                         <div class="col-md-4 text-end">
-                            <button type="button" id="btnExportCsv" class="btn btn-outline-secondary">Export CSV</button>
+                            <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-outline-success shadow-sm me-1" style="border-color:#25D366; color:#25D366; background: #fff;">
+                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                            </button>
+                            <button type="button" onclick="showExportOptions()" class="btn btn-outline-info shadow-sm" style="background: #fff;">
+                                <i class="fas fa-download me-1"></i> Export
+                            </button>
                         </div>
                         @endif
                     </form>
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="reportContent">
                 <div class="card-body">
                     <div id="loader" style="display:none;text-align:center;margin-bottom:10px;">
                         <div class="spinner-border" role="status"></div>
@@ -152,14 +162,10 @@
         </div>
     </div>
 </div>
+</div>
 @endsection
 
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css" />
-<script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script>
+@section('js')
 
 <script>
 $(document).ready(function() {
@@ -353,36 +359,135 @@ $(document).ready(function() {
         });
     }
 
-    $('#btnExportCsv').on('click', function() {
-        var productId = $('#product_id').val();
-        $('#loader').show();
-        $.ajax({
-            url: "{{ route('report.item_stock.fetch') }}",
-            type: "POST",
-            data: { _token: "{{ csrf_token() }}", product_id: productId },
-            success: function(response) {
-                $('#loader').hide();
-                if (!response.data || !response.data.length) { alert('No data to export'); return; }
-
-                var csv = 'Item Code,Item Name,Initial Stock,Purchased Qty,Purchased Amount,Sold Qty,Sold Amount,Balance,Price,Stock Value\n';
-                response.data.forEach(function(r){
-                    csv += `"${r.item_code}","${r.item_name}",${r.initial_stock},${r.purchased},${r.purchase_amount},${r.sold},${r.sale_amount},${r.balance},${r.price},${r.stock_value}\n`;
-                });
-
-                var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                var url = URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = 'item_stock_report_' + new Date().toISOString().split('T')[0] + '.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            },
-            error: function() { $('#loader').hide(); alert('Export failed'); }
-        });
-    });
-
     // Initial load
     fetchReport();
+
+    /* ---------- WhatsApp Share ---------- */
+    window.shareWhatsApp = function() {
+        Swal.fire({
+            title: 'Preparing WhatsApp Share...',
+            text: 'Generating PDF document to share.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        var element = document.getElementById('reportContent');
+        var opt = {
+          margin:       0.2,
+          filename:     'Item_Stock_Report_' + new Date().toISOString().slice(0,10) + '.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).outputPdf('blob').then(function(pdfBlob) {
+            var file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    title: 'Item Stock Report',
+                    text: 'Please find the attached Item Stock Report.',
+                    files: [file]
+                }).then(() => {
+                    Swal.close();
+                }).catch((error) => {
+                    console.log('Error sharing', error);
+                    fallbackWaShare(pdfBlob, opt.filename);
+                });
+            } else {
+                fallbackWaShare(pdfBlob, opt.filename);
+            }
+        });
+    };
+
+    function fallbackWaShare(pdfBlob, filename) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Share PDF via WhatsApp',
+            text: 'The PDF will be downloaded now. WhatsApp will open allowing you to choose any chat. Please attach the downloaded PDF manually.',
+            confirmButtonText: 'Download & Open WhatsApp'
+        }).then(() => {
+            var url = URL.createObjectURL(pdfBlob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            var msg = "*Item Stock Report*\nPlease find the attached PDF document.";
+            var waUrl = "https://wa.me/?text=" + encodeURIComponent(msg);
+            window.open(waUrl, '_blank');
+        });
+    }
+
+    /* ---------- Export Options & PDF ---------- */
+    window.showExportOptions = function() {
+        Swal.fire({
+            title: 'Export Stock Report',
+            text: 'Choose your preferred export format:',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#dc3545',
+            confirmButtonText: '<i class="fas fa-file-excel me-1"></i> Excel (CSV)',
+            cancelButtonText: '<i class="fas fa-file-pdf me-1"></i> PDF',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                exportCSV();
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                exportPDF();
+            }
+        });
+    };
+
+    window.exportPDF = function() {
+        Swal.fire({
+            title: 'Generating PDF...',
+            text: 'Please wait while your PDF is being prepared.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        var element = document.getElementById('reportContent');
+        var opt = {
+          margin:       0.2,
+          filename:     'Item_Stock_Report_' + new Date().toISOString().slice(0,10) + '.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(function() {
+            Swal.close();
+        });
+    };
+
+    window.exportCSV = function () {
+        var rows = [['Item Code','Item Name','Opening Stock','Purchased Qty','Purchased Amount','Sold Qty','Sold Amount','Reserved Qty','Balance','Price','Stock Value']];
+        
+        $('#reportBody tr').each(function () {
+            var cells = [];
+            $(this).find('td').each(function (idx) {
+                if(idx === 0 || idx === 12) return; // Skip # and Action columns
+                var text = $(this).text().replace(/Rs\.\s?/g, '').trim().replace(/"/g, '""');
+                cells.push('"' + text + '"');
+            });
+            if (cells.length) rows.push(cells);
+        });
+        
+        // Add grand total
+        rows.push(['','','','','','','','','','Grand Total','"' + $('#grandStockValue').text() + '"']);
+
+        var csv  = rows.map(function(r){return r.join(',');}).join('\n');
+        var blob = new Blob(["\uFEFF" + csv], {type:'text/csv;charset=utf-8;'});
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href   = url;
+        a.download = 'item_stock_report_' + new Date().toISOString().slice(0,10) + '.csv';
+        a.click();
+    };
 });
 </script>
+@endsection

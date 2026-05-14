@@ -199,8 +199,7 @@
                 <thead>
                     <tr>
                         <th class="item-name">Item</th>
-                        <th class="item-qty">Qty</th>
-                        <th class="item-price">Price</th>
+                        <th class="item-qty" style="width: 50%; text-align: right;">Qty</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -212,8 +211,7 @@
                         @endphp
                         <tr>
                             <td class="item-name">{{ $item->product->item_name ?? 'N/A' }}</td>
-                            <td class="item-qty">{{ number_format($item->qty, 2) }}</td>
-                            <td class="item-price">{{ number_format($itemTotal, 2) }}</td>
+                            <td class="item-qty" style="width: 50%; text-align: right;">{{ number_format($item->qty, 0) }}</td>
                         </tr>
                         <tr>
                             <td colspan="3" style="font-size: 9px; color: #000;">
@@ -228,8 +226,8 @@
         <!-- TOTALS -->
         <div class="section">
             <div class="total-line">
-                <span>TOTAL VALUE:</span>
-                <span>Rs. {{ number_format($totalAmount, 2) }}</span>
+                <span>TOTAL RECEIVED QTY:</span>
+                <span>{{ number_format($gatepass->items->sum('qty'), 0) }}</span>
             </div>
         </div>
 

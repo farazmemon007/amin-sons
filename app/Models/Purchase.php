@@ -40,23 +40,33 @@ class Purchase extends Model
      */
     public function getReceiptStatusAttribute()
     {
-        // Get all vendor remaining for this purchase
-        $vendorRemainings = \App\Models\VendorRemaining::where('purchase_id', $this->id)->get();
-
-        // If no vendor remaining records exist yet, status is pending
-        if ($vendorRemainings->isEmpty()) {
-            return 'pending';
-        }
-
-        // Check if any product still has remaining qty
-        $hasRemaining = $vendorRemainings->where('remaining_qty', '>', 0)->isNotEmpty();
-        
-        // If all items have remaining qty = 0, then all received
-        if (!$hasRemaining) {
+        // ✅ Local Market purchases are received immediately (direct inventory add)
+        if ($this->purchase_type === 'local' || (!$this->vendor_id && $this->vendor_name)) {
             return 'received';
         }
 
-        // If some items have been received but some still remaining, it's partial
+        // Get unique products count in this purchase (since VendorRemaining aggregates by product_id)
+        $uniqueProductCount = $this->items()->distinct('product_id')->count('product_id');
+        if ($uniqueProductCount === 0) return 'received';
+
+        $vendorRemainings = \App\Models\VendorRemaining::where('purchase_id', $this->id)->get();
+        $recordsCount = $vendorRemainings->count();
+
+        // 1. If no receipt activity has started
+        if ($recordsCount === 0) {
+            return 'pending';
+        }
+
+        // 2. Check if any product still has remaining qty
+        $hasRemaining = $vendorRemainings->where('remaining_qty', '>', 0)->isNotEmpty();
+        
+        // 3. If everything is received (0 remaining across all records)
+        // AND all unique products have at least been initialized in vendor_remaining
+        if (!$hasRemaining && $recordsCount >= $uniqueProductCount) {
+            return 'received';
+        }
+
+        // 4. If some items have been received but some still remaining or some products not yet touched
         $hasReceived = $vendorRemainings->where('received_qty', '>', 0)->isNotEmpty();
         return $hasReceived ? 'partial' : 'pending';
     }

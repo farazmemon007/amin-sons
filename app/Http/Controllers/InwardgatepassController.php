@@ -12,6 +12,9 @@ use App\Models\Warehouse;
 use App\Models\Vendor;
 use App\Models\Purchase;
 use App\Models\VendorRemaining;
+use App\Models\Unit;
+use App\Models\VendorLedger;
+use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,23 +66,25 @@ class InwardgatepassController extends Controller
         $branches   = Branch::orderBy('name')->get();
         $isSuperAdmin = Auth::user()->hasRole('super admin');
         
-        // ✅ ERP STANDARD: Filter warehouses by user's branch
         $userBranchId = Auth::user()->branch_id ?? 1;
         $warehouses = Warehouse::whereHas('branches', function($q) use ($userBranchId) {
             $q->where('branch_id', $userBranchId);
         })->orderBy('warehouse_name')->get();
         
-        $vendors    = Vendor::orderBy('name')->get();
+        $vendors    = Vendor::where('branch_id', $userBranchId)->orderBy('name')->get();
         $purchase   = null;
-        $vendorRemaining = collect();  // Empty collection for non-purchase gatepass
-        return view('admin_panel.inward.create', compact('branches','warehouses','vendors','purchase','vendorRemaining','isSuperAdmin'));
+        $vendorRemaining = collect();
+        
+        $allProducts = Product::with(['brand', 'unit'])->orderBy('item_name')->get();
+        $allUnits = Unit::orderBy('name')->get();
+        $po = null;
+        $existingColors = $this->getExistingColors();
+
+        return view('admin_panel.inward.create', compact('branches','warehouses','vendors','purchase','vendorRemaining','isSuperAdmin', 'allProducts', 'allUnits', 'po', 'existingColors'));
     }
 
-    // CREATE FROM PURCHASE - International ERP Standard Workflow
-    // After creating a Purchase, user creates corresponding Inward Gatepass to receive goods
     public function createFromPurchase($purchaseId)
     {
-        // ✅ Fetch purchase with all relationships
         $purchase = Purchase::with([
             'items.product.brand',
             'items.product.unit',
@@ -88,162 +93,290 @@ class InwardgatepassController extends Controller
             'warehouse'
         ])->findOrFail($purchaseId);
         
-        // ✅ CRITICAL FIX: Fetch vendor_remaining for partial delivery tracking
-        // This tells us what's already been received vs what's still pending
         $vendorRemaining = VendorRemaining::where('purchase_id', $purchaseId)
             ->get()
-            ->keyBy('product_id');  // Index by product_id for easy lookup
-        
-        // Debug: Log what we're getting
-        \Log::info('InwardGatepass - createFromPurchase:', [
-            'purchase_id' => $purchase->id,
-            'items_count' => $purchase->items?->count() ?? 0,
-            'remaining_items' => $vendorRemaining->count(),
-        ]);
+            ->keyBy('product_id');
         
         $branches   = Branch::orderBy('name')->get();
-        $vendors    = Vendor::orderBy('name')->get();
+        $vendors    = Vendor::where('branch_id', $purchase->branch_id)->orderBy('name')->get();
         $isSuperAdmin = Auth::user()->hasRole('super admin');
         
-        // ✅ ERP STANDARD: Filter warehouses by purchase's branch
         $warehouses = Warehouse::whereHas('branches', function($q) use ($purchase) {
             $q->where('branch_id', $purchase->branch_id);
         })->orderBy('warehouse_name')->get();
 
-        return view('admin_panel.inward.create', compact('branches','warehouses','vendors','purchase','vendorRemaining','isSuperAdmin'));
+        $allUnits = Unit::orderBy('name')->get();
+        $po = null;
+        $existingColors = $this->getExistingColors();
+
+        // Filter products by vendor if possible
+        $brandIds = $purchase->vendor->brand_ids ?? [];
+        if (!empty($brandIds)) {
+            $allProducts = Product::with(['brand', 'unit'])
+                ->whereIn('brand_id', $brandIds)
+                ->orderBy('item_name')
+                ->get();
+        } else {
+            $allProducts = Product::with(['brand', 'unit'])->orderBy('item_name')->get();
+        }
+
+        return view('admin_panel.inward.create', compact('branches','warehouses','vendors','purchase','vendorRemaining','isSuperAdmin','allProducts','allUnits', 'po', 'existingColors'));
     }
 
-    // STORE (movements + stocks)
+    public function createFromPO($poId)
+    {
+        $po = \App\Models\PurchaseOrder::with(['items.product.brand', 'items.product.unit', 'vendor', 'branch'])->findOrFail($poId);
+        
+        // Security Check: Warehouse Level
+        $user = Auth::user();
+        if (!$user->hasRole('super admin') && !$user->hasRole('admin')) {
+            if (!in_array($po->warehouse_id, $user->assignedWarehouseIds())) {
+                return redirect()->route('InwardGatepass.home')->with('error', 'Unauthorized access to this Purchase Order.');
+            }
+        }
+        
+        $branches = Branch::orderBy('name')->get();
+        $vendors = Vendor::where('branch_id', $po->branch_id)->orderBy('name')->get();
+        $isSuperAdmin = Auth::user()->hasRole('super admin');
+        
+        $warehouses = Warehouse::whereHas('branches', function($q) use ($po) {
+            $q->where('branch_id', $po->branch_id);
+        })->orderBy('warehouse_name')->get();
+
+        $allUnits = Unit::orderBy('name')->get();
+        $existingColors = $this->getExistingColors();
+
+        // Filter products by vendor brands
+        $brandIds = $po->vendor->brand_ids ?? [];
+        if (!empty($brandIds)) {
+            $allProducts = Product::with(['brand', 'unit'])
+                ->whereIn('brand_id', $brandIds)
+                ->orderBy('item_name')
+                ->get();
+        } else {
+            $allProducts = Product::with(['brand', 'unit'])->orderBy('item_name')->get();
+        }
+
+        return view('admin_panel.inward.create', [
+            'branches' => $branches,
+            'warehouses' => $warehouses,
+            'vendors' => $vendors,
+            'po' => $po,
+            'purchase' => null,
+            'vendorRemaining' => collect(),
+            'isSuperAdmin' => $isSuperAdmin,
+            'allProducts' => $allProducts,
+            'allUnits' => $allUnits,
+            'existingColors' => $existingColors
+        ]);
+    }
+
     public function store(Request $request)
     {
+        Log::info('INWARD GATEPASS STORE PAYLOAD:', $request->all());
+        
         $request->validate([
             'branch_id'      => 'required|exists:branches,id',
             'warehouse_id'   => 'required|exists:warehouses,id',
             'vendor_id'      => 'required|exists:vendors,id',
             'purchase_id'    => 'nullable|exists:purchases,id',
+            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
             'gatepass_date'  => 'required|date',
-            'product_id'     => 'required|array|min:1',
-            'product_id.*'   => 'required|exists:products,id',
-            'received_qty'   => 'required|array',
-            'received_qty.*' => 'required|numeric|min:1',
-            'note'           => 'nullable|string|max:200',
-            'transport_name' => 'nullable|string|max:200',
-            'bilty_no'       => 'nullable|string|max:100',
+            'items'          => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.received_qty' => 'required|numeric|min:0',
+            'items.*.unit_price' => 'nullable|numeric|min:0',
+            'items.*.line_total' => 'nullable|numeric|min:0',
         ]);
 
-        // ✅ ERP VALIDATION: Prevent receiving more than ordered (for purchases)
         $purchaseId = $request->purchase_id;
-        if ($purchaseId) {
-            $purchase = \App\Models\Purchase::findOrFail($purchaseId);
-            $pids = $request->input('product_id', []);
-            $receivedQtys = $request->input('received_qty', []);
+        $poId = $request->purchase_order_id;
+        $itemsData = $request->input('items', []);
 
-            for ($i = 0; $i < count($pids); $i++) {
-                $pid = (int)($pids[$i] ?? 0);
-                $receivedQty = (float)($receivedQtys[$i] ?? 0);
-                if (!$pid) continue;
+        // Validate quantities against ordered amounts
+        foreach ($itemsData as $item) {
+            $pid = $item['product_id'];
+            $receivedQty = (float)$item['received_qty'];
 
-                // Get ordered qty from purchase items
-                $purchaseItem = \App\Models\PurchaseItem::where('purchase_id', $purchaseId)
-                    ->where('product_id', $pid)
-                    ->first();
-
-                if (!$purchaseItem) {
-                    return back()->with('error', "Product {$pid} not found in this purchase.");
+            if ($purchaseId) {
+                $purchaseItem = PurchaseItem::where('purchase_id', $purchaseId)->where('product_id', $pid)->first();
+                if (!$purchaseItem) return back()->with('error', "Product ID {$pid} not found in this purchase.");
+                
+                $vendorRemaining = VendorRemaining::where('purchase_id', $purchaseId)->where('product_id', $pid)->first();
+                $alreadyReceived = $vendorRemaining->received_qty ?? 0;
+                if (($alreadyReceived + $receivedQty) > $purchaseItem->qty) {
+                    $product = Product::find($pid);
+                    return back()->with('error', "❌ {$product->item_name}: Cannot exceed ordered qty.");
                 }
+            }
 
-                // Get already received qty from vendor_remaining
-                $vendorRemaining = \App\Models\VendorRemaining::where('purchase_id', $purchaseId)
-                    ->where('product_id', $pid)
-                    ->first();
+            if ($poId) {
+                if (isset($item['colors']) && is_array($item['colors'])) {
+                    // Validate each color individually
+                    foreach ($item['colors'] as $cIdx => $color) {
+                        $cQty = (float)($item['color_qtys'][$cIdx] ?? 0);
+                        if ($cQty <= 0) continue;
 
-                $alreadyReceivedQty = $vendorRemaining->received_qty ?? 0;
-                $orderedQty = $purchaseItem->qty;
-                $totalReceivedWithThis = $alreadyReceivedQty + $receivedQty;
+                        $poItem = \App\Models\PurchaseOrderItem::where('purchase_order_id', $poId)
+                            ->where('product_id', $pid)
+                            ->where('color', $color)
+                            ->first();
+                        
+                        if (!$poItem) {
+                            return back()->with('error', "❌ Product ID {$pid} with color '{$color}' not found in this PO.");
+                        }
+                        
+                        if (($poItem->received_qty + $cQty) > $poItem->qty) {
+                            $product = Product::find($pid);
+                            return back()->with('error', "❌ {$product->item_name} ({$color}): Cannot exceed PO ordered qty ({$poItem->qty}).");
+                        }
+                    }
+                } else {
+                    // Standard validation for items without color breakdown
+                    $poItem = \App\Models\PurchaseOrderItem::where('purchase_order_id', $poId)
+                        ->where('product_id', $pid)
+                        ->whereNull('color')
+                        ->first();
 
-                // ❌ Cannot receive more than ordered
-                if ($totalReceivedWithThis > $orderedQty) {
-                    $product = \App\Models\Product::find($pid);
-                    $productName = $product->name ?? "Product {$pid}";
-                    $maxCanReceive = $orderedQty - $alreadyReceivedQty;
-                    return back()->with('error', 
-                        "❌ {$productName}: Already received {$alreadyReceivedQty} units. " .
-                        "Ordered total: {$orderedQty}. " .
-                        "Can receive max {$maxCanReceive} more units."
-                    );
+                    if (!$poItem) {
+                        // Fallback: Check total if specifically null color not found
+                        $totalOrdered = \App\Models\PurchaseOrderItem::where('purchase_order_id', $poId)
+                            ->where('product_id', $pid)
+                            ->sum('qty');
+                        $totalReceived = \App\Models\PurchaseOrderItem::where('purchase_order_id', $poId)
+                            ->where('product_id', $pid)
+                            ->sum('received_qty');
+                        
+                        if (($totalReceived + $receivedQty) > $totalOrdered) {
+                            $product = Product::find($pid);
+                            return back()->with('error', "❌ {$product->item_name}: Cannot exceed total PO ordered qty.");
+                        }
+                    } else {
+                        if (($poItem->received_qty + $receivedQty) > $poItem->qty) {
+                            $product = Product::find($pid);
+                            return back()->with('error', "❌ {$product->item_name}: Cannot exceed PO ordered qty.");
+                        }
+                    }
                 }
             }
         }
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $itemsData, $purchaseId, $poId) {
             $gatepass = InwardGatepass::create([
                 'branch_id'      => $request->branch_id,
                 'warehouse_id'   => $request->warehouse_id,
                 'vendor_id'      => $request->vendor_id,
-                'purchase_id'    => $request->purchase_id,
+                'purchase_id'    => $purchaseId,
+                'purchase_order_id' => $poId,
                 'gatepass_date'  => $request->gatepass_date,
                 'note'           => $request->note,
                 'transport_name' => $request->transport_name,
                 'bilty_no'       => $request->bilty_no,
+                'vehicle_type'   => $request->vehicle_type,
+                'vehicle_no'     => $request->vehicle_no,
+                'driver_name'    => $request->driver_name,
+                'driver_no'      => $request->driver_no,
+                'dispatch_date'  => $request->dispatch_date,
+                'delivery_challan_no' => $request->delivery_challan_no,
+                'freight_charges'=> $request->freight_charges,
                 'created_by'     => auth()->id(),
                 'status'         => 'pending',
             ]);
 
-            $pids = $request->input('product_id', []);
-            $receivedQtys = $request->input('received_qty', []);
-            $purchaseId = $request->purchase_id;
-
             $now = now();
-            $movementRows = [];
+            foreach ($itemsData as $item) {
+                $pid = (int)$item['product_id'];
+                
+                // Handle Color Breakdown
+                if (isset($item['colors']) && is_array($item['colors'])) {
+                    foreach ($item['colors'] as $cIdx => $color) {
+                        $cQty = (float)($item['color_qtys'][$cIdx] ?? 0);
+                        if ($cQty <= 0) continue;
 
-            for ($i=0; $i<count($pids); $i++) {
-                $pid = (int)($pids[$i] ?? 0);
-                $receivedQty = (float)($receivedQtys[$i] ?? 0);
-                if (!$pid || $receivedQty <= 0) continue;
+                        $this->createInwardItem($gatepass, $pid, $cQty, $item, $color);
+                        $this->processStockMovement($gatepass, $pid, $cQty, $request->branch_id, $request->warehouse_id, $purchaseId, $poId, $request->vendor_id, $color);
+                    }
+                } else {
+                    // Standard single row
+                    $receivedQty = (float)$item['received_qty'];
+                    if ($receivedQty <= 0) continue;
 
-                // Create inward gatepass item with received qty
-                InwardGatepassItem::create([
-                    'inward_gatepass_id' => $gatepass->id,
-                    'product_id'         => $pid,
-                    'qty'                => $receivedQty,
-                ]);
-
-                // movement (+) - only for received qty
-                $movementRows[] = [
-                    'product_id' => $pid,
-                    'branch_id'  => (int)$request->branch_id,  // ✅ ERP STANDARD: Track branch
-                    'type'       => 'in',
-                    'qty'        => $receivedQty,
-                    'ref_type'   => 'INWARD',
-                    'ref_id'     => $gatepass->id,
-                    'note'       => 'Inward gatepass',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-
-                // stocks upsert - only for received qty
-                $this->upsertStocks($pid, +$receivedQty, (int)$request->branch_id, (int)$request->warehouse_id);
-
-                // Handle partial delivery tracking if from purchase
-                if ($purchaseId) {
-                    $this->handleVendorRemaining(
-                        $purchaseId,
-                        $pid,
-                        $receivedQty,
-                        (int)$request->vendor_id,
-                        (int)$request->warehouse_id
-                    );
+                    $this->createInwardItem($gatepass, $pid, $receivedQty, $item);
+                    $this->processStockMovement($gatepass, $pid, $receivedQty, $request->branch_id, $request->warehouse_id, $purchaseId, $poId, $request->vendor_id, null);
                 }
-            }
-
-            if (!empty($movementRows)) {
-                DB::table('stock_movements')->insert($movementRows);
             }
         });
 
-        return redirect()->route('InwardGatepass.home')
-                         ->with('success','Inward Gatepass Created Successfully');
+        return redirect()->route('InwardGatepass.home')->with('success','Inward Gatepass Created Successfully');
     }
+
+    private function createInwardItem($gatepass, $pid, $qty, $itemData, $color = null)
+    {
+        InwardGatepassItem::create([
+            'inward_gatepass_id' => $gatepass->id,
+            'product_id'         => $pid,
+            'qty'                => $qty,
+            'color'              => $color,
+            'packing_type'       => $itemData['packing_type'] ?? null,
+            'packing_qty'        => $itemData['packing_qty'] ?? null,
+            'item_per_piece'     => $itemData['item_per_piece'] ?? null,
+            'loose_piece'        => $itemData['loose_piece'] ?? null,
+            'unit'               => $itemData['unit'] ?? null,
+        ]);
+    }
+
+    private function processStockMovement($gatepass, $pid, $qty, $branchId, $warehouseId, $purchaseId, $poId, $vendorId, $color = null)
+    {
+        $now = now();
+        DB::table('stock_movements')->insert([
+            'product_id' => $pid,
+            'branch_id'  => (int)$branchId,
+            'type'       => 'in',
+            'qty'        => $qty,
+            'ref_type'   => 'INWARD',
+            'ref_id'     => $gatepass->id,
+            'note'       => 'Inward gatepass',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->upsertStocks($pid, +$qty, (int)$branchId, (int)$warehouseId);
+
+        if ($purchaseId) {
+            $this->handleVendorRemaining($purchaseId, $pid, $qty, (int)$vendorId, (int)$warehouseId);
+        }
+
+        if ($poId) {
+            $this->handlePOReceipt($poId, $pid, $qty, $color);
+        }
+    }
+
+    private function handlePOReceipt($poId, $productId, $receivedQty, $color = null)
+    {
+        $query = \App\Models\PurchaseOrderItem::where('purchase_order_id', $poId)->where('product_id', $productId);
+        
+        if ($color) {
+            $query->where('color', $color);
+        } else {
+            $query->whereNull('color');
+        }
+
+        $item = $query->first();
+        if ($item) {
+            $item->increment('received_qty', $receivedQty);
+        }
+        
+        $po = \App\Models\PurchaseOrder::with('items')->find($poId);
+        $totalOrdered = $po->items->sum('qty');
+        $totalReceived = $po->items->sum('received_qty');
+
+        if ($totalReceived >= $totalOrdered) {
+            $po->update(['status' => 'received']);
+        } elseif ($totalReceived > 0) {
+            $po->update(['status' => 'partially_received']);
+        }
+    }
+
 
     /**
      * Handle vendor remaining tracking for partial deliveries
@@ -333,13 +466,18 @@ class InwardgatepassController extends Controller
         $branches   = Branch::orderBy('name')->get();
         $isSuperAdmin = Auth::user()->hasRole('super admin');
         
-        // ✅ ERP STANDARD: Filter warehouses by gatepass's branch
         $warehouses = Warehouse::whereHas('branches', function($q) use ($gatepass) {
             $q->where('branch_id', $gatepass->branch_id);
         })->orderBy('warehouse_name')->get();
         
         $vendors    = Vendor::orderBy('name')->get();
-        return view('admin_panel.inward.edit', compact('gatepass','branches','warehouses','vendors','isSuperAdmin'));
+        $allUnits = Unit::orderBy('name')->get();
+        $po = null;
+        $purchase = null;
+        $existingColors = $this->getExistingColors();
+        $allProducts = Product::with(['brand', 'unit'])->orderBy('item_name')->get();
+
+        return view('admin_panel.inward.edit', compact('gatepass','branches','warehouses','vendors','isSuperAdmin', 'allUnits', 'po', 'existingColors', 'allProducts', 'purchase'));
     }
 
     // UPDATE (delta movements + stocks)
@@ -350,12 +488,9 @@ class InwardgatepassController extends Controller
             'warehouse_id'   => 'required|exists:warehouses,id',
             'vendor_id'      => 'required|exists:vendors,id',
             'gatepass_date'  => 'required|date',
-            'product_id'     => 'required|array|min:1',
-            'product_id.*'   => 'required|exists:products,id',
-            'qty'            => 'required|array',
-            'qty.*'          => 'required|numeric|min:1',
-            'note'           => 'nullable|string|max:200',
-            'transport_name' => 'nullable|string|max:200',
+            'items'          => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.received_qty' => 'required|numeric|min:0.01',
         ]);
 
         DB::transaction(function () use ($request, $id) {
@@ -363,19 +498,48 @@ class InwardgatepassController extends Controller
             $oldBranch = (int)$gatepass->branch_id;
             $oldWh     = (int)$gatepass->warehouse_id;
 
-            // old totals per product
-            $oldMap = $gatepass->items->groupBy('product_id')->map(fn($g)=> (float)$g->sum('qty'));
+            // Map of old totals for deltas (grouped by product + color)
+            $oldMap = $gatepass->items->map(function($i) {
+                return [
+                    'key' => $i->product_id . '_' . ($i->color ?? ''),
+                    'pid' => $i->product_id,
+                    'color' => $i->color,
+                    'qty' => (float)$i->qty
+                ];
+            })->groupBy('key')->map(fn($g) => [
+                'pid' => $g[0]['pid'],
+                'color' => $g[0]['color'],
+                'qty' => (float)$g->sum('qty')
+            ]);
 
-            // new items map
-            $pids = $request->input('product_id', []);
-            $qtys = $request->input('qty', []);
-            $newMap = collect();
-            for ($i=0; $i<count($pids); $i++) {
-                $pid = (int)($pids[$i] ?? 0);
-                $q   = (float)($qtys[$i] ?? 0);
-                if (!$pid || $q<=0) continue;
-                $newMap[$pid] = ($newMap[$pid] ?? 0) + $q;
+            // Map of new totals (grouped by product + color)
+            $itemsData = $request->input('items', []);
+            $newItemsList = [];
+            foreach ($itemsData as $item) {
+                $pid = (int)$item['product_id'];
+                if (isset($item['colors']) && is_array($item['colors'])) {
+                    foreach ($item['colors'] as $cIdx => $color) {
+                        $cQty = (float)($item['color_qtys'][$cIdx] ?? 0);
+                        if ($cQty <= 0) continue;
+                        $newItemsList[] = ['pid' => $pid, 'color' => $color, 'qty' => $cQty];
+                    }
+                } else {
+                    $newItemsList[] = ['pid' => $pid, 'color' => null, 'qty' => (float)$item['received_qty']];
+                }
             }
+
+            $newMap = collect($newItemsList)->map(function($i) {
+                return [
+                    'key' => $i['pid'] . '_' . ($i['color'] ?? ''),
+                    'pid' => $i['pid'],
+                    'color' => $i['color'],
+                    'qty' => (float)$i['qty']
+                ];
+            })->groupBy('key')->map(fn($g) => [
+                'pid' => $g[0]['pid'],
+                'color' => $g[0]['color'],
+                'qty' => (float)$g->sum('qty')
+            ]);
 
             // header update
             $gatepass->update([
@@ -385,35 +549,52 @@ class InwardgatepassController extends Controller
                 'gatepass_date'  => $request->gatepass_date,
                 'note'           => $request->note,
                 'transport_name' => $request->transport_name,
+                'bilty_no'       => $request->bilty_no,
+                'vehicle_type'   => $request->vehicle_type,
+                'vehicle_no'     => $request->vehicle_no,
+                'driver_name'    => $request->driver_name,
+                'driver_no'      => $request->driver_no,
+                'dispatch_date'  => $request->dispatch_date,
+                'delivery_challan_no' => $request->delivery_challan_no,
+                'freight_charges'=> $request->freight_charges,
             ]);
 
             // replace items
             InwardGatepassItem::where('inward_gatepass_id', $gatepass->id)->delete();
-            foreach ($newMap as $pid => $q) {
-                InwardGatepassItem::create([
-                    'inward_gatepass_id' => $gatepass->id,
-                    'product_id'         => $pid,
-                    'qty'                => $q,
-                ]);
+            foreach ($itemsData as $item) {
+                $pid = (int)$item['product_id'];
+                if (isset($item['colors']) && is_array($item['colors'])) {
+                    foreach ($item['colors'] as $cIdx => $color) {
+                        $cQty = (float)($item['color_qtys'][$cIdx] ?? 0);
+                        if ($cQty <= 0) continue;
+                        $this->createInwardItem($gatepass, $pid, $cQty, $item, $color);
+                    }
+                } else {
+                    $this->createInwardItem($gatepass, $pid, (float)$item['received_qty'], $item);
+                }
             }
 
-            // deltas
-            $now = now();
-            $movs = [];
+            // process deltas for stock and tracking
             $allKeys = $oldMap->keys()->merge($newMap->keys())->unique();
-
-            foreach ($allKeys as $pid) {
-                $oldQ = (float)($oldMap[$pid] ?? 0);
-                $newQ = (float)($newMap[$pid] ?? 0);
+            $now = now();
+            foreach ($allKeys as $key) {
+                $oldData = $oldMap[$key] ?? ['pid' => explode('_', $key)[0], 'color' => explode('_', $key)[1] ?: null, 'qty' => 0];
+                $newData = $newMap[$key] ?? ['pid' => explode('_', $key)[0], 'color' => explode('_', $key)[1] ?: null, 'qty' => 0];
+                
+                $pid   = (int)$oldData['pid'];
+                $color = $oldData['color'];
+                $oldQ  = (float)$oldData['qty'];
+                $newQ  = (float)$newData['qty'];
+                
                 $delta = $newQ - $oldQ;
                 if ($delta == 0) continue;
 
                 $type = $delta > 0 ? 'in' : 'out';
                 $qty  = abs($delta);
 
-                $movs[] = [
+                DB::table('stock_movements')->insert([
                     'product_id' => (int)$pid,
-                    'branch_id'  => (int)$request->branch_id,  // ✅ ERP STANDARD: Track branch
+                    'branch_id'  => (int)$request->branch_id,
                     'type'       => $type,
                     'qty'        => $qty,
                     'ref_type'   => 'INWARD_EDIT',
@@ -421,35 +602,22 @@ class InwardgatepassController extends Controller
                     'note'       => 'Inward edit delta',
                     'created_at' => $now,
                     'updated_at' => $now,
-                ];
+                ]);
 
-                // stocks adjust on NEW branch/wh (simple approach).
-                // If branch/wh changed, you may also want to reverse old and add to new; for now we apply on new header.
                 $this->upsertStocks((int)$pid, ($type==='in' ? +$qty : -$qty), (int)$request->branch_id, (int)$request->warehouse_id);
-            }
 
-            if (!empty($movs)) {
-                DB::table('stock_movements')->insert($movs);
-            }
-
-            // ✅ CRITICAL: Update vendor_remaining for partial delivery tracking
-            if ($gatepass->purchase_id) {
-                foreach ($allKeys as $pid) {
-                    $oldQ = (float)($oldMap[$pid] ?? 0);
-                    $newQ = (float)($newMap[$pid] ?? 0);
-                    $delta = $newQ - $oldQ;
-                    if ($delta == 0) continue;  // Skip if no change
-
-                    // Call handleVendorRemaining with delta
-                    // This will ADD the delta to received_qty and recalculate remaining
-                    $this->handleVendorRemaining(
-                        (int)$gatepass->purchase_id,
-                        (int)$pid,
-                        $delta,
-                        (int)$request->vendor_id,
-                        (int)$request->warehouse_id
-                    );
+                if ($gatepass->purchase_id) {
+                    $this->handleVendorRemaining((int)$gatepass->purchase_id, (int)$pid, $delta, (int)$request->vendor_id, (int)$request->warehouse_id);
                 }
+                
+                // If PO was linked, we should technically sync PO received_qty too
+                if ($gatepass->purchase_order_id) {
+                    $this->handlePOReceipt((int)$gatepass->purchase_order_id, (int)$pid, $delta, $color);
+                }
+            }
+
+            if ($gatepass->purchase_id) {
+                $this->syncPurchaseWithGatepass($gatepass);
             }
         });
 
@@ -530,20 +698,27 @@ class InwardgatepassController extends Controller
     public function searchProducts(Request $request)
     {
         $q = $request->get('q','');
-        $query = Product::with('brand');
+        $vendorId = $request->get('vendor_id');
+
+        $query = Product::with(['brand', 'unit']);
         
-        // Apply branch filter for non-super admins
-        if (Auth::check() && !Auth::user()->hasRole('super admin')) {
-            $branchId = Auth::user()->branch_id ?? 0;
-            $query->where('branch_id', $branchId);
+        // Filter by vendor brands if vendor_id is provided
+        if ($vendorId) {
+            $vendor = Vendor::find($vendorId);
+            if ($vendor && !empty($vendor->brand_ids)) {
+                $query->whereIn('brand_id', $vendor->brand_ids);
+            } else if ($vendor) {
+                // If vendor has NO brands assigned, they see NO products
+                $query->whereRaw('1=0');
+            }
         }
-        
+
         $products = $query
             ->where(function($x) use ($q){
                 $x->where('item_name','like',"%{$q}%")
                   ->orWhere('item_code','like',"%{$q}%");
             })
-            ->limit(10)
+            ->limit(20)
             ->get();
 
         // Add ownership information
@@ -553,7 +728,8 @@ class InwardgatepassController extends Controller
                 'id' => $p->id,
                 'item_name' => $p->item_name,
                 'item_code' => $p->item_code,
-                'brand' => $p->brand,
+                'brand_name' => $p->brand->name ?? '',
+                'unit_name' => $p->unit->name ?? 'unit',
                 'price' => $p->price,
                 'retail_price' => $p->retail_price ?? $p->price,
                 'branch_id' => $p->branch_id,
@@ -631,6 +807,161 @@ class InwardgatepassController extends Controller
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ]);
+        }
+    }
+
+    private function getExistingColors()
+    {
+        $raw = DB::table('purchase_order_items')->whereNotNull('color')->where('color', '!=', '')->distinct()->pluck('color')
+            ->merge(DB::table('inward_gatepass_items')->whereNotNull('color')->where('color', '!=', '')->distinct()->pluck('color'))
+            ->merge(DB::table('products')->whereNotNull('color')->where('color', '!=', '')->distinct()->pluck('color'))
+            ->unique()->toArray();
+
+        $flattened = [];
+        foreach ($raw as $c) {
+            if (str_starts_with($c, '[') && str_ends_with($c, ']')) {
+                $decoded = json_decode($c, true);
+                if (is_array($decoded)) {
+                    $flattened = array_merge($flattened, $decoded);
+                    continue;
+                }
+            }
+            $flattened[] = $c;
+        }
+        return array_values(array_unique(array_filter($flattened)));
+    }
+
+    /**
+     * ✅ ERP STANDARD: Sync linked Purchase Invoice with Gatepass changes
+     * 
+     * @param InwardGatepass $gatepass
+     * @return void
+     */
+    private function syncPurchaseWithGatepass(InwardGatepass $gatepass)
+    {
+        $purchase = Purchase::with('items')->find($gatepass->purchase_id);
+        if (!$purchase) return;
+
+        // Get gatepass items grouped by product + color
+        $gpItems = InwardGatepassItem::where('inward_gatepass_id', $gatepass->id)
+            ->get()
+            ->groupBy(fn($i) => $i->product_id . '_' . ($i->color ?? ''))
+            ->map(fn($rows) => [
+                'pid' => $rows[0]->product_id,
+                'color' => $rows[0]->color,
+                'qty' => (float)$rows->sum('qty')
+            ]);
+
+        $existingPurchaseItems = $purchase->items->keyBy(fn($i) => $i->product_id . '_' . ($i->color ?? ''));
+        
+        // 1. Update or Create Purchase Items
+        foreach ($gpItems as $key => $data) {
+            $pid = $data['pid'];
+            $color = $data['color'];
+            $qty = $data['qty'];
+
+            if ($existingPurchaseItems->has($key)) {
+                $pItem = $existingPurchaseItems->get($key);
+                $pItem->qty = $qty;
+                $pItem->line_total = ($pItem->price * $qty) - ($pItem->item_discount ?? 0);
+                $pItem->save();
+
+                // Sync tracking for existing item (Note: VendorRemaining currently only tracks product level, which is fine for totals)
+                \App\Models\VendorRemaining::updateOrCreate(
+                    ['purchase_id' => $purchase->id, 'product_id' => $pid],
+                    [
+                        'ordered_qty'   => $qty,
+                        'received_qty'  => $qty,
+                        'remaining_qty' => 0,
+                        'status'        => 'completed'
+                    ]
+                );
+            } else {
+                // New item added to gatepass, add to purchase too
+                $product = Product::find($pid);
+                $price = $product ? (float)($product->wholesale_price ?? 0) : 0;
+                
+                PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'product_id'  => $pid,
+                    'qty'         => $qty,
+                    'price'       => $price,
+                    'line_total'  => ($price * $qty),
+                    'warehouse_id'=> $purchase->warehouse_id,
+                    'color'       => $color,
+                ]);
+
+                // Also create VendorRemaining tracking for this new item
+                \App\Models\VendorRemaining::updateOrCreate(
+                    ['purchase_id' => $purchase->id, 'product_id' => $pid],
+                    [
+                        'vendor_id'     => $purchase->vendor_id,
+                        'ordered_qty'   => $qty,
+                        'received_qty'  => $qty,
+                        'remaining_qty' => 0,
+                        'status'        => 'completed',
+                        'warehouse_id'  => $purchase->warehouse_id
+                    ]
+                );
+            }
+        }
+
+        // 2. Remove items from Purchase that are no longer in Gatepass
+        foreach ($existingPurchaseItems as $key => $pItem) {
+            if (!$gpItems->has($key)) {
+                // Delete tracking record first
+                \App\Models\VendorRemaining::where('purchase_id', $purchase->id)
+                    ->where('product_id', $pid)
+                    ->delete();
+                
+                $pItem->delete();
+            }
+        }
+
+        // 3. Recalculate Purchase Header
+        $purchase->load('items'); // reload to get updated items
+        $subtotal = (float)$purchase->items->sum('line_total');
+        
+        $oldNetAmount = (float)$purchase->net_amount;
+        $purchase->subtotal = $subtotal;
+        $purchase->net_amount = $subtotal + (float)$purchase->extra_cost - (float)$purchase->discount;
+        $purchase->due_amount = $purchase->net_amount - (float)$purchase->paid_amount;
+        $purchase->save();
+
+        // 4. ✅ ERP STANDARD: Update Vendor Ledger to maintain financial integrity
+        // Search for the ledger entry associated with this purchase invoice
+        $ledgerEntry = VendorLedger::where('vendor_id', $purchase->vendor_id)
+            ->where('branch_id', $purchase->branch_id)
+            ->where('description', 'LIKE', "%#{$purchase->invoice_no}%")
+            ->orderBy('id', 'desc') // Get the most recent if multiple (should be one)
+            ->first();
+
+        if ($ledgerEntry) {
+            $newNetAmount = (float)$purchase->net_amount;
+            $diff = $newNetAmount - $oldNetAmount;
+
+            if (abs($diff) > 0.001) { // Only if there is a significant change
+                $ledgerEntry->credit_amount = $newNetAmount;
+                $ledgerEntry->closing_balance = (float)$ledgerEntry->closing_balance + $diff;
+                $ledgerEntry->save();
+
+                // 🔥 CRITICAL: Recalculate ALL subsequent ledger entries for this vendor/branch
+                // This prevents "ghost" balances where one edit breaks all future totals
+                $subsequentEntries = VendorLedger::where('vendor_id', $purchase->vendor_id)
+                    ->where('branch_id', $purchase->branch_id)
+                    ->where('id', '>', $ledgerEntry->id)
+                    ->orderBy('id', 'asc')
+                    ->get();
+
+                foreach ($subsequentEntries as $entry) {
+                    $entry->opening_balance = (float)$entry->opening_balance + $diff;
+                    $entry->previous_balance = (float)$entry->previous_balance + $diff;
+                    $entry->closing_balance = (float)$entry->closing_balance + $diff;
+                    $entry->save();
+                }
+
+                \Log::info("Synced Purchase Ledger for {$purchase->invoice_no}. Delta: {$diff}");
+            }
         }
     }
 }

@@ -24,5 +24,24 @@ public function branches()
     return $this->belongsToMany(Branch::class, 'branch_warehouse');
 }
 
+/**
+ * Users explicitly assigned to manage/access this warehouse.
+ * Super Admin can assign cross-branch incharges here.
+ */
+public function assignedUsers()
+{
+    return $this->belongsToMany(User::class, 'user_warehouses')
+                ->withPivot('is_incharge', 'notes')
+                ->withTimestamps();
+}
+
+/**
+ * Get the primary incharge of this warehouse (if any).
+ */
+public function incharge()
+{
+    return $this->assignedUsers()->wherePivot('is_incharge', true)->first();
+}
+
 
 }

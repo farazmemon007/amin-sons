@@ -24,8 +24,8 @@
                     <button onclick="window.print()" class="btn btn-sm btn-outline-secondary me-2">
                         <i class="fas fa-print me-1"></i> Print
                     </button>
-                    <button onclick="exportCSV()" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-file-csv me-1"></i> Export CSV
+                    <button onclick="showExportOptions()" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-download me-1"></i> Export
                     </button>
                 </div>
             </div>
@@ -168,6 +168,10 @@
         </div>
     </div>
 </div>
+
+<!-- Scripts for Export options -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
 .lbl  { font-size:11px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.4px; }
@@ -520,35 +524,108 @@ $(document).ready(function () {
 
     /* ---------- WhatsApp Share ---------- */
     window.shareWhatsApp = function() {
-        var phone = $('#cust_mobile').text().trim().replace(/[^0-9+]/g, '');
-        if (!phone || phone === '' || phone === '-') {
-            alert('Customer mobile number is not available or invalid.');
-            return;
-        }
-        
-        // Format phone number to start with country code if needed (e.g. 92 instead of 0)
-        if (phone.startsWith('0')) {
-            phone = '92' + phone.substring(1);
-        }
+        Swal.fire({
+            title: 'Preparing WhatsApp Share...',
+            text: 'Generating PDF document to share.',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
-        var custName = $('#cust_name').text().trim();
-        var period = $('#cust_period').text().trim();
-        var opening = $('#s_open').text().trim();
-        var debit = $('#s_debit').text().trim();
-        var credit = $('#s_credit').text().trim();
-        var closing = $('#s_close').text().trim();
+        var element = document.getElementById('ledgerBox');
+        var opt = {
+          margin:       0.3,
+          filename:     'customer_ledger_' + new Date().toISOString().slice(0,10) + '.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
 
-        var msg = "*Customer Ledger Summary*\n\n";
-        msg += "*Customer:* " + custName + "\n";
-        msg += "*Period:* " + period + "\n\n";
-        msg += "*Opening Balance:* " + opening + "\n";
-        msg += "*Total Debit:* " + debit + "\n";
-        msg += "*Total Credit:* " + credit + "\n";
-        msg += "*Closing Balance:* " + closing + "\n\n";
-        msg += "Please check your full printed/PDF statement for detailed transactions.";
+        html2pdf().set(opt).from(element).outputPdf('blob').then(function(pdfBlob) {
+            var file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+            
+            // Try Web Share API first for direct file sharing
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                navigator.share({
+                    title: 'Customer Ledger',
+                    text: 'Please find the attached customer ledger.',
+                    files: [file]
+                }).then(() => {
+                    Swal.close();
+                }).catch((error) => {
+                    console.log('Error sharing', error);
+                    fallbackWaShare(pdfBlob, opt.filename);
+                });
+            } else {
+                fallbackWaShare(pdfBlob, opt.filename);
+            }
+        });
+    };
 
-        var waUrl = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg);
-        window.open(waUrl, '_blank');
+    function fallbackWaShare(pdfBlob, filename) {
+        Swal.fire({
+            icon: 'info',
+            title: 'Share PDF via WhatsApp',
+            text: 'The PDF will be downloaded now. WhatsApp will open allowing you to choose any chat. Please attach the downloaded PDF manually.',
+            confirmButtonText: 'Download & Open WhatsApp'
+        }).then(() => {
+            // Download the file
+            var url = URL.createObjectURL(pdfBlob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Open WhatsApp without a specific phone number to allow chat selection
+            var msg = "*Customer Ledger*\nPlease find the attached PDF document.";
+            var waUrl = "https://wa.me/?text=" + encodeURIComponent(msg);
+            window.open(waUrl, '_blank');
+        });
+    }
+    /* ---------- Export Options & PDF ---------- */
+    window.showExportOptions = function() {
+        Swal.fire({
+            title: 'Export Customer Ledger',
+            text: 'Choose your preferred export format:',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#dc3545',
+            confirmButtonText: '<i class="fas fa-file-excel me-1"></i> Excel (CSV)',
+            cancelButtonText: '<i class="fas fa-file-pdf me-1"></i> PDF',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                exportCSV();
+            } else if (result.dismiss === Swal.DismissReason.cancel) {
+                exportPDF();
+            }
+        });
+    };
+
+    window.exportPDF = function() {
+        Swal.fire({
+            title: 'Generating PDF...',
+            text: 'Please wait while your PDF is being prepared.',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        var element = document.getElementById('ledgerBox');
+        var opt = {
+          margin:       0.3,
+          filename:     'customer_ledger_' + new Date().toISOString().slice(0,10) + '.pdf',
+          image:        { type: 'jpeg', quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true },
+          jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(function() {
+            Swal.close();
+        });
     };
 
     /* ---------- CSV Export ---------- */

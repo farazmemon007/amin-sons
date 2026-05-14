@@ -597,6 +597,18 @@
                         </div>
 
                         <div class="mb-2">
+                            <label class="form-label fw-bold">Salesman (Optional)</label>
+                            <select class="form-select select2" name="salesman_id" id="salesman_id">
+                                <option value="">Select Salesman</option>
+                                @foreach($salesmen as $sm)
+                                    <option value="{{ $sm->id }}" {{ (isset($booking) && $booking->salesman_id == $sm->id) ? 'selected' : '' }}>
+                                        {{ $sm->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-2">
                             <label class="form-label fw-bold">Remarks</label>
                             <textarea class="form-control" id="remarks" name="remarks"></textarea>
                         </div>
@@ -762,21 +774,21 @@
 
                 {{-- Buttons --}}
                 <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-                    {{-- <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button> --}}
-                    {{-- <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button> --}}
+                    {{-- <button type="button" class="btn btn-sm btn-primary btn-action" id="btnEdit">Edit</button> --}}
+                    {{-- <button type="button" class="btn btn-sm btn-warning btn-action" id="btnRevert">Revert</button> --}}
 
-                    <button type="button" class="btn btn-sm btn-success" id="btnSave">Sale Order</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted" disabled>warehouse sale</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted2" disabled>Sale</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted3" >Post</button>
+                    <button type="button" class="btn btn-sm btn-success btn-action" id="btnSave">Sale Order</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted" disabled>warehouse sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted2" disabled>Sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted3" >Post</button>
 
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">BookingInvoice</button>
-                    {{-- <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Save + Invoice </button> --}}
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnDCPrint">DC Print</button>
-                    <button type="button" class="btn btn-sm btn-primary" id="btnThermalPrint">🧾 Thermal Print</button>
+                    <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint">BookingInvoice</button>
+                    {{-- <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint2">Save + Invoice </button> --}}
+                    <!-- <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnDCPrint">DC Print</button> -->
+                    <!-- <button type="button" class="btn btn-sm btn-primary btn-action" id="btnThermalPrint">🧾 Thermal Print</button> -->
 
-                    <button type="button" class="btn btn-sm btn-danger" id="btnDelete">Delete</button>
-                    <button type="button" class="btn btn-sm btn-dark" id="btnExit">Exit</button>
+                    <button type="button" class="btn btn-sm btn-danger btn-action" id="btnDelete">Delete</button>
+                    <button type="button" class="btn btn-sm btn-dark btn-action" id="btnExit">Exit</button>
                 </div>
             </form>
         </div>
@@ -800,7 +812,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-info btn-lg" id="branchConfirmBtn" style="pointer-events: auto; cursor: pointer;">✓ Confirm & Proceed</button>
+                    <button type="button" class="btn btn-info btn-lg btn-confirm" id="branchConfirmBtn" style="pointer-events: auto; cursor: pointer;">✓ Confirm & Proceed</button>
                 </div>
             </div>
         </div>
@@ -1539,6 +1551,46 @@
             setTimeout(() => el.addClass('d-none'), 2500);
         }
 
+        // ================= BUTTON LOCKING LOGIC =================
+        let IS_BUSY = false;
+
+        function setBusy($btn = null) {
+            IS_BUSY = true;
+            // Disable all action buttons
+            $('.btn-action, #btnAdd, #btnAddRV, .btn-confirm').prop('disabled', true);
+            
+            // If a specific button was clicked, show loading state
+            if ($btn && $btn.length) {
+                $btn.data('original-text', $btn.html());
+                $btn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+            }
+        }
+
+        function setReady($btn = null) {
+            IS_BUSY = false;
+            // Restore buttons state (this will be further refined by refreshPostedState)
+            $('.btn-action, #btnAdd, #btnAddRV, .btn-confirm').prop('disabled', false);
+            
+            // Restore button text if applicable
+            if ($btn && $btn.length && $btn.data('original-text')) {
+                $btn.html($btn.data('original-text'));
+            }
+            
+            // Re-run the standard state refresher to ensure buttons that should be disabled stay disabled
+            if (typeof refreshPostedState === 'function') {
+                refreshPostedState();
+            }
+        }
+
+        // Global intercept for action buttons to prevent double-clicks
+        $(document).on('click', '.btn-action', function(e) {
+            if (IS_BUSY) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+
         function addNewRow() {
             $('#salesTableBody').append(`
       <tr>
@@ -1577,7 +1629,7 @@
 
         <!-- RETAIL PRICE -->
         <td class="medium-col">
-          <input type="text" id="retail-price" class="form-control retail-price text-end input-readonly" value="0" readonly name="retail_price[]">
+          <input type="text" class="form-control retail-price text-end" value="0" name="retail_price[]">
         </td>
 
     <!-- DISCOUNT -->
@@ -1666,28 +1718,29 @@
 
         function refreshPostedState() {
             const state = canPost();
-            // Quick-post (btnPosted2) should be enabled only for cash/walking customers
             const partyType = $('input[name="partyType"]:checked').val();
             const isPosted = $('#is_posted').val() === '1';
+            const isFinalized = $('#is_finalized').val() === '1';
             
-            // btnPosted: enabled if items exist AND NOT already posted
-            $('#btnPosted, #btnHeaderPosted').prop('disabled', !state || isPosted);
+            // btnPosted & btnHeaderPosted: disabled if no items OR already posted OR already finalized
+            $('#btnPosted, #btnHeaderPosted').prop('disabled', !state || isPosted || isFinalized);
             
-            // btnPosted2: enabled if items AND valid party type AND NOT posted
-            const quickAllowed = (partyType === 'cash' || partyType === 'walking' || partyType === 'credit') && state && !isPosted;
+            // btnPosted2: enabled if items AND valid party type AND NOT posted AND NOT finalized
+            const quickAllowed = (partyType === 'cash' || partyType === 'walking' || partyType === 'credit') && state && !isPosted && !isFinalized;
             $('#btnPosted2').prop('disabled', !quickAllowed);
             
-            // btnPosted3: enabled if items exist AND NOT finalized (same logic as btnPosted & btnPosted2)
-            const canFinalize = state && ($('#is_finalized').val() !== '1');
-            $('#btnPosted3').prop('disabled', !canFinalize);
+            // btnPosted3: disabled if no items OR already posted OR already finalized
+            const canDraftPost = state && !isPosted && !isFinalized;
+            $('#btnPosted3').prop('disabled', !canDraftPost);
             
             console.log('🔧 refreshPostedState:', {
                 hasItems: state,
                 partyType: partyType,
                 isPosted: isPosted,
-                btnPosted_disabled: !state || isPosted,
+                isFinalized: isFinalized,
+                btnPosted_disabled: !state || isPosted || isFinalized,
                 btnPosted2_disabled: !quickAllowed,
-                btnPosted3_disabled: !canFinalize
+                btnPosted3_disabled: !canDraftPost
             });
         }
 
@@ -1733,13 +1786,10 @@
             console.log('ensureSaved called');
             return new Promise(function(resolve, reject) {
 
-                // ✅ CHANGED: Remove early return when booking exists
-                // Now we ALWAYS save/update booking items from form (even when converting from booking)
-                // This ensures that if user modifies qty/price/discount, those changes are saved
-
                 // 🔴 VALIDATION: Check if form has items before saving
                 if (!canPost()) {
                     showAlert('danger', 'Please add at least one product with quantity before saving');
+                    setReady(); // Ensure buttons are restored if validation fails
                     reject({ msg: 'No items in form' });
                     return;
                 }
@@ -1749,83 +1799,58 @@
                     try {
                         computeRow($(this));
                     } catch (e) {
-                        // continue if computeRow fails for a row
                         console.warn('computeRow error', e);
                     }
                 });
                 updateGrandTotals();
 
-                // � Ensure discount fields have values (not empty strings)
+                // Ensure discount fields have values (not empty strings)
                 $('#salesTableBody tr').each(function() {
                     const $discValue = $(this).find('.discount-value');
                     const $discAmount = $(this).find('.discount-amount');
-
-                    // Set default 0.00 if empty
-                    if (!$discValue.val()) {
-                        $discValue.val('0.00');
-                    }
-                    if (!$discAmount.val()) {
-                        $discAmount.val('0.00');
-                    }
+                    if (!$discValue.val()) $discValue.val('0.00');
+                    if (!$discAmount.val()) $discAmount.val('0.00');
                 });
 
-                // �🔴 TESTING: form ka data console me print
                 const formData = serializeForm();
                 console.log('🚀 DATA GOING TO sale.ajax.save:', formData);
-
-                $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', true);
 
                 // 🔹 Add CSRF token to form data
                 const dataToSend = formData + '&_token=' + '{{ csrf_token() }}';
 
                 $.post('{{ route('sale.ajax.save') }}', dataToSend)
-
                     .done(function(res) {
                         console.log('✅ RESPONSE FROM SERVER:', res);
-
-                        $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
-
+                        
                         if (res?.ok) {
                             $('#booking_id').val(res.booking_id);
-                            // Update the invoice_no field with the actual generated invoice from backend
                             if (res.invoice_no) {
                                 $('input[name="Invoice_no"]').val(res.invoice_no);
                             }
-                            // Show branch invoice number if available, otherwise show booking_id
                             const displayNumber = res.invoice_no || res.booking_id;
                             const displayLabel = res.invoice_no ? 'Invoice #' : 'Booking #';
                             showAlert('success', 'Saved (' + displayLabel + displayNumber + ')');
+                            
+                            // 💡 We DON'T call setReady() here if it's part of a chain (like Post)
+                            // The caller will handle setReady() when the entire process is done.
                             resolve(res.booking_id);
                         } else {
                             showAlert('danger', res.msg || 'Save failed');
+                            setReady(); // Restore on error
                             reject(res);
                         }
                     })
-
                     .fail(function(xhr) {
                         console.error('❌ AJAX ERROR RESPONSE:', xhr.responseText);
-
-                        $('#btnSave, #btnHeaderPosted, #btnPosted').prop('disabled', false);
-
-                        // Attempt to extract a useful message from the server response
+                        setReady(); // Restore on network error
+                        
                         let msg = 'Save error';
                         try {
-                            // Prefer parsed JSON if available
                             const json = xhr.responseJSON || JSON.parse(xhr.responseText || '{}');
-                            if (json && (json.message || json.msg)) {
-                                msg = json.message || json.msg;
-                            } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
-                                // fallback: take first non-empty line
-                                msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
-                            }
+                            msg = json.message || json.msg || msg;
                         } catch (err) {
-                            if (xhr.responseJSON && (xhr.responseJSON.message || xhr.responseJSON.msg)) {
-                                msg = xhr.responseJSON.message || xhr.responseJSON.msg;
-                            } else if (typeof xhr.responseText === 'string' && xhr.responseText.trim()) {
-                                msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
-                            }
+                            msg = xhr.responseText.split('\n').find(l => l.trim()) || msg;
                         }
-
                         showAlert('danger', msg);
                         reject(xhr);
                     });
@@ -1907,8 +1932,7 @@
                     if (res && res.ok) {
                         showAlert('success', 'Posted successfully');
                         $('#is_posted').val('1'); // Mark sale as posted
-                        $('#btnPosted, #btnHeaderPosted, #btnSave').prop('disabled', true);
-                        enableBtnPosted3(); // ✅ Enable finalization button after post
+                        refreshPostedState();
 
                         if (res.invoice_url) {
                             window.open(res.invoice_url, '_blank');
@@ -1950,7 +1974,10 @@
         $('#btnEdit').on('click', () => alert('Edit mode activated'));
         $('#btnRevert').on('click', () => location.reload());
         $('#btnDelete').on('click', function() {
+            const $btn = $(this);
             if (!confirm('Reset all fields?')) return;
+            setBusy($btn);
+            
             $('#saleForm')[0].reset();
             $('#booking_id').val('');
             $('#salesTableBody').html('');
@@ -1959,18 +1986,26 @@
             updateGrandTotals();
             refreshPostedState();
             showAlert('success', 'Form cleared');
+            setReady($btn);
         });
         $('#btnSave').on('click', function() {
+            const $btn = $(this);
             // 🔴 Validate form has items
             if (!canPost()) {
                 showAlert('danger', 'Please add at least one product with quantity');
                 return;
             }
-            ensureSaved();
+            setBusy($btn);
+            ensureSaved().then(() => {
+                setReady($btn);
+            }).catch(() => {
+                setReady($btn);
+            });
         });
         
         // Quick post to Main Store for cash / walking customers (bypass warehouse modal)
         $('#btnPosted2').on('click', function() {
+            const $btn = $(this);
             const partyType = $('input[name="partyType"]:checked').val();
 
             console.log('Sale button clicked, IS_ADMIN:', window.IS_ADMIN, 'partyType:', partyType);
@@ -2007,6 +2042,8 @@
                 }
             }
 
+            setBusy($btn);
+
             // ONLY VALIDATE FOR NON-ADMIN (they use their own fixed branch)
             // ADMIN validation happens AFTER branch selection in confirmation button
             if (!(window.IS_ADMIN === 'true' || window.IS_ADMIN === true)) {
@@ -2014,6 +2051,7 @@
                 const stockValidation = validateBranchStock(window.USER_BRANCH_ID);
                 if (!stockValidation.ok) {
                     showAlert('danger', stockValidation.message);
+                    setReady($btn);
                     return;
                 }
             }
@@ -2021,33 +2059,28 @@
             // If user is admin, show branch selection modal first
             if (window.IS_ADMIN === 'true' || window.IS_ADMIN === true) {
                 console.log('Admin user detected, showing branch modal');
-                console.log('BRANCHES data:', window.BRANCHES);
                 
                 // Populate branch dropdown
                 const $branchSelect = $('#branchSelectionDropdown');
                 $branchSelect.empty();
-                $branchSelect.append('<option selected disabled>Choose a branch...</option>');
+                $branchSelect.append('<option selected disabled value="">Choose a branch...</option>');
                 
                 if (window.BRANCHES && window.BRANCHES.length > 0) {
-                    console.log('Adding', window.BRANCHES.length, 'branches to dropdown');
                     window.BRANCHES.forEach(branch => {
-                        console.log('Branch:', branch);
                         $branchSelect.append(`<option value="${branch.id}">${branch.branch_name || branch.name}</option>`);
                     });
-                } else {
-                    console.warn('No branches available');
                 }
                 
                 // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('branchSelectionModal'));
                 modal.show();
-                console.log('Modal shown');
+                setReady($btn); // Ready because user now needs to interact with modal
                 return;
             }
 
             console.log('Non-admin user, proceeding directly');
             // Non-admin users proceed directly with their branch (already validated above)
-            proceedWithSale(partyType);
+            proceedWithSale(partyType).finally(() => setReady($btn));
         });
 
         // STOCK VALIDATION FUNCTION
@@ -2123,55 +2156,43 @@
 
         // Handle branch confirmation
         $(document).on('click', '#branchConfirmBtn', function(e) {
+            const $btn = $(this);
             e.preventDefault();
             e.stopPropagation();
             
             const selectedBranch = $('#branchSelectionDropdown').val();
             const partyType = $('input[name="partyType"]:checked').val();
             
-            console.log('Branch Confirm clicked:', {
-                selectedBranch: selectedBranch,
-                partyType: partyType
-            });
-            
             if (!selectedBranch || selectedBranch === '') {
                 showAlert('danger', 'Please select a branch');
                 return;
             }
 
+            setBusy($btn);
+
             // VALIDATE STOCK FOR SELECTED BRANCH
             const stockValidation = validateBranchStock(parseInt(selectedBranch));
             if (!stockValidation.ok) {
                 showAlert('danger', stockValidation.message);
+                setReady($btn);
                 return;
             }
             
-            // Update the hidden branch_id field
             $('input[name="branch_id"]').val(selectedBranch);
-            console.log('Updated branch_id to:', selectedBranch);
             
             // Close modal
             try {
                 const modalEl = document.getElementById('branchSelectionModal');
                 const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                if (modalInstance) {
-                    modalInstance.hide();
-                } else {
-                    console.warn('Modal instance not found, trying manual hide');
-                    $(modalEl).modal('hide');
-                }
-            } catch (err) {
-                console.error('Error closing modal:', err);
-            }
+                if (modalInstance) modalInstance.hide();
+            } catch (err) { console.error(err); }
             
-            // Proceed with sale
-            console.log('Proceeding with sale, partyType:', partyType);
-            proceedWithSale(partyType);
+            proceedWithSale(partyType).finally(() => setReady($btn));
         });
 
         // Helper function to proceed with sale after branch selection
         function proceedWithSale(partyType) {
-            ensureSaved().then(function(bookingId) {
+            return ensureSaved().then(function(bookingId) {
                 console.log('Booking saved, proceeding with post:', bookingId);
                 
                 // Collect receipt data from form (needed for customer ledger + receipt vouchers)
@@ -2214,7 +2235,6 @@
                         if (res && res.ok) {
                             showAlert('success', 'Sale completed using Branch Stock');
                             $('#is_posted').val('1'); // Mark sale as posted
-                            enableBtnPosted3(); // ✅ Enable finalization button after post
                             // Open invoice in new tab
                             if (res.invoice_url) window.open(res.invoice_url, '_blank');
                             // mark posted state & refresh UI
@@ -2307,12 +2327,17 @@
             });
         }
         $('#btnPrint').on('click', function() {
+            const $btn = $(this);
             // 🔴 Validate form has items
             if (!canPost()) {
                 showAlert('danger', 'Please add at least one product with quantity');
                 return;
             }
-            ensureSaved().then(id => window.open('{{ url('booking/invoice/') }}/' + id, '_blank'));
+            setBusy($btn);
+            ensureSaved().then(id => {
+                window.open('{{ url('booking/invoice/') }}/' + id, '_blank');
+                setReady($btn);
+            }).catch(() => setReady($btn));
         });
         // $('#btnPrint2').off('click').on('click', function() {
         //     // Post + Print flow: post the sale and then show print2
@@ -2398,45 +2423,47 @@
         // ❌ DISABLED - btnPrint2 button is commented out, directPostAndPrint function removed
         // This function is no longer needed
         $('#btnDCPrint').off('click').on('click', function() {
+            const $btn = $(this);
             // 🔴 Validate form has items
             if (!canPost()) {
                 showAlert('danger', 'Please add at least one product with quantity');
                 return;
             }
 
+            setBusy($btn);
             ensureSaved().then(function(Invoice_no) {
-
-                // alert(id); // ✅ ab zaroor chalega
-
                 window.open('{{ url('sale/dc/') }}/' + Invoice_no, '_blank');
-
+                setReady($btn);
             }).catch(function() {
                 alert('Save failed');
+                setReady($btn);
             });
-
         });
 
         $('#btnThermalPrint').off('click').on('click', function() {
+            const $btn = $(this);
             // 🔴 Validate form has items
             if (!canPost()) {
                 showAlert('danger', 'Please add at least one product with quantity');
                 return;
             }
 
+            setBusy($btn);
             ensureSaved().then(function(id) {
-
                 window.open('{{ url('booking/print2') }}/' + id, '_blank');
-
+                setReady($btn);
             }).catch(function() {
                 alert('Save failed');
+                setReady($btn);
             });
-
         });
 
         $('#btnExit').on('click', function() {
-            ensureSaved().finally(() => {
+            const $btn = $(this);
+            setBusy($btn);
+            ensureSaved().then(() => {
                 window.location.href = "{{ route('sale.index') }}";
-            });
+            }).catch(() => setReady($btn));
         });
 
         //     $('#btnPosted, #btnHeaderPosted').on('click', function () {
@@ -2536,6 +2563,10 @@
             /* ===== NET ===== */
             const net = Math.max(0, gross - dam);
             $row.find('.sales-amount').val(net.toFixed(2));
+
+            if (formatDiscount) {
+                $row.find('.retail-price').val(rp.toFixed(2));
+            }
         }
 
 
@@ -2544,10 +2575,10 @@
 
 
 
-        $(document).on('input', '.sales-qty, .discount-value', function(e) {
+        $(document).on('input', '.sales-qty, .discount-value, .retail-price', function(e) {
             const $row = $(this).closest('tr');
-            // If typing in discount input, do not reformat it while typing
-            if ($(this).hasClass('discount-value')) {
+            // If typing in discount or retail-price input, do not reformat it while typing
+            if ($(this).hasClass('discount-value') || $(this).hasClass('retail-price')) {
                 computeRow($row, false, false); // manualAmount=false, formatDiscount=false
             } else {
                 computeRow($row);
@@ -2557,9 +2588,9 @@
         });
 
         // On blur of discount input, format and validate
-        $(document).on('blur', '.discount-value', function() {
+        $(document).on('blur', '.discount-value, .retail-price', function() {
             const $row = $(this).closest('tr');
-            computeRow($row, false, true); // now format the discount input
+            computeRow($row, false, true); // now format the input
             updateGrandTotals();
             refreshPostedState();
         });
@@ -2717,7 +2748,7 @@
         });
 
         /* ---------- Add new row when user presses Enter in Disc % (only on last row) ---------- */
-        $('#salesTableBody').on('keydown', '.discount-value', function(e) {
+        $('#salesTableBody').on('keydown', '.discount-value, .retail-price', function(e) {
             if (e.key === 'Enter' || e.keyCode === 13) {
                 e.preventDefault(); // prevent accidental form submit
                 const $current = $(this).closest('tr');
@@ -3052,10 +3083,11 @@
 
         // override Post buttons to validate first AND CHECK CREDIT LIMIT
         $('#btnHeaderPosted, #btnPosted').off('click').on('click', function() {
+            const $btn = $(this);
             cleanupEmptyRows();
             updateGrandTotals();
             refreshPostedState();
-            // console.log('👉 Post button clicked');
+            
             const v = validateFormAll();
             if (!v.ok) {
                 showAlert('danger', v.message);
@@ -3071,15 +3103,14 @@
                 return;
             }
 
-            // 🔴 VALIDATION: Cash/Walking customers MUST have at least 1 receipt amount (for warehouse sales too)
+            // 🔴 VALIDATION: Cash/Walking customers MUST have at least 1 receipt amount
             const partyType = $('input[name="partyType"]:checked').val();
             if (['cash', 'walking'].includes(partyType?.toLowerCase())) {
                 let hasValidReceipt = false;
                 $('.rv-amount').each(function(i) {
-                    const amt = toNum($(this).val());
-                    if (amt > 0) {
+                    if (toNum($(this).val()) > 0) {
                         hasValidReceipt = true;
-                        return false; // break
+                        return false;
                     }
                 });
                 
@@ -3094,10 +3125,10 @@
                 }
             }
 
-            // ✅ CHECK CREDIT LIMIT BEFORE POSTING (SAME AS SAVE BUTTON)
-            let cust = null;
+            setBusy($btn);
 
-            // Walking customers use manual name input, others use dropdown
+            // ✅ CHECK CREDIT LIMIT BEFORE POSTING
+            let cust = null;
             if (partyType === 'walking') {
                 cust = $('#customerDisplay').val();
             } else {
@@ -3106,40 +3137,36 @@
 
             const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
 
-            // For walking customers, skip credit check and proceed directly
             if (partyType === 'walking') {
-                ensureSaved().then(() => faraz()).catch(() => {
-                    showAlert('danger', 'Failed to save booking before posting');
-                }); // Open warehouse modal immediately after save
+                ensureSaved().then(() => {
+                    faraz();
+                    setReady($btn);
+                }).catch(() => setReady($btn));
             } else if (cust) {
                 $.get('/get-customer/' + cust)
                     .done(function(res) {
                         const credit = parseFloat(res.credit_limit || 0) || 0;
-                        // ✅ BLOCK: If credit limit exceeded, show alert and DO NOT save
                         if (credit > 0 && payable > credit) {
-                            console.log('❌ CREDIT LIMIT EXCEEDED - BLOCKING SAVE');
-                            console.log('Credit Limit:', credit, 'Payable:', payable);
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Credit limit exceeded',
                                 html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
                             });
-                            return; // STOP HERE - DO NOT SAVE
+                            setReady($btn);
+                            return;
                         }
-                        // ✅ OK: Credit limit is sufficient, proceed to save and warehouse selection
-                        console.log('✅ CREDIT LIMIT OK - SAVING AND OPENING WAREHOUSE MODAL');
-                        ensureSaved().then(() => faraz()).catch(() => {
-                            showAlert('danger', 'Failed to save booking before posting');
-                        }); // Open warehouse modal only after save
+                        ensureSaved().then(() => {
+                            faraz();
+                            setReady($btn);
+                        }).catch(() => setReady($btn));
                     })
                     .fail(function() {
-                        // If customer lookup fails, do NOT proceed - require customer to exist
-                        console.log('❌ Customer lookup failed - blocking save');
                         showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+                        setReady($btn);
                     });
             } else {
                 showAlert('danger', 'Please select a customer before posting');
-                return;
+                setReady($btn);
             }
         });
 
@@ -3373,7 +3400,6 @@
                 }
             }
 
-            // Step 3: Check credit limit
             let cust = null;
             if (partyType === 'walking') {
                 cust = $('#customerDisplay').val();
@@ -3383,36 +3409,33 @@
 
             const payable = parseFloat($('#totalBalance').val() || $('#tPayable').text() || 0) || 0;
 
-            // Step 4: Handle walking customers (skip credit check)
-            if (partyType === 'walking') {
-                console.log('✅ Walking customer - skipping credit check, proceeding to save');
-                proceedWithDraftPost();
-                return;
-            }
+            const $btn = $(this);
+            setBusy($btn);
 
-            // Step 5: Check credit for other party types
-            if (cust) {
+            if (partyType === 'walking') {
+                proceedWithDraftPost($btn);
+            } else if (cust) {
                 $.get('/get-customer/' + cust)
                     .done(function(res) {
                         const credit = parseFloat(res.credit_limit || 0) || 0;
                         if (credit > 0 && payable > credit) {
-                            console.log('❌ CREDIT LIMIT EXCEEDED');
                             Swal.fire({
                                 icon: 'warning',
                                 title: 'Credit limit exceeded',
                                 html: `Customer credit limit is <b>Rs. ${credit.toFixed(2)}</b>.<br>Payable amount is <b>Rs. ${payable.toFixed(2)}</b>.`,
                             });
+                            setReady($btn);
                             return;
                         }
-                        console.log('✅ Credit limit OK - proceeding to save and post');
-                        proceedWithDraftPost();
+                        proceedWithDraftPost($btn);
                     })
                     .fail(function() {
                         showAlert('danger', 'Failed to verify customer credit limit. Please try again.');
+                        setReady($btn);
                     });
             } else {
                 showAlert('danger', 'Please select a customer before posting');
-                return;
+                setReady($btn);
             }
         });
 
@@ -3420,11 +3443,10 @@
          * 🔄 STEP 1: SAVE BOOKING
          * 🔄 STEP 2: POST TO DRAFT (ajaxPostDraft)
          */
-        function proceedWithDraftPost() {
+        function proceedWithDraftPost($btn = null) {
             console.log('📝 proceedWithDraftPost - Starting save → post flow');
-
-            // Disable button to prevent double-click
-            $('#btnPosted3').prop('disabled', true).css('opacity', '0.6');
+            if ($btn) setBusy($btn);
+            else setBusy();
 
             // STEP 1: Save booking first
             ensureSaved()
@@ -3505,8 +3527,10 @@
                 })
                 .catch(function(err) {
                     console.error('❌ Save failed:', err);
-                    $('#btnPosted3').prop('disabled', false).css('opacity', '1');
                     showAlert('danger', 'Failed to save booking before posting');
+                })
+                .finally(() => {
+                    setReady($btn);
                 });
         }
 

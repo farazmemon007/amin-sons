@@ -85,6 +85,12 @@ class PermissionSeeder extends Seeder
             'purchase.return.edit',
             'purchase.return.delete',
 
+            // Purchase Order
+            'purchase.order.view',
+            'purchase.order.create',
+            'purchase.order.edit',
+            'purchase.order.delete',
+
             // Inward Gatepass
             'inward.gatepass.view',
             'inward.gatepass.create',
@@ -141,6 +147,8 @@ class PermissionSeeder extends Seeder
             'vendor.create',
             'vendor.edit',
             'vendor.delete',
+            'vendor.ledger',
+            'vendor.ledger.branch.view',
             'vendor.payments.view',
             'vendor.payments.create',
             'vendor.payments.delete',
@@ -232,6 +240,8 @@ class PermissionSeeder extends Seeder
             // Branch-wise customer ledger view (base)
             'report.customer.ledger.branch.view',
             'report.customer.ledger.view',
+            'report.vendor.ledger.view',
+            'report.vendor.ledger.branch.view',
             'report.assembly.view',
             'report.inventory.onhand.view',
             'report.stock.hold.view',
@@ -316,6 +326,7 @@ class PermissionSeeder extends Seeder
             $permissions[] = "report.item.stock.view.$bid";        // ✅ NEW: Item stock report per branch
             // per-branch permission to view customer ledger for a branch
             $permissions[] = "report.customer.ledger.branch.view.$bid";
+            $permissions[] = "report.vendor.ledger.branch.view.$bid";
             
             // ✅ ERP STANDARD: Cross-branch purchase permissions per branch
             // Allows managers to view/manage purchases from other branches

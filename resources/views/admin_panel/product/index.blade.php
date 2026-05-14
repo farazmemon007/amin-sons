@@ -129,7 +129,10 @@
                             <td>
                                 @if($product->all_warehouse_stocks && count($product->all_warehouse_stocks) > 0)
                                     @foreach($product->all_warehouse_stocks as $stock)
-                                        <div style="font-size:12px;"><strong>{{ $stock['branch_name'] }}:</strong> <span class="badge bg-info">{{ $stock['quantity'] }}</span></div>
+                                        <div class="mb-2" style="font-size:18px;">
+                                            <span class="fw-bold text-dark">{{ $stock['branch_name'] }}:</span> 
+                                            <span class="badge bg-info text-dark shadow-sm" style="font-size:18px; padding: 8px 12px; font-weight: bold;">{{ $stock['quantity'] }}</span>
+                                        </div>
                                     @endforeach
                                 @else
                                     <span class="badge bg-danger">📭 No Stock</span>
@@ -154,7 +157,7 @@
                             <div class="btn-group">
                                 <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-bs-toggle="dropdown">More</button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow custom-dropdown">
-                                    @if(auth()->user()->can('Edit Product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
+                                    @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
                                         <li><a class="dropdown-item" href="{{ route('opening.stocks.edit', $product->id) }}">✏ Edit Product</a></li>
                                     @endif
                                     <li><a class="dropdown-item" href="{{ route('generate-barcode-image', $product->id) }}">🏷 Generate Barcode</a></li>
@@ -188,9 +191,7 @@
                         <small class="opacity-75" id="pvm_header_sub">Loading...</small>
                     </div>
                 </div>
-                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity:1;">
-                    <span aria-hidden="true" style="font-size:1.5rem;">&times;</span>
-                </button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             {{-- BODY --}}
@@ -325,9 +326,9 @@
 
             {{-- FOOTER --}}
             <div class="modal-footer bg-white py-2 px-4">
-                <button type="button" class="btn btn-outline-secondary px-4" data-dismiss="modal">Close</button>
-                @if(auth()->user()->can('Edit Product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
-                    <a href="{{ route('opening.stocks.edit', $product->id) }}" class="btn btn-primary px-4" >✏ Edit Product</a>
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Close</button>
+                @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
+                    <a href="#" id="pvm_edit_btn" class="btn btn-primary px-4">✏ Edit Product</a>
                 @endif
             </div>
 
@@ -448,8 +449,8 @@ $(document).on('click', '.viewProductBtn', function () {
                 $('#productViewModal .customize-field').addClass('d-show');
             }
 
-            // Edit link
-            $('#pvm_edit_btn').attr('href', '{{ url("products") }}/' + p.id + '/edit');
+            // Edit link — opens the Opening Stock Edit page for this product
+            $('#pvm_edit_btn').attr('href', '{{ url("opening-stocks") }}/' + p.id + '/edit');
         },
         error: function (xhr) {
             $('#productViewModal').modal('hide');

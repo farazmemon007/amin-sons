@@ -348,85 +348,275 @@
             </div>
         </div>
 
-        <!-- Search & Filter -->
-        <div class="search-filter">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchProducts" placeholder="Search by product name or code...">
+        <!-- View Toggle Buttons -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-primary active" id="btnProductView" onclick="switchView('product')">
+                    <i class="fas fa-cube me-2"></i> Product View
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btnWarehouseView" onclick="switchView('warehouse')">
+                    <i class="fas fa-warehouse me-2"></i> Warehouse View
+                </button>
             </div>
-            @can('warehouse.stock.create')
-            <a href="{{ route('warehouse_stocks.create') }}" class="btn btn-view">
-                <i class="fas fa-plus"></i> Add Stock
-            </a>
-            @endcan
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <!-- ✅ ERP STOCK FILTERS -->
+                <form action="{{ route('warehouse_stocks.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
+                    @if($isSuperAdmin)
+                        <select name="branch_id" id="filter_branch_id" class="form-select form-select-sm" style="min-width: 150px; height: 38px; border-radius: 8px;">
+                            <option value="">All Branches</option>
+                            @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+                    
+                    <select name="warehouse_id" id="filter_warehouse_id" class="form-select form-select-sm" style="min-width: 180px; height: 38px; border-radius: 8px;">
+                        <option value="">All Locations</option>
+                        @if($hasDirectStock)
+                            <option value="shop" {{ $selectedWarehouseId === 'shop' ? 'selected' : '' }}>Direct Branch/Shop</option>
+                        @endif
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}" {{ $selectedWarehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->warehouse_name }}</option>
+                        @endforeach
+                    </select>
+                    
+                    <button type="submit" class="btn btn-primary btn-sm" style="height: 38px; width: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                    
+                    @if($selectedBranchId || $selectedWarehouseId)
+                        <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-light border btn-sm" style="height: 38px; width: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center;" title="Clear Filters">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    @endif
+                </form>
+
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchProducts" placeholder="Search product or code...">
+                </div>
+                @can('warehouse.stock.create')
+                <a href="{{ route('warehouse_stocks.create') }}" class="btn btn-view">
+                    <i class="fas fa-plus"></i> Add Stock
+                </a>
+                @endcan
+            </div>
         </div>
 
-        <!-- Products Grid -->
-        <div class="products-grid" id="productsGrid">
-            @forelse($products as $product)
-                <div class="product-card" data-product-name="{{ strtolower($product['product_name']) }}" data-product-code="{{ strtolower($product['product_code']) }}">
-                    <!-- Product Image -->
-                    <div class="product-image {{ !$product['image'] ? 'no-image' : '' }}">
-                        @if($product['image'])
-                            <img src="{{ asset('uploads/products/' . $product['image']) }}" alt="{{ $product['product_name'] }}">
-                        @else
-                            <i class="fas fa-cube"></i>
-                        @endif
+        <!-- PRODUCT VIEW -->
+        <div id="productViewSection">
+            <div class="products-grid" id="productsGrid">
+                @forelse($products as $product)
+                    <div class="product-card" data-product-name="{{ strtolower($product['product_name']) }}" data-product-code="{{ strtolower($product['product_code']) }}">
+                        <div class="product-image {{ !$product['image'] ? 'no-image' : '' }}">
+                            @if($product['image'])
+                                <img src="{{ asset('uploads/products/' . $product['image']) }}" alt="{{ $product['product_name'] }}">
+                            @else
+                                <i class="fas fa-cube"></i>
+                            @endif
+                        </div>
+                        <div class="product-info">
+                            <div class="product-code">{{ $product['product_code'] }}</div>
+                            <div class="product-name">{{ $product['product_name'] }}</div>
+                            <span class="product-category">{{ $product['category'] }}</span>
+                            <div class="product-stock">
+                                <div class="stock-row">
+                                    <span class="stock-label">Total Qty:</span>
+                                    <span class="stock-value quantity">{{ number_format($product['total_quantity'], 2) }}</span>
+                                </div>
+                                <div class="stock-row">
+                                    <span class="stock-label">In Warehouses:</span>
+                                    <span class="stock-value warehouses">{{ $product['warehouse_count'] }}</span>
+                                </div>
+                            </div>
+                            @if($product['price'] > 0)
+                                <div class="product-price">PKR {{ number_format($product['price']) }}</div>
+                            @endif
+                            <div class="product-actions">
+                                <a href="{{ route('warehouse_stocks.show', $product['product_id']) }}" class="btn-view">
+                                    <i class="fas fa-eye"></i> View Distribution
+                                </a>
+                            </div>
+                        </div>
                     </div>
+                @empty
+                    <div class="empty-state" style="grid-column: 1/-1;">
+                        <i class="fas fa-inbox"></i>
+                        <p>No products found in warehouse inventory</p>
+                        @can('warehouse.stock.create')
+                        <a href="{{ route('warehouse_stocks.create') }}">Add First Stock</a>
+                        @endcan
+                    </div>
+                @endforelse
+            </div>
+        </div>
 
-                    <!-- Product Info -->
-                    <div class="product-info">
-                        <div class="product-code">{{ $product['product_code'] }}</div>
-                        <div class="product-name">{{ $product['product_name'] }}</div>
-                        <span class="product-category">{{ $product['category'] }}</span>
-
-                        <!-- Stock Info -->
-                        <div class="product-stock">
-                            <div class="stock-row">
-                                <span class="stock-label">Total Qty:</span>
-                                <span class="stock-value quantity">{{ number_format($product['total_quantity'], 2) }}</span>
-                            </div>
-                            <div class="stock-row">
-                                <span class="stock-label">In Warehouses:</span>
-                                <span class="stock-value warehouses">{{ $product['warehouse_count'] }}</span>
-                            </div>
+        <!-- WAREHOUSE VIEW -->
+        <div id="warehouseViewSection" style="display:none;">
+            @forelse($warehouseGroups as $whIdx => $wh)
+            <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden; background: white;">
+                <!-- Warehouse Header -->
+                <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--light); display: flex; justify-content: space-between; align-items: center;">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="background: white; border: 1px solid var(--border); border-radius: 8px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--primary);">
+                            <i class="fas fa-warehouse"></i>
                         </div>
-
-                        @if($product['price'] > 0)
-                            <div class="product-price">PKR {{ number_format($product['price']) }}</div>
-                        @endif
-
-                        <!-- Actions -->
-                        <div class="product-actions">
-                            <a href="{{ route('warehouse_stocks.show', $product['product_id']) }}" class="btn-view">
-                                <i class="fas fa-eye"></i> View Distribution
-                            </a>
+                        <div>
+                            <h5 class="mb-1" style="font-weight: 700; color: var(--dark); font-size: 1.1rem;">{{ $wh['warehouse_name'] }}</h5>
+                            <small style="color: var(--muted);"><i class="fas fa-map-marker-alt me-1"></i>{{ $wh['branch_name'] }}</small>
                         </div>
+                    </div>
+                    <div class="d-flex gap-4 align-items-center">
+                        <div class="text-center">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">{{ number_format($wh['total_quantity']) }}</div>
+                            <small style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Total Units</small>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">{{ $wh['product_count'] }}</div>
+                            <small style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Products</small>
+                        </div>
+                        <button class="btn" onclick="toggleWarehouse(this, 'wh-body-{{ $whIdx }}')" style="border: none; background: transparent; color: var(--muted); font-size: 1.2rem; transition: transform 0.3s; padding: 0;">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
                     </div>
                 </div>
+
+                <!-- Products Body -->
+                <div id="wh-body-{{ $whIdx }}" class="card-body p-0">
+                    <table class="table mb-0" style="font-size: 0.9rem;">
+                        <thead style="background: white;">
+                            <tr>
+                                <th style="padding: 14px 24px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none;">Product</th>
+                                <th style="padding: 14px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none;">Code</th>
+                                <th style="padding: 14px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none; text-align: right;">Quantity</th>
+                                <th style="padding: 14px 24px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($wh['products'] as $p)
+                            <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--light)'" onmouseout="this.style.background=''">
+                                <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border);">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div style="width: 36px; height: 36px; border-radius: 8px; background: var(--light); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
+                                            {{ strtoupper(substr($p['product_name'], 0, 1)) }}
+                                        </div>
+                                        <span style="font-weight: 600; color: var(--dark);">{{ $p['product_name'] }}</span>
+                                    </div>
+                                </td>
+                                <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); color: var(--muted);">{{ $p['product_code'] }}</td>
+                                <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: right;">
+                                    <span style="background: rgba(34, 197, 94, 0.1); color: var(--success); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">{{ number_format($p['quantity']) }}</span>
+                                </td>
+                                <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: center;">
+                                    <a href="{{ route('warehouse_stocks.show', $p['product_id']) }}" class="btn-view" style="display: inline-flex; width: auto; padding: 4px 12px; font-size: 0.75rem;">
+                                        <i class="fas fa-eye me-1"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             @empty
-                <div class="empty-state" style="grid-column: 1/-1;">
-                    <i class="fas fa-inbox"></i>
-                    <p>No products found in warehouse inventory</p>
-                    @can('warehouse.stock.create')
-                    <a href="{{ route('warehouse_stocks.create') }}">Add First Stock</a>
-                    @endcan
-                </div>
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <p>No warehouse stock data available</p>
+            </div>
             @endforelse
+        </div>
         </div>
     </div>
 </div>
 
 <script>
+    // View Toggle
+    function switchView(view) {
+        const productSection = document.getElementById('productViewSection');
+        const warehouseSection = document.getElementById('warehouseViewSection');
+        const btnProduct = document.getElementById('btnProductView');
+        const btnWarehouse = document.getElementById('btnWarehouseView');
+        const searchBox = document.getElementById('searchProducts');
+
+        if (view === 'product') {
+            productSection.style.display = '';
+            warehouseSection.style.display = 'none';
+            btnProduct.classList.add('active');
+            btnProduct.classList.replace('btn-outline-secondary', 'btn-primary');
+            btnWarehouse.classList.remove('active');
+            btnWarehouse.classList.replace('btn-primary', 'btn-outline-secondary');
+            searchBox.placeholder = 'Search product or code...';
+        } else {
+            productSection.style.display = 'none';
+            warehouseSection.style.display = '';
+            btnWarehouse.classList.add('active');
+            btnWarehouse.classList.replace('btn-outline-secondary', 'btn-primary');
+            btnProduct.classList.remove('active');
+            btnProduct.classList.replace('btn-primary', 'btn-outline-secondary');
+            searchBox.placeholder = 'Search warehouse...';
+        }
+        localStorage.setItem('whStockView', view);
+    }
+
+    // Product search
     document.getElementById('searchProducts').addEventListener('input', function(e) {
         const query = e.target.value.toLowerCase();
         const cards = document.querySelectorAll('.product-card');
-        
         cards.forEach(card => {
             const name = card.dataset.productName;
             const code = card.dataset.productCode;
-            const matches = name.includes(query) || code.includes(query);
-            card.style.display = matches ? '' : 'none';
+            card.style.display = (name.includes(query) || code.includes(query)) ? '' : 'none';
+        });
+    });
+
+    // Restore last view
+    document.addEventListener('DOMContentLoaded', function() {
+        const lastView = localStorage.getItem('whStockView');
+        if (lastView === 'warehouse') switchView('warehouse');
+    });
+
+    // Collapse/expand individual warehouse cards
+    function toggleWarehouse(btn, bodyId) {
+        const body = document.getElementById(bodyId);
+        if (body.style.display === 'none') {
+            body.style.display = '';
+            btn.classList.remove('collapsed');
+        } else {
+            body.style.display = 'none';
+            btn.classList.add('collapsed');
+        }
+    }
+
+    // ✅ Dynamic Warehouse Loading for Filters
+    $(document).on('change', '#filter_branch_id', function() {
+        const branchId = $(this).val();
+        const warehouseSelect = $('#filter_warehouse_id');
+        
+        // Show loading state
+        warehouseSelect.html('<option value="">Loading...</option>');
+        
+        $.ajax({
+            url: '{{ route("warehouse_stocks.filter_warehouses") }}',
+            type: 'GET',
+            data: { branch_id: branchId },
+            success: function(response) {
+                let html = '<option value="">All Locations</option>';
+                
+                if (response.hasDirectStock) {
+                    html += '<option value="shop">Direct Branch/Shop</option>';
+                }
+                
+                if (response.warehouses && response.warehouses.length > 0) {
+                    response.warehouses.forEach(wh => {
+                        html += `<option value="${wh.id}">${wh.warehouse_name}</option>`;
+                    });
+                }
+                
+                warehouseSelect.html(html);
+            },
+            error: function() {
+                warehouseSelect.html('<option value="">Error loading warehouses</option>');
+            }
         });
     });
 </script>

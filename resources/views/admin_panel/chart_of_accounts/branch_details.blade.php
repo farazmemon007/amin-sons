@@ -525,7 +525,12 @@
                                                 </span>
                                             </td>
                                             <td style="width: 10%; text-align: center;">
-                                                <i class="fas fa-chevron-right" style="color: var(--muted); font-size: 0.9rem;"></i>
+                                                <a href="{{ route('account.ledger', $account->id) }}"
+                                                   class="btn btn-sm"
+                                                   style="background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white; border-radius:6px; font-size:0.78rem; font-weight:600; padding:5px 12px; white-space:nowrap; text-decoration:none;"
+                                                   title="View Account Ledger">
+                                                    <i class="fas fa-book-open me-1"></i> Ledger
+                                                </a>
                                             </td>
                                         </tr>
                                     @endforeach

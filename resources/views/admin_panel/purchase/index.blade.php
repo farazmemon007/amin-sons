@@ -11,9 +11,11 @@
     .bg-soft-success { background-color: #d1f7e8 !important; color: #008d50 !important; }
     .bg-soft-warning { background-color: #fff3cd !important; color: #856404 !important; }
     .dropdown-menu { border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 10px; padding: 8px; z-index: 9999 !important; }
-    .dropdown-item { border-radius: 6px; padding: 8px 12px; font-size: 13px; transition: all 0.2s; }
-    .dropdown-item:hover { background-color: #f0f7ff; color: #007bff; }
-    .dropdown-item i { width: 20px; }
+    .dropdown-menu.show { display: block !important; }
+    .dropdown-item { transition: all 0.2s ease; padding: 10px 16px !important; font-size: 13px !important; font-weight: 500; color: #475569; border-radius: 6px; }
+    .dropdown-item:hover { background-color: #f1f5f9 !important; color: #0f172a !important; }
+    .dropdown-item i { width: 20px; font-size: 14px; margin-right: 8px; }
+    .dropdown-divider { border-top: 1px solid #f1f5f9; margin: 0.5rem 0; }
     .dataTables_wrapper .dataTables_filter input { border-radius: 8px; border: 1px solid #ddd; padding: 6px 12px; margin-bottom: 10px; }
 </style>
 
@@ -62,7 +64,7 @@
                             @endif
 
                             <td class="text-start">
-                                <div class="fw-bold text-dark">{{ $purchase->vendor->name ?? 'N/A' }}</div>
+                                <div class="fw-bold text-dark">{{ $purchase->vendor->name ?? $purchase->vendor_name ?? 'N/A' }}</div>
                                 <div class="small text-muted"><i class="fa fa-warehouse me-1"></i> 
                                     @php
                                         if ($purchase->warehouse_id && $purchase->warehouse) {
@@ -85,33 +87,37 @@
 
                             <td>
                                 @if($purchase->receipt_status === 'pending')
-                                    <span class="badge bg-soft-warning px-3 py-2">Pending</span>
+                                    <span class="badge bg-soft-warning px-3 py-2 text-uppercase" style="font-size: 10px;">Pending</span>
+                                @elseif($purchase->receipt_status === 'partial')
+                                    <span class="badge bg-info px-3 py-2 text-uppercase text-white" style="font-size: 10px;">Partial</span>
                                 @else
-                                    <span class="badge bg-soft-success px-3 py-2">Received</span>
+                                    <span class="badge bg-soft-success px-3 py-2 text-uppercase" style="font-size: 10px;">Received</span>
                                 @endif
                             </td>
 
                             <td>
                                 <div class="dropdown">
-                                    <button class="btn btn-light btn-sm border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle fw-bold px-3" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 8px; font-size: 12px; border-color: #e2e8f0; color: #475569;">
                                         Manage
                                     </button>
-                                    <div class="dropdown-menu dropdown-menu-end">
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
                                         @can('purchase.invoice')
-                                            <a class="dropdown-item" href="{{ route('purchase.invoice', $purchase->id) }}"><i class="fa fa-print text-warning"></i> Invoice</a>
+                                            <a class="dropdown-item py-2" href="{{ route('purchase.invoice', $purchase->id) }}">
+                                                <i class="fa fa-print me-2 text-warning"></i> Print Invoice
+                                            </a>
                                         @endcan
                                         
                                         @can('purchase.edit')
-                                            <a class="dropdown-item" href="{{ route('purchase.edit', $purchase->id) }}"><i class="fa fa-edit text-primary"></i> Edit</a>
-                                        @endcan
-
-                                        @can('inward.gatepass.create')
-                                            <a class="dropdown-item" href="{{ route('inward-gatepass.from-purchase', $purchase->id) }}"><i class="fa fa-truck text-success"></i> Receive</a>
+                                            <a class="dropdown-item py-2" href="{{ route('purchase.edit', $purchase->id) }}">
+                                                <i class="fa fa-edit me-2 text-primary"></i> Edit Purchase
+                                            </a>
                                         @endcan
 
                                         @can('purchase.return')
                                             <div class="dropdown-divider"></div>
-                                            <a class="dropdown-item text-danger" href="{{ route('purchase.return.show', $purchase->id) }}"><i class="fa fa-undo"></i> Return</a>
+                                            <a class="dropdown-item py-2 text-danger" href="{{ route('purchase.return.show', $purchase->id) }}">
+                                                <i class="fa fa-undo me-2"></i> Purchase Return
+                                            </a>
                                         @endcan
                                     </div>
                                 </div>
@@ -132,32 +138,20 @@
 
 <script>
     $(document).ready(function() {
-        // 1. Force Dropdown Fix (Agar bootstrap automatic na chale)
-        $('.dropdown-toggle').on('click', function (e) {
-            var $el = $(this).next('.dropdown-menu');
-            $('.dropdown-menu').not($el).hide(); // Dusre band karo
-            $el.toggle(); // Isko kholo
-            e.stopPropagation();
-        });
-
-        // Click outside band karne ke liye
-        $(document).on('click', function (e) {
-            if (!$('.dropdown').has(e.target).length) {
-                $('.dropdown-menu').hide();
-            }
-        });
-
-        // 2. DataTable Initialize
-        if ($.fn.DataTable.isDataTable('#purchase-table')) {
-            $('#purchase-table').DataTable().destroy();
-        }
-
-        $('#purchase-table').DataTable({
+        // Initialize DataTable
+        var table = $('#purchase-table').DataTable({
             "pageLength": 10,
             "order": [[0, 'desc']],
             "language": {
                 "search": "_INPUT_",
                 "searchPlaceholder": "Filter records..."
+            },
+            // ✅ CRITICAL: Re-initialize dropdowns whenever the table is redrawn (search, pagination, sort)
+            "drawCallback": function(settings) {
+                var dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'))
+                var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+                    return new bootstrap.Dropdown(dropdownToggleEl)
+                });
             }
         });
     });

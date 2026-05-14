@@ -74,20 +74,65 @@ class CustomerController extends Controller
 
 
 
-    public function index()
+    public function index(Request $request)
     {
+        $branch_id     = $request->get('branch_id');
+        $customer_id   = $request->get('customer_id');
+        $start_date    = $request->get('start_date');
+        $end_date      = $request->get('end_date');
+        $customer_type = $request->get('customer_type');
+
         $query = Customer::with(['latestLedger', 'branch'])->latest();
 
-        // If the current user is not super admin, restrict to their branch
+        // 🔹 ERP Branch Filtering
         if (Auth::check() && !Auth::user()->hasRole('super admin')) {
             $branchId = Auth::user()->branch_id ?? 0;
             $query->where('branch_id', $branchId);
+        } else {
+            // Super admin can filter by branch
+            if (!empty($branch_id)) {
+                $query->where('branch_id', $branch_id);
+            }
+        }
+
+        // 🔹 Customer Selection Search
+        if (!empty($customer_id)) {
+            $query->where('id', $customer_id);
+        }
+
+        // 🔹 Customer Type Search
+        if (!empty($customer_type)) {
+            $query->where('customer_type', $customer_type);
+        }
+
+        // 🔹 Date Range Search
+        if (!empty($start_date)) {
+            $query->whereDate('created_at', '>=', $start_date);
+        }
+        if (!empty($end_date)) {
+            $query->whereDate('created_at', '<=', $end_date);
         }
 
         $customers = $query->get();
 
-        // return response()->json(['customers' => $customers]);
-        return view('admin_panel.customers.index', compact('customers'));
+        // Data for dropdowns
+        $branches = [];
+        if (Auth::user()->hasRole('super admin')) {
+            $branches = \App\Models\Branch::all();
+        }
+
+        // All customers for the search select2 (filtered by branch if selected)
+        $allCustomersQuery = Customer::select('id', 'customer_name', 'customer_id');
+        if (Auth::check() && !Auth::user()->hasRole('super admin')) {
+            $allCustomersQuery->where('branch_id', Auth::user()->branch_id ?? 0);
+        } else {
+            if (!empty($branch_id)) {
+                $allCustomersQuery->where('branch_id', $branch_id);
+            }
+        }
+        $allCustomers = $allCustomersQuery->get();
+
+        return view('admin_panel.customers.index', compact('customers', 'branches', 'allCustomers'));
     }
 
     public function toggleStatus($id)

@@ -28,6 +28,11 @@ class Sale extends Model
     return $this->belongsTo(Customer::class, 'customer_id', 'id');
 }
 
+    public function salesman()
+    {
+        return $this->belongsTo(SalesOfficer::class, 'salesman_id');
+    }
+
 
    public function product()
 {

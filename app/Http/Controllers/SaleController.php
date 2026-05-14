@@ -28,6 +28,7 @@ use App\Models\Notification;
 use App\Services\StockAlertService;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Branch;
+use App\Models\SalesOfficer;
 
 
 class SaleController extends Controller
@@ -143,6 +144,7 @@ class SaleController extends Controller
                     'invoice_no'       => $invoiceNo,
                     'manual_invoice'   => $booking->manual_invoice,
                     'customer_id'      => $booking->customer_id,
+                    'salesman_id'      => $booking->salesman_id ?? $request->salesman_id ?? null,
                     // For walking customers, persist the display name from booking
                     'sub_customer'     => (($booking->party_type ?? '') === 'walking') ? ($booking->customer_name ?? null) : null,
                     'party_type'       => $booking->party_type,
@@ -776,6 +778,7 @@ class SaleController extends Controller
                     'invoice_no'           => $invoiceNo,
                     'manual_invoice'       => $booking->manual_invoice,
                     'customer_id'          => $booking->customer_id,
+                    'salesman_id'          => $booking->salesman_id ?? $request->salesman_id ?? null,
                     'sub_customer'         => (($booking->party_type ?? '') === 'walking') ? ($booking->customer_name ?? null) : null,
                     'party_type'           => $booking->party_type,
                     'address'              => $booking->address,
@@ -1435,6 +1438,7 @@ class SaleController extends Controller
             $booking->address          = $request->address;
             $booking->tel              = $request->tel;
             $booking->remarks          = $request->remarks;
+            $booking->salesman_id      = $request->salesman_id;
             $booking->sub_total1       = $request->subTotal1 ?? 0;
             $booking->sub_total2       = $request->subTotal2 ?? 0;
             $booking->additional_discount = $request->additional_discount ?? 0;
@@ -1443,6 +1447,9 @@ class SaleController extends Controller
             $booking->total_balance    = $request->totalBalance ?? 0;
             $booking->status    = 'pending';
             $booking->notify_me         = $request->notify_me ?? 0;
+
+            $booking->discount_percent = 0;
+            $booking->discount_amount = 0;
 
             $booking->quantity = 0;
             $booking->save();
@@ -1499,10 +1506,34 @@ class SaleController extends Controller
         $productIds = $request->product_ids; // array from query string
         if (empty($productIds) || !is_array($productIds)) return response()->json([]);
 
+        // ── ERP: Role-Based Warehouse Data Security ──────────────────────
+        // Determine which warehouses this user is allowed to see.
+        // Super Admin → all; Branch Admin → branch warehouses; Others → assigned only
+        $user = Auth::user();
+        $allowedWarehouseIds = null; // null = no restriction
+
+        if (!$user->hasRole('super admin') && !$user->hasRole('branch admin') && !$user->hasRole('admin')) {
+            // Sales/Purchase Officer and other non-admin roles: only assigned warehouses
+            $allowedWarehouseIds = $user->assignedWarehouseIds();
+        } elseif ($user->hasRole('branch admin') || $user->hasRole('admin')) {
+            // Branch Admin: all warehouses in their branch
+            $branch = \App\Models\Branch::with('warehouses')->find($user->branch_id);
+            if ($branch) {
+                $allowedWarehouseIds = $branch->warehouses()->pluck('warehouses.id')->toArray();
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         // Fetch warehouse stocks for the requested products
-        $rows = \App\Models\WarehouseStock::whereIn('product_id', $productIds)
-            ->where('quantity', '>', 0)
-            ->get(['warehouse_id', 'product_id', 'quantity']);
+        $query = \App\Models\WarehouseStock::whereIn('product_id', $productIds)
+            ->where('quantity', '>', 0);
+
+        // Apply warehouse filter if not super admin
+        if ($allowedWarehouseIds !== null) {
+            $query->whereIn('warehouse_id', $allowedWarehouseIds);
+        }
+
+        $rows = $query->get(['warehouse_id', 'product_id', 'quantity']);
 
         // group by product_id
         $grouped = $rows->groupBy('product_id');
@@ -1831,7 +1862,9 @@ public function finddc($invoice)
         // Get warehouse_stocks for client-side validation
         $warehouseStocks = WarehouseStock::all()->toArray();
 
-        return view('admin_panel.sale.add_sale222', compact('warehouse', 'customer', 'accounts', 'nextInvoiceNumber', 'products', 'branches', 'branchCounters', 'warehouseStocks'));
+        $salesmen = SalesOfficer::all();
+
+        return view('admin_panel.sale.add_sale222', compact('warehouse', 'customer', 'accounts', 'nextInvoiceNumber', 'products', 'branches', 'branchCounters', 'warehouseStocks', 'salesmen'));
     }
 
     public function searchpname(Request $request)
@@ -1951,6 +1984,7 @@ public function finddc($invoice)
                 'manual_invoice' => $request->Invoice_main,
                 'branch_id' => $branchId,
                 'customer_id' => $customerId,
+                'salesman_id' => $request->salesman_id ?? null,
                 'party_type' => $request->input('partyType') ?? null,
                 'sub_customer' => $request->customerType,
                 'filer_type' => $request->filerType,
@@ -2069,6 +2103,7 @@ public function finddc($invoice)
                 'manual_invoice' => $request->Invoice_main ?? null,
                 'partyType' => $request->input('partyType') ?? null,
                 'customer_id' => $customerId ?? ($request->customer ?? null),
+                'salesman_id' => $request->salesman_id ?? null,
                 'sub_customer' => $request->customerType ?? null,
                 'filer_type' => $request->filerType ?? null,
                 'address' => $request->address ?? null,
@@ -2422,6 +2457,7 @@ public function finddc($invoice)
         }
 
         $warehouseStocksArray = WarehouseStock::all()->toArray();
+        $salesmen = SalesOfficer::all();
 
         // ================= RETURN SAME VIEW AS ADDSALE() WITH PREFILL DATA =================
         return view('admin_panel.sale.add_sale222', [
@@ -2433,6 +2469,7 @@ public function finddc($invoice)
             'branches'        => $branches,
             'branchCounters'  => $branchCounters,
             'warehouseStocks'  => $warehouseStocksArray,
+            'salesmen'        => $salesmen,
             // ✅ Prefill data from booking
             'booking'         => $booking,
             'booking_customer' => $booking_customer,
@@ -2818,12 +2855,15 @@ public function finddc($invoice)
             }
         }
 
+        $salesmen = SalesOfficer::all();
+
         return view('admin_panel.sale.saleedit', [
             'sale'      => $sale,
             'Customer'  => $customers,
             'saleItems' => $items,
             'accounts'  => $accounts,
             'receipts'  => $receipts,
+            'salesmen'  => $salesmen,
         ]);
     }
 
@@ -2880,6 +2920,7 @@ public function finddc($invoice)
 
                 $sale->update([
                     'customer_id' => $customerId ?? $sale->customer_id,
+                    'salesman_id' => $request->salesman_id ?? $sale->salesman_id,
                     'manual_invoice' => $request->input('manual_invoice', $sale->manual_invoice),
                     'address' => $request->input('address', $sale->address),
                     'tel' => $request->input('tel', $sale->tel),

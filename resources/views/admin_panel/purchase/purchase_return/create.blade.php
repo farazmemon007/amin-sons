@@ -702,7 +702,8 @@
                     url: "{{ route('search-products') }}",
                     type: 'GET',
                     data: {
-                        q
+                        q: q,
+                        vendor_id: $('select[name="vendor_id"]').val()
                     },
                     success: function(data) {
                         let html = '';

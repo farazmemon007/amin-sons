@@ -199,5 +199,60 @@ class AccountsHeadController extends Controller
         return redirect()->back()
             ->with('success', "Account '{$accountCode}' created successfully for {$branch->name}.");
     }
+
+    /**
+     * ✅ ERP STANDARD: Per-Account Ledger
+     * Shows complete transaction history for a single account.
+     * Accessible from the branch accounts list.
+     */
+    public function accountLedger($accountId, Request $request)
+    {
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+
+        $account = \App\Models\Account::with(['head', 'branch'])->findOrFail($accountId);
+
+        // ✅ Authorization: Branch users can only view their own branch accounts
+        if (!$isSuperAdmin && $account->branch_id != $user->branch_id) {
+            return redirect()->back()->with('error', 'Unauthorized.');
+        }
+
+        // Date filters
+        $dateFrom = $request->input('date_from');
+        $dateTo   = $request->input('date_to');
+
+        // Fetch ledger entries
+        $query = \App\Models\AccountLedgerEntry::where('account_id', $accountId)
+            ->orderBy('id', 'asc');
+
+        if ($dateFrom) {
+            $query->where('transaction_date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->where('transaction_date', '<=', $dateTo);
+        }
+
+        $entries = $query->get();
+
+        // Totals
+        $totalDebit  = $entries->sum('debit');
+        $totalCredit = $entries->sum('credit');
+        $openingBalance = (float)($account->opening_balance ?? 0);
+
+        // Closing balance = last entry running balance (or opening balance if no entries)
+        $closingBalance = $entries->last()?->running_balance ?? $openingBalance;
+
+        return view('admin_panel.chart_of_accounts.account_ledger', compact(
+            'account',
+            'entries',
+            'totalDebit',
+            'totalCredit',
+            'openingBalance',
+            'closingBalance',
+            'dateFrom',
+            'dateTo',
+            'isSuperAdmin'
+        ));
+    }
 }
 

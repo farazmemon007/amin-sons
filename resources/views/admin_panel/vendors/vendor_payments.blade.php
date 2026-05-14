@@ -17,6 +17,35 @@
                 </div>
             </div>
 
+            <!-- Filter Section for Super Admin -->
+            @if($isSuperAdmin)
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form action="{{ route('vendor.payments') }}" method="GET" class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Filter by Branch</label>
+                            <select name="branch_id" class="form-select select2">
+                                <option value="">All Branches</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-filter me-2"></i> Filter
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ route('vendor.payments') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-sync-alt me-2"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            @endif
+
             <!-- Alert -->
             @if (session()->has('success'))
             <div class="alert alert-success"><strong>Success!</strong> {{ session('success') }}</div>

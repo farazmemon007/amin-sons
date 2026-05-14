@@ -355,6 +355,9 @@
                                                                     <select id="type-dropdown" name="type_id"
                                                                         class="form-select">
                                                                         <option value="">Select Type</option>
+                                                                        @foreach ($types as $type)
+                                                                            <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                                                        @endforeach
                                                                     </select>
                                                                     <button type="button" class="btn btn-primary add-btn"
                                                                         data-bs-toggle="modal"
@@ -508,16 +511,18 @@
                                                                 </div>
                                                             </div> --}}
 
-                                                              <div class="col-sm-3" id="unitSection" style="display: none;">
+                                                    <div class="col-sm-3" id="unitSection" style="display: none;">
                                                         <label class="form-label">Unit</label>
                                                         <div class="input-group">
+                                                            <input type="text" id="unit_readonly" class="form-control" style="display:none;" value="Piece" readonly>
+                                                            <input type="hidden" name="unit" id="unit_hidden" disabled>
                                                             <select id="unit_select" name="unit" class="form-select">
                                                                 <option value="">Select Unit</option>
                                                                @foreach ($units as $u)
                                                                             <option value="{{ $u->id }}">{{ $u->name }}</option>
                                                                         @endforeach
                                                             </select>
-                                                            <button type="button" class="btn btn-primary add-btn"
+                                                            <button type="button" class="btn btn-primary add-btn" id="unit_add_btn"
                                                                 data-bs-toggle="modal" data-bs-target="#unitModal"
                                                                 title="Add New Unit">
                                                                 <i class="fa-solid fa-plus"></i>
@@ -872,9 +877,8 @@
         </div>
 
         {{-- Scripts --}}
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        {{-- Removed redundant jQuery/Bootstrap loads that conflict with app.blade.php --}}
+
         <script>
             function calculateOpeningStock() {
 
@@ -991,55 +995,39 @@
                 }
             });
 
-            // Load Types
-            function loadTypes() {
-                $.ajax({
-                    url: '{{ route('select.type') }}',
-                    type: "GET",
-                    dataType: "json",
-                    success: function (data) {
-                        $('#type-dropdown').empty().append('<option value="">Select Type</option>');
-                        $.each(data, function (_, v) {
-                            $('#type-dropdown').append('<option value="' + v.id + '">' + v.name + '</option>');
-                        });
-                    }
-                });
-            }
+
 
             // Load types on page load
             $(document).ready(function () {
-                loadTypes();
+                // Types now loaded via PHP
             });
 
-            // Handle type modal form submit via AJAX
-            $('#typeModal form').on('submit', function(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    method: $(this).attr('method'),
-                    data: $(this).serialize(),
-                    success: function(data) {
-                        // Update the dropdown
-                        $('#type-dropdown').empty().append('<option value="">Select Type</option>');
-                        $.each(data, function (_, v) {
-                            $('#type-dropdown').append('<option value="' + v.id + '">' + v.name + '</option>');
-                        });
-                        $('#typeModal').modal('hide');
-                        $(this)[0].reset();
-                    },
-                    error: function() {
-                        alert('Error creating type');
-                    }
-                });
-            });
+
+            // ✅ Standard form submission for Type modal now handled by controller redirect
+            // (matching Category/Subcategory flow)
+
 
             // Packing Type conditional visibility
             $('#packing_type').on('change', function () {
                 var packingType = $(this).val();
 
                 if (packingType === 'Standard') {
-                    // Show Unit field, hide Customize fields
+                    // Show unitSection
                     $('#unitSection').show();
+                    // Find the ID of the 'Piece' option
+                    var pieceOptionId = $('#unit_select option').filter(function() { 
+                        var txt = $(this).text().toLowerCase();
+                        return txt === 'piece' || txt === 'pcs' || txt === 'pieces'; 
+                    }).first().val();
+                    
+                    // Set to Piece and show readonly, hide select
+                    $('#unit_readonly').val('Piece').show().prop('disabled', false);
+                    $('#unit_hidden').val(pieceOptionId).prop('disabled', false);
+                    $('#unit_select').prop('disabled', true).hide();
+                    $('#unit_select').closest('.input-group').find('.select2-container').hide();
+                    $('#unit_add_btn').hide();
+
+                    // Hide Customize fields
                     $('#packingQtySection').hide();
                     $('#unitPerPackingSection').hide();
                     $('#loosepiece_section').hide();
@@ -1050,14 +1038,19 @@
                     $('#loose_piece').val('');
 
                 } else if (packingType === 'Customize') {
-                    // Show Customize fields, hide Unit field
-                    $('#unitSection').hide();
+                    // Show unitSection
+                    $('#unitSection').show();
+                    // Show select, hide readonly
+                    $('#unit_readonly').hide().prop('disabled', true);
+                    $('#unit_hidden').prop('disabled', true);
+                    $('#unit_select').prop('disabled', false).show();
+                    $('#unit_select').closest('.input-group').find('.select2-container').show();
+                    $('#unit_add_btn').show();
+
+                    // Show Customize fields
                     $('#packingQtySection').show();
                     $('#unitPerPackingSection').show();
                     $('#loosepiece_section').show();
-
-                    // Clear unit field
-                    $('#unit_select').val('');
 
                 } else {
                     // Hide all conditional fields

@@ -149,16 +149,23 @@ table tbody td{
 <div class="container-fluid mt-4">
 
     {{-- PRINT BUTTON --}}
-    <div class="text-end mb-3 no-print">
-        <button onclick="window.print()" class="btn btn-dark">
+    {{-- ACTION BUTTONS --}}
+    <div class="text-end mb-3 no-print d-flex justify-content-end gap-2">
+        <button type="button" onclick="shareWhatsApp()" class="btn btn-outline-success shadow-sm" style="border-color:#25D366; color:#25D366; background: #fff;">
+            <i class="fab fa-whatsapp me-1"></i> WhatsApp
+        </button>
+        <button type="button" onclick="showExportOptions()" class="btn btn-outline-info shadow-sm" style="background: #fff;">
+            <i class="fas fa-download me-1"></i> Export
+        </button>
+        <button onclick="window.print()" class="btn btn-dark px-4 shadow-sm">
             🖨️ Print Invoice
         </button>
-        <button onclick="window.open('{{ url('booking/print2') }}/{{ $booking->id }}', '_blank')" class="btn btn-primary ms-2">
-            🧾 Thermal Print
+        <button onclick="window.open('{{ url('booking/print2') }}/{{ $booking->id }}', '_blank')" class="btn btn-primary px-4 shadow-sm">
+            🧾 Thermal
         </button>
     </div>
 
-    <div class="invoice-wrapper">
+    <div class="invoice-wrapper" id="invoiceContent">
 
         {{-- HEADER --}}
         <div class="invoice-header">
@@ -355,4 +362,136 @@ table tbody td{
     </div>
 </div>
 
+@endsection
+
+@section('js')
+<script>
+/* ---------- WhatsApp Share ---------- */
+window.shareWhatsApp = function() {
+    Swal.fire({
+        title: 'Preparing WhatsApp Share...',
+        text: 'Generating PDF document to share.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    var element = document.getElementById('invoiceContent');
+    var opt = {
+      margin:       [0.3, 0.3, 0.3, 0.3],
+      filename:     'Sale_Order_{{ $booking->invoice_no }}.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).outputPdf('blob').then(function(pdfBlob) {
+        var file = new File([pdfBlob], opt.filename, { type: 'application/pdf' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({
+                title: 'Sale Order',
+                text: 'Please find the attached Sale Order #{{ $booking->invoice_no }}.',
+                files: [file]
+            }).then(() => {
+                Swal.close();
+            }).catch((error) => {
+                console.log('Error sharing', error);
+                fallbackWaShare(pdfBlob, opt.filename);
+            });
+        } else {
+            fallbackWaShare(pdfBlob, opt.filename);
+        }
+    });
+};
+
+function fallbackWaShare(pdfBlob, filename) {
+    Swal.fire({
+        icon: 'info',
+        title: 'Share PDF via WhatsApp',
+        text: 'The PDF will be downloaded now. WhatsApp will open allowing you to choose any chat. Please attach the downloaded PDF manually.',
+        confirmButtonText: 'Download & Open WhatsApp'
+    }).then(() => {
+        var url = URL.createObjectURL(pdfBlob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        var msg = "*Sale Order #{{ $booking->invoice_no }}*\nPlease find the attached PDF document.";
+        var waUrl = "https://wa.me/?text=" + encodeURIComponent(msg);
+        window.open(waUrl, '_blank');
+    });
+}
+
+/* ---------- Export Options & PDF ---------- */
+window.showExportOptions = function() {
+    Swal.fire({
+        title: 'Export Sale Order',
+        text: 'Choose your preferred export format:',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#dc3545',
+        confirmButtonText: '<i class="fas fa-file-excel me-1"></i> Excel (CSV)',
+        cancelButtonText: '<i class="fas fa-file-pdf me-1"></i> PDF',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            exportCSV();
+        } else if (result.dismiss === Swal.DismissReason.cancel) {
+            exportPDF();
+        }
+    });
+};
+
+window.exportPDF = function() {
+    Swal.fire({
+        title: 'Generating PDF...',
+        text: 'Please wait while your PDF is being prepared.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+
+    var element = document.getElementById('invoiceContent');
+    var opt = {
+      margin:       [0.3, 0.3, 0.3, 0.3],
+      filename:     'Sale_Order_{{ $booking->invoice_no }}.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save().then(function() {
+        Swal.close();
+    });
+};
+
+window.exportCSV = function () {
+    var rows = [['#', 'Item Name', 'Qty', 'Rate', 'Disc Amt', 'Amount']];
+    
+    $('.items-table tbody tr').each(function () {
+        var cells = [];
+        $(this).find('td').each(function () {
+            var text = $(this).text().trim().replace(/"/g, '""');
+            cells.push('"' + text + '"');
+        });
+        if (cells.length) rows.push(cells);
+    });
+    
+    rows.push([]);
+    rows.push(['', 'Sub Total', '', '', '', '{{ number_format($booking->sub_total2, 2) }}']);
+    rows.push(['', 'Net Total', '', '', '', '{{ number_format($netTotal, 2) }}']);
+    rows.push(['', 'Total Payable', '', '', '', '{{ number_format($payableAmount, 2) }}']);
+
+    var csv  = rows.map(function(r){return r.join(',');}).join('\n');
+    var blob = new Blob(["\uFEFF" + csv], {type:'text/csv;charset=utf-8;'});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = 'Sale_Order_{{ $booking->invoice_no }}.csv';
+    a.click();
+};
+</script>
 @endsection

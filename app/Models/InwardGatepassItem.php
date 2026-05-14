@@ -9,8 +9,8 @@ class InwardGatepassItem extends Model
 {
     use HasFactory;
 
-      protected $fillable = ['inward_gatepass_id','product_id','qty'];
-
+    //   protected $fillable = ['inward_gatepass_id','product_id','qty', 'packing_type', 'packing_qty', 'item_per_piece', 'loose_piece', 'unit'];
+protected $guarded = [];
     public function gatepass()
     {
         return $this->belongsTo(InwardGatepass::class);

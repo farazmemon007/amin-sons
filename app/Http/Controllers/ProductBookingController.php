@@ -13,7 +13,7 @@ class ProductBookingController extends Controller
 {
     public function index()
     {
-        $query = ProductBooking::with('customer','items')->latest();
+        $query = ProductBooking::with('customer','items', 'salesman')->latest();
 
         // For non-super-admin users, show bookings that belong to their branch.
         // Include bookings where `customer` is null (walking customers) by checking booking.branch_id
@@ -40,7 +40,8 @@ class ProductBookingController extends Controller
     {
         $products = Product::get();
         $Customer = Customer::get();
-        return view('admin_panel.booking.create', compact('products', 'Customer'));
+        $salesmen = \App\Models\SalesOfficer::all();
+        return view('admin_panel.booking.create', compact('products', 'Customer', 'salesmen'));
     }
 
     public function store(Request $request)
@@ -95,7 +96,8 @@ class ProductBookingController extends Controller
             }
 
             $booking = new ProductBooking();
-            $booking->customer            = $request->customer;
+            $booking->customer_id         = $request->customer; // ✅ Corrected from $booking->customer
+            $booking->salesman_id         = $request->salesman_id ?? null;
             $booking->reference           = $request->reference;
             $booking->product             = implode(',', $combined_products);
             $booking->product_code        = implode(',', $combined_codes);

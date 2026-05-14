@@ -17,4 +17,9 @@ class VendorLedger extends Model
     {
         return $this->belongsTo(Vendor::class,'vendor_id');
     }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

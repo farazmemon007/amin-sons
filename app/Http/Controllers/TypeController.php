@@ -17,6 +17,16 @@ class TypeController extends Controller
             'name' => $request->name,
         ]);
 
+        if ($request->page === 'product_edit') {
+            return redirect()
+                ->route('products.edit', $request->product_id)
+                ->with('success', 'Type added successfully');
+        } else if ($request->page === 'product_page') {
+            return redirect()
+                ->route('store')
+                ->with('success', 'Type added successfully');
+        }
+
         $productTypes = ProductType::all();
 
         return response()->json($productTypes);

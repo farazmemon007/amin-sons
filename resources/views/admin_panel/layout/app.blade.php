@@ -204,6 +204,7 @@
         }
     </style>
 
+    @yield('css')
 </head>
 
 <body>
@@ -336,15 +337,21 @@
                     <i class="fas fa-shopping-cart"></i> Purchase Orders
                 </a>
                 <ul style="list-style: none; padding: 0;">
+                    @can('purchase.view') {{-- Using purchase.view for PO access --}}
+                    <li><a href="{{route('purchase_orders.index')}}"><i class="fas fa-clipboard-list"></i> PO List</a></li>
+                    <li><a href="{{route('purchase_orders.create')}}"><i class="fas fa-plus-circle"></i> Create New PO</a></li>
+                    @endcan
                     @can('inward.gatepass.view')
                     <li><a href="{{route('InwardGatepass.home')}}"><i class="fas fa-door-open"></i> Inward Gatepasses</a></li>
-                    {{-- <li><a href="{{route('add_inwardgatepass')}}"><i class="fas fa-plus-circle"></i> Add Inward Gatepass</a></li> --}}
                     @endcan
                     @can('purchase.view')
                     <li><a href="{{route('Purchase.home')}}"><i class="fas fa-file-invoice"></i> Purchase Invoice</a></li>
                     @endcan
                     @can('vendor.view')
                     <li><a href="{{url('vendorlist')}}"><i class="fas fa-truck"></i> Vendors</a></li>
+                    @endcan
+                    @can('vendor.ledger')
+                    <li><a href="{{ route('vendors.ledger') }}"><i class="fas fa-book"></i> Vendor Ledger</a></li>
                     @endcan
                 </ul>
             </li>
@@ -425,6 +432,9 @@
                                     @can('zone.view')
                                     <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zones</a></li>
                                     @endcan
+                                    @can('sales.officer.view')
+                                    <li><a href="{{ route('sales.officer.index') }}"><i class="fas fa-user-tie"></i> Salesmen (Officers)</a></li>
+                                    @endcan
                                     
                                     <li style="border-top: 1px solid #eee; margin: 4px 0; padding: 0;"></li>
                                     
@@ -448,6 +458,14 @@
                             <a href="{{route('notifications.index')}}" class="nav-link">
                                 <i class="menu_icon fas fa-bell"></i>
                                 <span class="menu-title">Notifications</span>
+                            </a>
+                        </li>
+
+                        {{-- ✅ Find Document --}}
+                        <li class="nav-item">
+                            <a href="{{ route('find.index') }}" class="nav-link">
+                                <i class="menu_icon fas fa-search"></i>
+                                <span class="menu-title">Find</span>
                             </a>
                         </li>
 
@@ -497,14 +515,20 @@
                                     @can('report.customer.ledger.view')
                                     <li><a href="{{ route('report.customer.ledger.new') }}"><i class="fa-solid fa-users"></i> Customer ledger Report</a></li>
                                     @endcan
+                                    @can('report.vendor.ledger.view')
+                                    <li><a href="{{ route('vendors-ledger') }}"><i class="fa-solid fa-users"></i> Vendor ledger Report</a></li>
+                                    @endcan
                                     @can('report.item.stock.view')
                                     <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-users"></i> Item Stock Report</a></li>
                                     @endcan
                                     @can('report.purchase.view')
                                     <li><a href="{{ route('report.purchase') }}"><i class="fa-solid fa-users"></i> Purchase Report</a></li>
+                                    <li><a href="{{ route('report.local_purchase') }}"><i class="fas fa-store-alt"></i> Local Purchase Report</a></li>
+                                    <li><a href="{{ route('report.po_vs_gatepass') }}"><i class="fas fa-tasks"></i> PO vs Gatepass Report</a></li>
                                     @endcan
                                     @can('report.sale.view')
                                     <li><a href="{{ route('report.sale') }}"><i class="fa-solid fa-users"></i> Sale Report</a></li>
+                                    <li><a href="{{ route('report.salesman.performance') }}"><i class="fa-solid fa-user-tie"></i> Salesman Performance</a></li>
                                     @endcan
                                     @can('report.customer.ledger.view')
                                     <li><a href="{{ route('report.customer.ledger') }}"><i class="fa-solid fa-users"></i> Customer Ledger</a></li>
@@ -623,6 +647,12 @@
 
     <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- SweetAlert2 JS (globally available) -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- html2pdf.js (required for reports) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     @yield('js')
 

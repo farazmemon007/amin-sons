@@ -515,6 +515,18 @@
                         </div>
 
                         <div class="mb-2">
+                            <label class="form-label fw-bold">Salesman (Optional)</label>
+                            <select class="form-select select2" name="salesman_id" id="salesman_id">
+                                <option value="">Select Salesman</option>
+                                @foreach($salesmen as $sm)
+                                    <option value="{{ $sm->id }}" {{ $sale->salesman_id == $sm->id ? 'selected' : '' }}>
+                                        {{ $sm->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="mb-2">
                             <label class="form-label fw-bold">Remarks</label>
                             <textarea class="form-control" id="remarks" name="remarks">{{ $sale->remarks }}</textarea>
                         </div>

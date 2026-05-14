@@ -42,6 +42,7 @@ use App\Http\Controllers\BranchWarehouseController;
 use App\Http\Controllers\StockRequestController;
 use App\Http\Controllers\BranchLedgerController;
 use App\Http\Controllers\VoucherInterBranchController;
+use App\Http\Controllers\FindController;
 
 
 
@@ -70,6 +71,10 @@ use App\Http\Controllers\VoucherInterBranchController;
             Route::middleware('auth')->group(function () {
 
                 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+    // ✅ Find Document
+    Route::get('/find', [FindController::class, 'index'])->name('find.index');
+    Route::get('/find/search', [FindController::class, 'search'])->name('find.search');
 
 
     Route::post('type/store', [TypeController::class,'store'])->name('store.type');
@@ -149,7 +154,7 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('/opening-stocks/warehouses-by-branch', [ProductController::class, 'getWarehousesForBranch'])->middleware('permission:product.view')->name('opening.stocks.warehouses');
     Route::get('/opening-stocks/stock-breakdown', [ProductController::class, 'getProductStockBreakdown'])->middleware('permission:product.view')->name('opening.stocks.breakdown');
 
-    // Route::get('/barcode/{id}', [ProductController::class, 'barcode'])->name('product.barcode');
+    // Route::get('/barcode/{id}', [ProductController::class, 'barcode'])->name('p  roduct.barcode');
     // Searches
     Route::get('/generate-barcode-image', [ProductController::class, 'generateBarcode'])->middleware('permission:product.barcode')->name('generate-barcode-image');
     Route::get('/get-subcategories/{category_id}', [ProductController::class, 'getSubcategories'])->name('fetch-subcategories');
@@ -230,7 +235,8 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('/vendorlist', [VendorController::class, 'index'])->middleware('permission:vendor.view')->name('vendor.index');
     Route::post('/vendor/store', [VendorController::class, 'store'])->name('vendors.store.ajax');
     Route::get('/vendor/delete/{id}', [VendorController::class, 'delete']);
-    Route::get('/vendors-ledger', [VendorController::class, 'vendors_ledger'])->name('vendors-ledger');
+    Route::get('/vendors/ledger', [VendorController::class, 'vendors_ledger'])->middleware('permission:vendor.ledger')->name('vendors.ledger');
+    Route::get('/vendors-ledger', [\App\Http\Controllers\ReportingController::class, 'vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('vendors-ledger');
     Route::get('/vendor/payments', [VendorController::class, 'vendor_payments'])->name('vendor.payments');
     Route::post('/vendor/payments', [VendorController::class, 'store_vendor_payment'])->name('vendor.payments.store');
     Route::get('/vendor/bilties', [VendorController::class, 'vendor_bilties'])->name('vendor.bilties');
@@ -244,6 +250,9 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('/warehouse', [WarehouseController::class, 'index'])->middleware('permission:warehouse.view');
     Route::post('/warehouse/store', [WarehouseController::class, 'store'])->middleware('permission:warehouse.create|warehouse.edit');
     Route::get('/warehouse/delete/{id}', [WarehouseController::class, 'delete'])->middleware('permission:warehouse.delete');
+    // ✅ ERP: Role-Based Warehouse Staff Assignment
+    Route::post('/warehouse/assign-users', [WarehouseController::class, 'assignUsers'])->middleware('permission:warehouse.manage')->name('warehouse.assign.users');
+    Route::get('/warehouse/{id}/users', [WarehouseController::class, 'getWarehouseUsers'])->middleware('permission:warehouse.view')->name('warehouse.get.users');
     // Branch <-> Warehouse mapping (admin)
     Route::get('/admin/branch-warehouse', [BranchWarehouseController::class, 'index'])->name('branch.warehouse.index')->middleware('permission:warehouse.manage');
     Route::put('/admin/branch-warehouse/{branch}', [BranchWarehouseController::class, 'update'])->name('branch.warehouse.update')->middleware('permission:warehouse.manage');
@@ -274,6 +283,9 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::resource('users', UserController::class)->names('users')->only(['index', 'store']);
     Route::get('/users/delete/{id}', [UserController::class, 'delete'])->name('users.delete')->middleware('permission:delete role');;
     Route::post('/admin/users/update-roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
+    // ✅ ERP: User-Centric Warehouse Assignment (Super Admin assigns multiple warehouses to a user)
+    Route::get('/users/{id}/warehouse-assignments', [UserController::class, 'getUserWarehouseAssignments'])->name('users.warehouse.assignments')->middleware('permission:warehouse.manage');
+    Route::post('/users/assign-warehouses', [UserController::class, 'assignUserWarehouses'])->name('users.assign.warehouses')->middleware('permission:warehouse.manage');
     });
     // Route::put('/users/{id}/roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
 
@@ -294,6 +306,11 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     route::get('/Purchase', [PurchaseController::class, 'index'])->middleware('permission:purchase.view')->name('Purchase.home');
     route::get('/Purchase/{id}/pending', [PurchaseController::class, 'showPending'])->middleware('permission:purchase.view')->name('purchase.pending');
     route::get('/add/Purchase', [PurchaseController::class, 'add_purchase'])->middleware('permission:purchase.create')->name('add_purchase');
+    
+    // ✅ NEW: Local Purchase (Direct inventory add)
+    Route::get('/add/LocalPurchase', [PurchaseController::class, 'addLocalPurchase'])->middleware('permission:purchase.create')->name('purchase.addLocal');
+    Route::post('/store/LocalPurchase', [PurchaseController::class, 'storeLocalPurchase'])->middleware('permission:purchase.create')->name('purchase.storeLocal');
+
     route::post('/Purchase/stote', [PurchaseController::class, 'store'])->middleware('permission:purchase.create|purchase.edit')->name('store.Purchase');
     Route::get('/purchase/{id}/edit', [PurchaseController::class, 'edit'])->middleware('permission:purchase.edit')->name('purchase.edit');
     Route::put('/purchase/{id}', [PurchaseController::class, 'update'])->middleware('permission:purchase.edit')->name('purchase.update');
@@ -305,10 +322,33 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('purchase/return/{id}', [PurchaseController::class, 'showReturnForm'])->middleware('permission:purchase.return.view')->name('purchase.return.show');
     Route::post('purchase/return/store', [PurchaseController::class, 'storeReturn'])->middleware('permission:purchase.return.create|purchase.return.edit')->name('purchase.return.store');
     Route::get('/getPartyList', [PurchaseController::class, 'getPartyList'])->middleware('permission:vendor.view')->name('party.list');
+
+    // Purchase Order (PO) Routes
+    Route::prefix('purchase-orders')->group(function () {
+        Route::get('/', [App\Http\Controllers\PurchaseOrderController::class, 'index'])->middleware('permission:purchase.order.view')->name('purchase_orders.index');
+        Route::get('/create', [App\Http\Controllers\PurchaseOrderController::class, 'create'])->middleware('permission:purchase.order.create')->name('purchase_orders.create');
+        Route::post('/store', [App\Http\Controllers\PurchaseOrderController::class, 'store'])->middleware('permission:purchase.order.create')->name('purchase_orders.store');
+        Route::get('/{id}', [App\Http\Controllers\PurchaseOrderController::class, 'show'])->middleware('permission:purchase.order.view')->name('purchase_orders.show');
+        Route::get('/{id}/print', [App\Http\Controllers\PurchaseOrderController::class, 'print'])->middleware('permission:purchase.order.view')->name('purchase_orders.print');
+        Route::get('/{id}/edit', [App\Http\Controllers\PurchaseOrderController::class, 'edit'])->middleware('permission:purchase.order.edit')->name('purchase_orders.edit');
+        Route::put('/{id}', [App\Http\Controllers\PurchaseOrderController::class, 'update'])->middleware('permission:purchase.order.edit')->name('purchase_orders.update');
+        Route::delete('/{id}', [App\Http\Controllers\PurchaseOrderController::class, 'destroy'])->middleware('permission:purchase.order.delete')->name('purchase_orders.destroy');
+        
+        // AJAX Helpers
+        Route::get('/branch/{branchId}/next-po', [App\Http\Controllers\PurchaseOrderController::class, 'getNextPONumber'])->name('purchase_orders.next_po');
+        Route::get('/branch/{branchId}/vendors', [App\Http\Controllers\VendorController::class, 'getVendorsByBranch'])->name('vendors.by_branch');
+    });
+
+    // AJAX Helpers (Accessible by authorized users)
+    Route::group(['middleware' => ['auth']], function () {
+        Route::get('/purchase-orders/search-by-number', [App\Http\Controllers\PurchaseOrderController::class, 'searchByNumber'])->name('purchase_orders.search-by-number');
+    });
+
     // Inward Gatepass Routes
     Route::get('/InwardGatepass', [InwardgatepassController::class, 'index'])->middleware('permission:inward.gatepass.view')->name('InwardGatepass.home');
     Route::get('/add/InwardGatepass', [InwardgatepassController::class, 'create'])->middleware('permission:inward.gatepass.create')->name('add_inwardgatepass');
     Route::get('/inward-gatepass/from-purchase/{purchaseId}', [InwardgatepassController::class, 'createFromPurchase'])->middleware('permission:inward.gatepass.create')->name('inward-gatepass.from-purchase');
+    Route::get('/inward-gatepass/from-po/{poId}', [InwardgatepassController::class, 'createFromPO'])->middleware('permission:inward.gatepass.create')->name('inward-gatepass.from-po');
     Route::post('/InwardGatepass/store', [InwardgatepassController::class, 'store'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit')->name('store.InwardGatepass');
     Route::get('/InwardGatepass/{id}', [InwardgatepassController::class, 'show'])->middleware('permission:inward.gatepass.view')->name('InwardGatepass.show');
 
@@ -460,6 +500,7 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
 
     
     Route::get('/get-customers-by-type', [CustomerController::class, 'getByType'])->middleware('permission:customer.view');
+    Route::get('/warehouse_stocks/filter-warehouses', [WarehouseStockController::class, 'getWarehousesForFilter'])->name('warehouse_stocks.filter_warehouses');
     Route::resource('warehouse_stocks', WarehouseStockController::class)->middleware('permission:warehouse.stock.view');
     
     // Stock Transfers with proper permission checks
@@ -524,6 +565,8 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
     Route::post('vouchers/store', [VoucherController::class, 'store'])->middleware('permission:voucher.view')->name('vouchers.store');
     Route::get('/view_all', [AccountsHeadController::class, 'index'])->middleware('permission:chart.of.accounts.view')->name('view_all');
     Route::get('/branch-accounts/{branchId}', [AccountsHeadController::class, 'showBranchAccounts'])->middleware('permission:chart.of.accounts.view')->name('branch.accounts');
+    // ✅ ERP STANDARD: Per-Account General Ledger
+    Route::get('/account-ledger/{accountId}', [AccountsHeadController::class, 'accountLedger'])->middleware('permission:chart.of.accounts.view')->name('account.ledger');
     // ✅ Permission removed - getVendorBalance now accessible
     Route::get('/get-vendor-balance/{id}', [VendorController::class, 'getVendorBalance']);
     ///// Recipt Vouchers
@@ -553,6 +596,14 @@ Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expensepri
     Route::get('report/purchase', [ReportingController::class, 'purchase_report'])->middleware('permission:report.purchase.view')->name('report.purchase');
     Route::post('report/purchase/fetch', [ReportingController::class, 'fetchPurchaseReport'])->middleware('permission:report.purchase.view')->name('report.purchase.fetch');
 
+    Route::get('report/local-purchase', [ReportingController::class, 'local_purchase_report'])->middleware('permission:report.purchase.view')->name('report.local_purchase');
+    Route::get('report/local-purchase/fetch', [ReportingController::class, 'fetch_local_purchase_report'])->middleware('permission:report.purchase.view')->name('report.local_purchase.fetch');
+    Route::post('report/local-purchase/pay', [PurchaseController::class, 'payLocalPurchase'])->middleware('permission:purchase.create')->name('report.local_purchase.pay');
+
+    // ✅ PO vs Gatepass Report
+    Route::get('report/po-vs-gatepass', [ReportingController::class, 'po_vs_gatepass_report'])->middleware('permission:report.purchase.view')->name('report.po_vs_gatepass');
+    Route::get('report/po-vs-gatepass/fetch', [ReportingController::class, 'fetch_po_vs_gatepass_report'])->middleware('permission:report.purchase.view')->name('report.po_vs_gatepass.fetch');
+
     Route::get('report/sale', [ReportingController::class, 'sale_report'])->middleware('permission:report.sale.view')->name('report.sale');
     Route::get('report/sale/fetch', [ReportingController::class, 'fetchsaleReport'])->middleware('permission:report.sale.view')->name('report.sale.fetch');
 
@@ -563,6 +614,15 @@ Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expensepri
 Route::get('testing',[ReportingController::class, 'customer_ledger_new'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger.new');
 Route::get('report/customer-ledger/fetch-new', [ReportingController::class, 'fetch_customer_ledger_new'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger.fetch.new');
 
+    Route::get('report/salesman-performance', [ReportingController::class, 'salesman_performance_report'])->middleware('permission:report.sale.view')->name('report.salesman.performance');
+    Route::get('report/salesman-performance/fetch', [ReportingController::class, 'fetch_salesman_performance'])->middleware('permission:report.sale.view')->name('report.salesman.performance.fetch');
+    Route::get('report/salesman-ledger/fetch', [ReportingController::class, 'fetch_salesman_ledger'])->middleware('permission:report.sale.view')->name('report.salesman.ledger.fetch');
+    Route::get('report/salesmen-by-branch', [ReportingController::class, 'salesmenByBranch'])->middleware('permission:report.sale.view')->name('report.salesmen.byBranch');
+
+    Route::get('report/vendor-ledger-new', [ReportingController::class, 'vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.new');
+    Route::get('report/vendor-ledger/fetch-new', [ReportingController::class, 'fetch_vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.fetch.new');
+    Route::get('report/vendors-by-branch', [ReportingController::class, 'vendorsByBranch'])->middleware('permission:report.vendor.ledger.view')->name('vendors-by-branch');
+    Route::get('/warehouses-by-branch', [App\Http\Controllers\WarehouseController::class, 'warehousesByBranch'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit')->name('warehouses-by-branch');
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:report.inventory.onhand.view')->name('reports.onhand');
     
     // ✅ Stock Hold Audit Report (ERP Compliance)

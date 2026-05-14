@@ -52,6 +52,23 @@ class User extends Authenticatable
         return $this->belongsTo(Branch::class);
     }
 
+    // Warehouse assignments (for role-based access)
+    public function warehouses()
+    {
+        return $this->belongsToMany(Warehouse::class, 'user_warehouses')
+                    ->withPivot('is_incharge', 'branch_id', 'notes')
+                    ->withTimestamps();
+    }
+
+    /**
+     * Returns the warehouse IDs this user is explicitly assigned to.
+     * Used for data-level security when the user is NOT a super admin or branch admin.
+     */
+    public function assignedWarehouseIds(): array
+    {
+        return $this->warehouses()->pluck('warehouses.id')->toArray();
+    }
+
 //    public function roles()
 //     {
 //         return $this->belongsToMany(Role::class, 'model_has_roles', 'model_id', 'role_id')

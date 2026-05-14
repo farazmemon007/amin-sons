@@ -33,6 +33,7 @@ class DatabaseSeeder extends Seeder
             BrandSeeder::class,
             UnitSeeder::class,
             // CustomerLedgerSeeder::class,
+            WarehouseInchargePermissionSeeder::class,
         ]);
 
         // Create or get users

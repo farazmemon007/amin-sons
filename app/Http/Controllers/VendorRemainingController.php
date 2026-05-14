@@ -13,16 +13,29 @@ class VendorRemainingController extends Controller
      */
     public function index()
     {
-        // Get pending vendor deliveries grouped by vendor
+        $branchId = auth()->user()->branch_id ?? 0;
+
+        // Get pending vendor deliveries grouped by vendor (branch-specific)
         $remainingItems = VendorRemaining::with(['vendor', 'product', 'purchase', 'warehouse'])
+            ->whereHas('purchase', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })
             ->pending()
             ->orderBy('updated_at', 'desc')
             ->paginate(20);
 
-        // Summary statistics
-        $totalRemaining = VendorRemaining::pending()->sum('remaining_qty');
-        $totalVendors = VendorRemaining::pending()->distinct('vendor_id')->count('vendor_id');
-        $totalPurchases = VendorRemaining::pending()->distinct('purchase_id')->count('purchase_id');
+        // Summary statistics (branch-specific)
+        $totalRemaining = VendorRemaining::whereHas('purchase', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })->pending()->sum('remaining_qty');
+            
+        $totalVendors = VendorRemaining::whereHas('purchase', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })->pending()->distinct('vendor_id')->count('vendor_id');
+            
+        $totalPurchases = VendorRemaining::whereHas('purchase', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })->pending()->distinct('purchase_id')->count('purchase_id');
 
         return view('admin_panel.vendor_remaining.index', compact(
             'remainingItems',

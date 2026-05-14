@@ -413,6 +413,8 @@
                                                     <div class="col-sm-4" id="unitSection" style="display: none;">
                                                         <label class="form-label">Unit</label>
                                                         <div class="input-group">
+                                                            <input type="text" id="unit_readonly" class="form-control" style="display:none;" value="Piece" readonly>
+                                                            <input type="hidden" name="unit" id="unit_hidden" disabled>
                                                             <select id="unit_select" name="unit" class="form-select" value="">
                                                                 <option value="">Select Unit</option>
                                                                 @foreach ($units as $u)
@@ -421,11 +423,11 @@
                                                                         {{ $u->name }}</option>
                                                                 @endforeach
                                                             </select>
-                                                            {{-- <button type="button" class="btn btn-primary add-btn"
+                                                            <button type="button" class="btn btn-primary add-btn" id="unit_add_btn"
                                                                 data-bs-toggle="modal" data-bs-target="#unitModal"
-                                                                title="Add New Unit">
+                                                                title="Add New Unit" style="display:none;">
                                                                 <i class="fa-solid fa-plus"></i>
-                                                            </button> --}}
+                                                            </button>
                                                         </div>
                                                     </div>
 
@@ -882,8 +884,22 @@
             var packingType = $('#packing_type').val();
 
             if (packingType === 'Standard') {
-                // Show Unit field, hide Customize fields
+                // Show unitSection
                 $('#unitSection').show();
+                // Find the ID of the 'Piece' option
+                var pieceOptionId = $('#unit_select option').filter(function() { 
+                    var txt = $(this).text().toLowerCase();
+                    return txt === 'piece' || txt === 'pcs' || txt === 'pieces'; 
+                }).first().val();
+                
+                // Set to Piece and show readonly, hide select
+                $('#unit_readonly').val('Piece').show().prop('disabled', false);
+                $('#unit_hidden').val(pieceOptionId).prop('disabled', false);
+                $('#unit_select').prop('disabled', true).hide();
+                $('#unit_select').closest('.input-group').find('.select2-container').hide();
+                $('#unit_add_btn').hide();
+
+                // Hide Customize fields
                 $('#packingQtySection').hide();
                 $('#unitPerPackingSection').hide();
                 $('#loosepiece_section').hide();
@@ -894,14 +910,20 @@
                 $('#loose_piece').val('0');
 
             } else if (packingType === 'Customize') {
-                // Show Customize fields, hide Unit field
-                $('#unitSection').hide();
+                // Show unitSection
+                $('#unitSection').show();
+                // Show select, hide readonly
+                $('#unit_readonly').hide().prop('disabled', true);
+                $('#unit_hidden').prop('disabled', true);
+                $('#unit_select').prop('disabled', false).show();
+                $('#unit_select').closest('.input-group').find('.select2-container').show();
+                // unit_add_btn is hidden by default in edit mode but we can show it if it exists and is un-commented
+                $('#unit_add_btn').show();
+
+                // Show Customize fields
                 $('#packingQtySection').show();
                 $('#unitPerPackingSection').show();
                 $('#loosepiece_section').show();
-
-                // Clear unit field
-                $('#unit_select').val('');
 
             } else {
                 // Hide all conditional fields
