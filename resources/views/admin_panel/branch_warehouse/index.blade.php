@@ -276,7 +276,7 @@
                             .filter(v => v !== '' && v !== 'undefined');
 
             $('#modalBranchName').text(branchName);
-            $('#mapForm').attr('action', '/admin/branch-warehouse/' + currentBranchId);
+            $('#mapForm').attr('action', '{{ url("admin/branch-warehouse") }}/' + currentBranchId);
 
             // Reset and check assigned boxes
             $('.warehouse-checkbox').prop('checked', false);
@@ -297,7 +297,7 @@
             if (wasChecked && !isChecked) {
                 // Check if warehouse has products
                 $.ajax({
-                    url: '/admin/branch-warehouse/check-products/' + currentBranchId + '/' + warehouseId,
+                    url: '{{ url("admin/branch-warehouse/check-products") }}/' + currentBranchId + '/' + warehouseId,
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
