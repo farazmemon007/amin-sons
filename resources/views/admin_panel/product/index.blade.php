@@ -30,6 +30,17 @@
     .custom-dropdown .dropdown-item:hover {
         background: #f1f3f5; transform: translateX(3px);
     }
+    
+    /* ===== Compact Table Fix ===== */
+    .custom-compact-table { font-size: 13px; }
+    .custom-compact-table th, .custom-compact-table td {
+        padding: 8px 10px !important;
+        vertical-align: middle !important;
+        white-space: normal !important; /* Allow text wrapping */
+    }
+    .custom-compact-table .btn-sm { font-size: 12px; padding: 4px 8px; }
+    .min-w-100 { min-width: 100px; }
+    .min-w-150 { min-width: 150px; }
 </style>
 
 @php $isSuperAdmin = isset($isSuperAdmin) ? $isSuperAdmin : false; @endphp
@@ -52,11 +63,11 @@
                 </button>
             </div>
         @endif
-        <div class="table-responsive">
-            <table id="productTable" class="table table-striped table-bordered align-middle nowrap" style="width:100%">
+        <div class="table-responsive" style="overflow-x: hidden;">
+            <table id="productTable" class="table table-striped table-bordered align-middle custom-compact-table" style="width:100%">
                 <thead class="table-light">
                     <tr>
-                        <th><input type="checkbox" id="selectAll"></th>
+                        <th style="width: 30px;"><input type="checkbox" id="selectAll"></th>
                         <th>#</th>
                         <th>Item Code</th>
                         @if($isSuperAdmin)
@@ -358,7 +369,8 @@ $(document).ready(function () {
     // ===== DataTable =====
     if ($.fn.DataTable) {
         $('#productTable').DataTable({
-            responsive: true,
+            responsive: false, // Disabled to prevent the green '+' icons and weird column collapsing
+            scrollX: true,     // Enable native DataTables horizontal scrolling
             pageLength: 10,
             lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "All"]],
             language: { search: "_INPUT_", searchPlaceholder: "Search products..." }

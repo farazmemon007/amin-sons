@@ -381,7 +381,6 @@
                         <th style="width: 30pt;">ID</th>
                         <th class="td-left">Product Details</th>
                         <th style="width: 80pt;">Brand</th>
-                        <th style="width: 80pt;">Color</th>
                         <th style="width: 60pt;">UOM</th>
                         <th style="width: 70pt;">Unit Price</th>
                         <th style="width: 60pt;">Ordered</th>
@@ -391,33 +390,56 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($order->items as $i => $item)
+                    @php
+                        $groupedItems = [];
+                        foreach($order->items as $item) {
+                            $key = $item->product_id . '_' . $item->unit_price;
+                            if (!isset($groupedItems[$key])) {
+                                $groupedItems[$key] = [
+                                    'product' => $item->product,
+                                    'colors' => [],
+                                    'unit' => $item->unit,
+                                    'unit_price' => $item->unit_price,
+                                    'qty' => 0,
+                                    'received_qty' => 0,
+                                    'line_total' => 0,
+                                ];
+                            }
+                            if ($item->color) {
+                                $groupedItems[$key]['colors'][] = strtoupper($item->color) . ' (' . $item->qty . ')';
+                            }
+                            $groupedItems[$key]['qty'] += $item->qty;
+                            $groupedItems[$key]['received_qty'] += $item->received_qty;
+                            $groupedItems[$key]['line_total'] += $item->line_total;
+                        }
+                    @endphp
+                    @foreach(array_values($groupedItems) as $i => $item)
                         <tr>
                             <td style="font-weight: 700;">{{ $i + 1 }}</td>
                             <td class="td-left">
-                                <div class="item-title">{{ $item->product->item_name }}</div>
-                                <div class="item-code">{{ $item->product->item_code }}</div>
+                                <div class="item-title">{{ $item['product']->item_name ?? 'N/A' }}</div>
+                                <div class="item-code" style="margin-bottom: 4pt;">{{ $item['product']->item_code ?? 'N/A' }}</div>
+                                @if(count($item['colors']) > 0)
+                                    <div>
+                                        @foreach($item['colors'] as $c)
+                                            <div class="color-badge" style="margin-bottom: 2pt; margin-right: 2pt;">{{ $c }}</div>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </td>
                             <td>
-                                @if($item->product && $item->product->brand)
-                                    <div style="font-weight: 700; color: var(--text-main);">{{ $item->product->brand->name }}</div>
+                                @if($item['product'] && $item['product']->brand)
+                                    <div style="font-weight: 700; color: var(--text-main);">{{ $item['product']->brand->name }}</div>
                                 @else
                                     <span style="color: var(--text-muted); font-size: 8pt;">-</span>
                                 @endif
                             </td>
-                            <td>
-                                @if($item->color)
-                                    <div class="color-badge">{{ $item->color }}</div>
-                                @else
-                                    -
-                                @endif
-                            </td>
-                            <td style="font-weight: 700; font-size: 8pt; text-transform: uppercase;">{{ $item->unit ?? 'PIECE' }}</td>
-                            <td>{{ number_format($item->unit_price, 2) }}</td>
-                            <td style="font-weight: 800;">{{ number_format($item->qty) }}</td>
-                            <td style="color: var(--accent-green); font-weight: 800;">{{ number_format($item->received_qty ?? 0) }}</td>
-                            <td class="pending-highlight">{{ number_format($item->qty - ($item->received_qty ?? 0)) }}</td>
-                            <td class="td-right extension-val">{{ number_format($item->line_total, 2) }}</td>
+                            <td style="font-weight: 700; font-size: 8pt; text-transform: uppercase;">{{ $item['unit'] ?? 'PIECE' }}</td>
+                            <td>{{ number_format($item['unit_price'], 2) }}</td>
+                            <td style="font-weight: 800;">{{ number_format($item['qty']) }}</td>
+                            <td style="color: var(--accent-green); font-weight: 800;">{{ number_format($item['received_qty'] ?? 0) }}</td>
+                            <td class="pending-highlight">{{ number_format($item['qty'] - ($item['received_qty'] ?? 0)) }}</td>
+                            <td class="td-right extension-val">{{ number_format($item['line_total'], 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

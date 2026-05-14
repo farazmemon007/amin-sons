@@ -230,7 +230,6 @@
                                 <th class="text-center" style="width: 60px;">ID</th>
                                 <th>Product Details</th>
                                 <th class="text-center">Brand</th>
-                                <th class="text-center">Color</th>
                                 <th class="text-center">UoM</th>
                                 <th class="text-end">Unit Price</th>
                                 <th class="text-center">Ordered</th>
@@ -239,37 +238,60 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($order->items as $i => $item)
+                            @php
+                                $groupedItems = [];
+                                foreach($order->items as $item) {
+                                    $key = $item->product_id . '_' . $item->unit_price;
+                                    if (!isset($groupedItems[$key])) {
+                                        $groupedItems[$key] = [
+                                            'product' => $item->product,
+                                            'colors' => [],
+                                            'unit' => $item->unit,
+                                            'unit_price' => $item->unit_price,
+                                            'qty' => 0,
+                                            'received_qty' => 0,
+                                            'line_total' => 0,
+                                        ];
+                                    }
+                                    if ($item->color) {
+                                        $groupedItems[$key]['colors'][] = strtoupper($item->color) . ' (' . $item->qty . ')';
+                                    }
+                                    $groupedItems[$key]['qty'] += $item->qty;
+                                    $groupedItems[$key]['received_qty'] += $item->received_qty;
+                                    $groupedItems[$key]['line_total'] += $item->line_total;
+                                }
+                            @endphp
+                            @foreach(array_values($groupedItems) as $i => $item)
                                 <tr>
                                     <td class="text-center fw-bold text-slate-400">{{ $i+1 }}</td>
                                     <td>
-                                        <div class="fw-bold text-slate-800">{{ $item->product->item_name ?? 'N/A' }}</div>
-                                        <div class="text-slate-400" style="font-size: 0.75rem; font-family: monospace;">{{ $item->product->item_code ?? 'NO-CODE' }}</div>
+                                        <div class="fw-bold text-slate-800">{{ $item['product']->item_name ?? 'N/A' }}</div>
+                                        <div class="text-slate-400 mb-1" style="font-size: 0.75rem; font-family: monospace;">{{ $item['product']->item_code ?? 'NO-CODE' }}</div>
+                                        @if(count($item['colors']) > 0)
+                                            <div class="mt-1">
+                                                @foreach($item['colors'] as $c)
+                                                    <span class="badge bg-white text-primary border border-primary fw-bold mb-1" style="font-size: 0.65rem; display: inline-block;">{{ $c }}</span>
+                                                @endforeach
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="text-center">
-                                        @if($item->product && $item->product->brand)
-                                            <span class="badge bg-light text-dark border fw-bold" style="font-size: 0.75rem;">{{ $item->product->brand->name }}</span>
+                                        @if($item['product'] && $item['product']->brand)
+                                            <span class="badge bg-light text-dark border fw-bold" style="font-size: 0.75rem;">{{ $item['product']->brand->name }}</span>
                                         @else
                                             <span class="text-muted small">-</span>
                                         @endif
                                     </td>
+                                    <td class="text-center small fw-bold text-slate-600">{{ strtoupper($item['unit'] ?? $item['product']->unit->name ?? 'PCS') }}</td>
+                                    <td class="text-end fw-600">{{ number_format($item['unit_price'], 2) }}</td>
+                                    <td class="text-center fw-bold">{{ number_format($item['qty']) }}</td>
                                     <td class="text-center">
-                                        @if($item->color)
-                                            <span class="badge bg-white text-primary border border-primary fw-bold" style="font-size: 0.7rem;">{{ strtoupper($item->color) }}</span>
-                                        @else
-                                            <span class="text-slate-300">-</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-center small fw-bold text-slate-600">{{ strtoupper($item->unit ?? $item->product->unit->name ?? 'PCS') }}</td>
-                                    <td class="text-end fw-600">{{ number_format($item->unit_price, 2) }}</td>
-                                    <td class="text-center fw-bold">{{ number_format($item->qty) }}</td>
-                                    <td class="text-center">
-                                        @php $pending = $item->qty - $item->received_qty; @endphp
+                                        @php $pending = $item['qty'] - $item['received_qty']; @endphp
                                         <span class="{{ $pending > 0 ? 'text-danger fw-bold' : 'text-slate-300' }}">
                                             {{ number_format($pending) }}
                                         </span>
                                     </td>
-                                    <td class="text-end fw-800 text-slate-900">{{ number_format($item->line_total, 2) }}</td>
+                                    <td class="text-end fw-800 text-slate-900">{{ number_format($item['line_total'], 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -383,19 +405,19 @@
             ['ID', 'Product', 'Brand', 'Color', 'Qty', 'Rate', 'Total']
         ];
 
-        @foreach($order->items as $i => $item)
+        @foreach(array_values($groupedItems) as $i => $item)
             rows.push([
                 '{{ $i + 1 }}',
-                '{{ $item->product->item_name }}',
-                '{{ $item->product->brand->name ?? "-" }}',
-                '{{ $item->color ?? "-" }}',
-                '{{ $item->qty }}',
-                '{{ $item->unit_price }}',
-                '{{ $item->line_total }}'
+                '{{ $item['product']->item_name ?? "N/A" }}',
+                '{{ $item['product']->brand->name ?? "-" }}',
+                '{{ count($item['colors']) > 0 ? implode(" | ", $item['colors']) : "-" }}',
+                '{{ $item['qty'] }}',
+                '{{ $item['unit_price'] }}',
+                '{{ $item['line_total'] }}'
             ]);
         @endforeach
 
-        let csv = rows.map(r => r.join(',')).join('\n');
+        let csv = rows.map(r => r.map(cell => `"${cell}"`).join(',')).join('\n');
         let blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
         let url = URL.createObjectURL(blob);
         let a = document.createElement('a');
