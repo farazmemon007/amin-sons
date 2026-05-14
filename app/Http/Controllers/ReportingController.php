@@ -600,7 +600,7 @@ class ReportingController extends Controller
         $startDate = date('Y-m-01');
         $endDate   = date('Y-m-d');
 
-        return view('admin_panel.Reporting.vendor_ledger_new', compact('branches', 'vendors', 'startDate', 'endDate'));
+        return view('admin_panel.reporting.vendor_ledger_new', compact('branches', 'vendors', 'startDate', 'endDate'));
     }
 
     public function vendorsByBranch(Request $request)
