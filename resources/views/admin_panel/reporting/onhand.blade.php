@@ -93,11 +93,11 @@
                             <tbody>
                                 @foreach($rows as $i => $r)
                                 <tr>
-                                    <td class="text-center">${idx + 1}</td>
-                                    <td class="item-code">${r.item_code}</td>
-                                    <td class="item-name">${r.item_name}</td>
-                                    <td class="fw-bold">${r.brand_name}</td>
-                                    <td>${r.unit_name}</td>
+                                    <td class="text-center">{{ $i + 1 }}</td>
+                                    <td class="item-code">{{ $r->item_code }}</td>
+                                    <td class="item-name">{{ $r->item_name }}</td>
+                                    <td class="fw-bold">{{ $r->brand_name }}</td>
+                                    <td>{{ $r->unit_name }}</td>
                                     <td class="text-center">
                                         @if($r->is_part)
                                             <span class="badge rounded-pill bg-info px-2" style="font-size:11px;">Part</span>
