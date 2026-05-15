@@ -395,6 +395,40 @@
                 });
             });
         }
+        
+        // Fix for dropdown clipping in responsive tables
+        $('.dropdown-toggle').on('click', function (e) {
+            var $el = $(this);
+            var $dropdown = $el.next('.dropdown-menu');
+            
+            // If the dropdown is not already appended to body
+            if (!$dropdown.hasClass('dropdown-appended')) {
+                $('body').append($dropdown);
+                $dropdown.addClass('dropdown-appended');
+            }
+            
+            // Calculate position
+            var offset = $el.offset();
+            $dropdown.css({
+                'position': 'absolute',
+                'top': offset.top + $el.outerHeight(),
+                'left': offset.left - ($dropdown.outerWidth() - $el.outerWidth()),
+                'display': 'block',
+                'z-index': 10500
+            });
+            
+            // Handle closing
+            $(document).one('click', function closeDropdown(e) {
+                if (!$(e.target).closest('.dropdown-toggle').length && !$(e.target).closest('.dropdown-menu').length) {
+                    $('.dropdown-appended').css('display', 'none');
+                } else if (!$(e.target).closest('.dropdown-toggle').is($el)) {
+                    $dropdown.css('display', 'none');
+                } else {
+                    $(document).one('click', closeDropdown);
+                }
+            });
+        });
+        
     });
 </script>
 @endsection
