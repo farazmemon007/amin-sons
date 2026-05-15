@@ -41,7 +41,7 @@ class ReportingController extends Controller
             ->orderBy('products.item_name')
             ->get();
 
-        return view('admin_panel.Reporting.onhand', compact('rows'));
+        return view('admin_panel.reporting.onhand', compact('rows'));
     }
     public function customer_ledger_new(){
         $user = Auth::user();
