@@ -65,97 +65,121 @@
                     <h2 class="fw-bold text-primary mb-0">GATE PASS</h2>
                     <p class="text-muted small">Official Outward Document</p>
                 </div>
-                <div class="col-6 text-end">
-                    <div class="bg-light bg-opacity-10 p-3 d-inline-block rounded border-2 border-primary">
-                        <span class="label-title d-block text-primary">Gatepass Number</span>
-                        <span class="h4 fw-bold mb-0 text-primary">{{ $gp->gatepass_number ?? ('GP-' . str_pad($gp->id, 4, '0', STR_PAD_LEFT)) }}</span>
+                <div class="col-md-6 text-end" style="position: relative;">
+                    <div class="p-3 d-inline-block rounded shadow-sm border border-primary border-opacity-10 text-center" 
+                        style="background: #f8fbff; min-width: 230px; position: absolute; right: 0; top: -10px; z-index: 10; border-top: 4px solid #3c8dbc;">
+                        <span class="label-title d-block text-primary mb-1" style="font-size: 13px; font-weight: 700;">Gatepass Number</span>
+                        <div class="h4 fw-bold mb-1 text-primary" style="letter-spacing: -0.5px;">{{ $gp->gatepass_number ?? ('GP-' . str_pad($gp->id, 4, '0', STR_PAD_LEFT)) }}</div>
                         @if($gp->branch_id)
-                            <span class="label-title d-block text-primary mt-1">{{ \App\Models\Branch::find($gp->branch_id)?->name ?? 'Branch' }}</span>
+                            <div class="text-primary fw-bold small opacity-75" style="font-size: 11px; margin-bottom: 5px;">{{ \App\Models\Branch::find($gp->branch_id)?->name ?? 'amin$sons' }}</div>
+                        @else
+                            <div class="text-primary fw-bold small opacity-75" style="font-size: 11px; margin-bottom: 5px;">amin$sons</div>
                         @endif
-                    </div>
-                    <div class="mt-3 text-muted small">
-                        <strong>Date:</strong> {{ optional($gp->created_at)->format('d-M-Y h:i A') ?? '-' }}<br>
-                        <strong>Invoice No:</strong> {{ $gp->invoice_no ?? '-' }}
+                        
+                        <div style="border-top: 1px dashed #3c8dbc; opacity: 0.3; margin: 8px 0;"></div>
+                        
+                        <div class="text-muted small text-start px-2">
+                            <div class="d-flex justify-content-between">
+                                <strong>Date:</strong> 
+                                <span>{{ optional($gp->created_at)->format('d-M-Y') }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <strong>Invoice:</strong> 
+                                <span>{{ $gp->invoice_no ?? '-' }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-4">
+            <div class="row g-4 pt-2" style="margin-top: 75px;">
                 {{-- Left Column: Order Info --}}
                 <div class="col-md-4">
-                    <div class="section-divider"><h6 class="mb-0 fw-bold">Primary Details</h6></div>
-                    <div class="mb-3">
-                        <label class="label-title">Customer Name:</label>
-                        <span class="info-value text-primary fw-bold">{{ $gp->customer_name ?? 'N/A' }}</span>
-                    </div>
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Order ID:</label>
-                            <span class="info-value">{{ $gp->order_id }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">DC Number:</label>
-                            <span class="info-value">{{ $gp->dc_no ?? ($order->dc_no ?? '-') }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Invoice No:</label>
-                            <span class="info-value">{{ $gp->invoice_no ?? '-' }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Delivery City:</label>
-                            <span class="info-value">{{ $gp->delivery_city ?? '-' }}</span>
+                    <div class="card h-100 border-0 shadow-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1 !important; border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="section-divider mb-3" style="border-left-color: #1e293b;"><h6 class="mb-0 fw-bold text-dark">Primary Details</h6></div>
+                            <div class="mb-3">
+                                <label class="label-title">Customer Name:</label>
+                                <span class="info-value text-primary fw-bold">{{ $gp->customer_name ?? 'N/A' }}</span>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Order ID:</label>
+                                    <span class="info-value">{{ $gp->order_id }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">DC Number:</label>
+                                    <span class="info-value">{{ $gp->dc_no ?? ($order->dc_no ?? '-') }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Invoice No:</label>
+                                    <span class="info-value">{{ $gp->invoice_no ?? '-' }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Delivery City:</label>
+                                    <span class="info-value">{{ $gp->delivery_city ?? '-' }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {{-- Middle Column: Transport --}}
-                <div class="col-md-5 border-start border-end px-md-4">
-                    <div class="section-divider"><h6 class="mb-0 fw-bold">Logistics & Transport:</h6></div>
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Transporter:</label>
-                            <span class="info-value">{{ $gp->transporter ?? '-' }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Vehicle Type:</label>
-                            <span class="info-value">{{ $gp->vehicle_type ?? '-' }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Driver Name:</label>
-                            <span class="info-value">{{ $gp->driver_name ?? '-' }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Vehicle No:</label>
-                            <span class="info-value text-uppercase">{{ $gp->vehicle_number ?? '-' }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Bilty No:</label>
-                            <span class="info-value">{{ $gp->billty_no ?? '-' }}</span>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="label-title">Bilty Date:</label>
-                            <span class="info-value">{{ $gp->billty_date ?? '-' }}</span>
+                <div class="col-md-5">
+                    <div class="card h-100 border-0 shadow-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1 !important; border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="section-divider mb-3" style="border-left-color: #1e293b;"><h6 class="mb-0 fw-bold text-dark">Logistics & Transport</h6></div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Transporter:</label>
+                                    <span class="info-value">{{ $gp->transporter ?? '-' }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Vehicle Type:</label>
+                                    <span class="info-value">{{ $gp->vehicle_type ?? '-' }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Driver Name:</label>
+                                    <span class="info-value">{{ $gp->driver_name ?? '-' }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Vehicle No:</label>
+                                    <span class="info-value text-uppercase">{{ $gp->vehicle_number ?? '-' }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Bilty No:</label>
+                                    <span class="info-value">{{ $gp->billty_no ?? '-' }}</span>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="label-title">Bilty Date:</label>
+                                    <span class="info-value">{{ $gp->billty_date ?? '-' }}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {{-- Right Column: Warehouse/Issuer --}}
                 <div class="col-md-3">
-                    <div class="section-divider"><h6 class="mb-0 fw-bold">Origins</h6></div>
-                    <div class="mb-3">
-                        <label class="label-title">Warehouse</label>
-                        <span class="info-value">
-                            <i class="fa fa-warehouse small me-1"></i>
-                            {{ optional(\App\Models\Warehouse::find($gp->warehouse_id))->warehouse_name ?? ($gp->warehouse_id ?? '-') }}
-                        </span>
-                    </div>
-                    <div class="mb-3">
-                        <label class="label-title">Prepared By</label>
-                        <span class="info-value">{{ $gp->prepared_by ?? '-' }}</span>
-                    </div>
-                    <div class="bg-light p-2 rounded">
-                        <label class="label-title">Bilty Amount</label>
-                        <span class="h6 mb-0 d-block fw-bold text-dark">Rs. {{ $gp->billty_amount ? number_format($gp->billty_amount, 2) : '0.00' }}</span>
+                    <div class="card h-100 border-0 shadow-sm" style="background: #f1f5f9; border: 1px solid #cbd5e1 !important; border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="section-divider mb-3" style="border-left-color: #1e293b;"><h6 class="mb-0 fw-bold text-dark">Origins</h6></div>
+                            <div class="mb-3">
+                                <label class="label-title">Warehouse</label>
+                                <span class="info-value">
+                                    <i class="fa fa-warehouse small me-1"></i>
+                                    {{ optional(\App\Models\Warehouse::find($gp->warehouse_id))->warehouse_name ?? ($gp->warehouse_id ?? '-') }}
+                                </span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="label-title">Prepared By</label>
+                                <span class="info-value">{{ $gp->prepared_by ?? '-' }}</span>
+                            </div>
+                            <div class="bg-white p-2 rounded mt-4 border border-secondary border-opacity-25 shadow-sm">
+                                <label class="label-title">Bilty Amount</label>
+                                <span class="h6 mb-0 d-block fw-bold text-primary">Rs. {{ $gp->billty_amount ? number_format($gp->billty_amount, 2) : '0.00' }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
