@@ -1432,7 +1432,13 @@
                         $('#customerCountHint').text('No record found');
                     }
 
+                    // Destroy Select2 before replacing HTML (so it can reinitialize on new options)
+                    if ($('#customerSelect').hasClass('select2-hidden-accessible')) {
+                        $('#customerSelect').select2('destroy');
+                    }
                     $('#customerSelect').html(html).prop('disabled', false);
+                    // Reinitialize Select2 so it picks up the new options
+                    $('#customerSelect').select2({ placeholder: '-- Select Customer --', allowClear: true, width: '100%' });
 
                     // ✅ AUTO-SELECT IF ID PROVIDED
                     if (idToSelect) {
@@ -1450,36 +1456,34 @@
                 }
             }
 
-            // 🔹 When customer selected → load detail
-            $(document).on('change', '#customerSelect', function() {
-                const id = $(this).val();
+            // 🔹 Central function to load customer details by DB id
+            function loadCustomerDetails(id) {
+                if (!id) return;
                 $('#customer_id').val(id);
                 $('#customer').val(id);
-                if (!id) return;
 
-                $.get(
-                    '{{ route('salecustomers.show', '__ID__') }}'.replace('__ID__', id),
-                    function(d) {
+                $.ajax({
+                    url: '{{ route('salecustomers.show', '__ID__') }}'.replace('__ID__', id),
+                    type: 'GET',
+                    dataType: 'json',
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    success: function(d) {
+                        console.log('✅ Customer details loaded:', d);
 
-                        // basic customer info
+                        // Populate customer fields
                         $('#address').val(d.address || '');
                         $('#tel').val(d.mobile || '');
-                        $('#remarks').val(d.remarks || d.status || '');
+                        $('#remarks').val(d.remarks || '');
                         $('#creditLimit').val(d.credit_limit || '0');
 
+                        // Display customer name — code in the visible readonly field
+                        $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id || ''));
 
-                        // Display selected customer's id + name in the visible field
-                        $('#customerDisplay').val((d.customer_name || '') + ' — ' + (d.customer_id ||
-                            ''));
-
-                        // 🔹 Use closing_balance attribute (automatically gets latest ledger balance)
-                        // Fallback to opening_balance if no closing_balance exists
-                        let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0);
-
-                        // show balance (positive / negative as-it-is)
+                        // Previous balance from ledger (closing_balance) or opening_balance fallback
+                        let previousBalance = parseFloat(d.closing_balance || d.opening_balance || 0) || 0;
                         $('#previousBalance').val(previousBalance.toFixed(2));
 
-                        // 🔹 Check for no_credit_limit - if 1, disable credit limit field and show message
+                        // Credit limit toggle
                         if (d.no_credit_limit == 1) {
                             $('#creditLimit').prop('disabled', true);
                             $('#noCreditLimitMsg').show();
@@ -1489,9 +1493,22 @@
                             $('#noCreditLimitMsg').hide();
                             $('#noCreditLimit').val(0);
                         }
-
+                    },
+                    error: function(xhr) {
+                        console.error('❌ Failed to load customer details. Status:', xhr.status, xhr.responseText);
                     }
-                );
+                });
+            }
+
+            // 🔹 When customer selected via native change OR Select2
+            $(document).on('change', '#customerSelect', function() {
+                loadCustomerDetails($(this).val());
+            });
+
+            // 🔹 Also listen for Select2 select event (backup for when Select2 intercepts the change)
+            $(document).on('select2:select', '#customerSelect', function(e) {
+                const id = e?.params?.data?.id || $(this).val();
+                loadCustomerDetails(id);
             });
 
             // 🔹 Clear button
@@ -1530,7 +1547,7 @@
         }
         setNowStamp();
         setInterval(setNowStamp, 60 * 1000);
-        $('.js-customer').select2();
+        // Note: Select2 on #customerSelect is initialized inside loadCustomersByType() after options are populated.
 
         $.ajaxSetup({
             headers: {

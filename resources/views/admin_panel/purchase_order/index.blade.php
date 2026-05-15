@@ -116,9 +116,11 @@
 
                             <td>
                                     <div class="d-flex justify-content-center gap-1">
+                                        @if(!\App\Models\InwardGatepass::where('purchase_order_id', $order->id)->exists())
                                         <a href="{{ route('inward-gatepass.from-po', $order->id) }}" class="btn btn-success btn-sm shadow-sm" title="Convert to Gate Pass">
                                             <i class="fa fa-truck"></i>
                                         </a>
+                                        @endif
                                         <div class="dropdown">
                                             <button class="btn btn-light btn-sm border dropdown-toggle" type="button" data-toggle="dropdown">
                                                 Manage

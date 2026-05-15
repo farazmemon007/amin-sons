@@ -39,7 +39,7 @@
                         @if($user && $user->hasRole('super admin'))
                             <div class="col-md-3">
                                 <label class="form-label fw-bold text-secondary small mb-1">Branch</label>
-                                <select id="branch_id" class="form-select fi-premium shadow-none">
+                                <select id="branch_id" class="form-select fi-premium shadow-none" onchange="loadCustomersForBranch(this.value)">
                                     <option value="">-- Select Branch --</option>
                                     @foreach($branches as $b)
                                         <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
@@ -47,15 +47,20 @@
                                 </select>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-bold text-secondary small mb-1">Customer</label>
-                                <select id="customer_id" class="form-select fi-premium shadow-none">
-                                    <option value="">-- Select Customer --</option>
+                                <label class="form-label fw-bold text-secondary small mb-1">
+                                    Customer <small id="customerCountHint" class="text-primary ms-1"></small>
+                                </label>
+                                <select id="customer_id" class="form-select fi-premium shadow-none" style="width: 100%;">
+                                    <option value="">-- Select Branch First --</option>
                                 </select>
                             </div>
                         @else
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-secondary small mb-1">Customer</label>
-                                <select id="customer_id" class="form-select fi-premium shadow-none">
+                                <label class="form-label fw-bold text-secondary small mb-1">
+                                    Customer
+                                    <small class="text-muted ms-1">({{ count($customers) }} records)</small>
+                                </label>
+                                <select id="customer_id" class="form-select fi-premium shadow-none" style="width: 100%;">
                                     <option value="">-- Select Customer --</option>
                                     @foreach($customers as $c)
                                         <option value="{{ $c->id }}">
@@ -79,6 +84,7 @@
                         </div>
                         <div class="col-md-2">
                             <button type="button" id="btnSearch"
+                                onclick="generateLedger()"
                                 class="btn btn-primary btn-sm w-100 fw-bold"
                                 style="background:#0066cc; border:none; border-radius:8px; padding: 10px 0; box-shadow: 0 4px 6px -1px rgba(0, 102, 204, 0.2);">
                                 <i class="fas fa-file-invoice me-1"></i> Generate Report
@@ -234,7 +240,132 @@ tr.r-grand .b-cr { color:#69f0ae; }
 </style>
 
 <script>
-$(document).ready(function () {
+
+    /* ═══════════════════════════════════════════════════
+     * INITIALIZE SELECT2 (Safely waiting for jQuery to load)
+     * ═══════════════════════════════════════════════════ */
+    window.addEventListener('load', function() {
+        if (typeof jQuery !== 'undefined' && typeof jQuery.fn.select2 !== 'undefined') {
+            $('#customer_id').select2({
+                width: '100%',
+                placeholder: '-- Select Customer --',
+                allowClear: true
+            });
+        }
+    });
+
+    /* ═══════════════════════════════════════════════════
+     * GLOBAL: Load customers by branch (called from onchange)
+     * ═══════════════════════════════════════════════════ */
+    function loadCustomersForBranch(bid) {
+        var $c = $('#customer_id');
+        var $hint = $('#customerCountHint');
+
+        // Safely destroy Select2 if it exists, then reset options
+        if ($c.hasClass('select2-hidden-accessible')) {
+            $c.select2('destroy');
+        }
+        $c.html('<option value="">Loading customers\u2026</option>');
+        $c.prop('disabled', true);
+        if ($hint.length) $hint.text('');
+
+        if (!bid) {
+            $c.html('<option value="">-- Select Branch First --</option>');
+            $c.prop('disabled', false);
+            $c.select2({ width: '100%' });
+            return;
+        }
+
+        // Use jQuery AJAX since it is guaranteed to be loaded when this is triggered
+        if (typeof jQuery === 'undefined') {
+            console.error("jQuery is not loaded yet.");
+            return;
+        }
+
+        $.ajax({
+            url: '/report/customers-by-branch',
+            type: 'GET',
+            data: { branch_id: bid },
+            dataType: 'json',
+            success: function(list) {
+                $c.html('<option value="">-- Select Customer --</option>');
+                if (list.length === 0) {
+                    $c.append('<option disabled>No customers found for this branch</option>');
+                } else {
+                    $.each(list, function(i, c) {
+                        var label = c.customer_name + (c.customer_type ? ' (' + c.customer_type + ')' : '');
+                        $c.append($('<option>', { value: c.id, text: label }));
+                    });
+                    if ($hint.length) $hint.text(list.length + ' customer(s)');
+                }
+                $c.prop('disabled', false);
+                $c.select2({ width: '100%' });
+            },
+            error: function(xhr) {
+                $c.html('<option value="">-- Error loading customers --</option>');
+                $c.prop('disabled', false);
+                $c.select2({ width: '100%' });
+                console.error('Failed to load customers. Status:', xhr.status, xhr.responseText);
+            }
+        });
+    }
+
+    /* ═══════════════════════════════════════════════════
+     * GLOBAL: Generate customer ledger report
+     * ═══════════════════════════════════════════════════ */
+    function generateLedger() {
+        var cid   = document.getElementById('customer_id').value;
+        var start = document.getElementById('start_date').value;
+        var end   = document.getElementById('end_date').value;
+
+        if (!cid || !start || !end) {
+            alert('Please select a customer and choose the date range.');
+            return;
+        }
+
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('ledgerBox').style.display = 'none';
+        var pwrap = document.getElementById('printBtnWrap');
+        if (pwrap) pwrap.style.display = 'none';
+
+        var url = '/report/customer-ledger/fetch-new?customer_id=' + encodeURIComponent(cid)
+                + '&start_date=' + encodeURIComponent(start)
+                + '&end_date='   + encodeURIComponent(end);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        xhr.onload = function() {
+            document.getElementById('loader').style.display = 'none';
+            if (xhr.status === 200) {
+                try {
+                    var res = JSON.parse(xhr.responseText);
+                    if (res.error) { alert(res.error); return; }
+                    renderLedger(res, start, end);
+                } catch(e) {
+                    alert('Parse error. Check console.');
+                    console.error('JSON parse error:', e, xhr.responseText);
+                }
+            } else {
+                try {
+                    var err = JSON.parse(xhr.responseText);
+                    alert(err.error || 'Server error ' + xhr.status);
+                } catch(e) {
+                    alert('Server error ' + xhr.status + '. Check console.');
+                }
+                console.error('Ledger fetch failed:', xhr.status, xhr.responseText);
+            }
+        };
+
+        xhr.onerror = function() {
+            document.getElementById('loader').style.display = 'none';
+            alert('Network error. Please try again.');
+        };
+
+        xhr.send();
+    }
 
     /* ---------- helpers ---------- */
     function n(v) { return parseFloat(v) || 0; }
@@ -261,50 +392,10 @@ $(document).ready(function () {
         return '<td style="text-align:' + align + ';border:1px solid #ddd;" ' + attrs + '>' + val + '</td>';
     }
 
-    /* ---------- branch -> customer loader (super admin) ---------- */
-    $(document).on('change', '#branch_id', function () {
-        var bid = $(this).val();
-        var $c  = $('#customer_id');
-        $c.html('<option value="">-- Select Customer --</option>');
-        if (!bid) return;
-        $.get("{{ route('report.customers.byBranch') }}", {branch_id: bid}, function (list) {
-            $.each(list, function (i, c) {
-                $c.append($('<option/>').val(c.id).text(c.customer_name + (c.customer_type ? ' (' + c.customer_type + ')' : '')));
-            });
-        });
-    });
-
-    /* ---------- search ---------- */
-    $('#btnSearch').on('click', function () {
-        var cid   = $('#customer_id').val();
-        var start = $('#start_date').val();
-        var end   = $('#end_date').val();
-
-        if (!cid || !start || !end) { alert('Please fill all fields.'); return; }
-
-        $('#loader').show();
-        $('#ledgerBox').hide();
-        $('#printBtnWrap').hide();
-
-        $.get("{{ route('report.customer.ledger.fetch.new') }}", {
-            customer_id: cid,
-            start_date : start,
-            end_date   : end
-        })
-        .done(function (res) {
-            $('#loader').hide();
-            if (res.error) { alert(res.error); return; }
-            render(res, start, end);
-        })
-        .fail(function (xhr) {
-            $('#loader').hide();
-            var msg = (xhr.responseJSON && xhr.responseJSON.error) ? xhr.responseJSON.error : 'Server error. Check console.';
-            alert(msg);
-        });
-    });
+    /* ---------- Live customer search/filter removed (using Select2 instead) ---------- */
 
     /* ---------- render ---------- */
-    function render(res, start, end) {
+    function renderLedger(res, start, end) {
         var c = res.customer;
 
         /* customer header */
@@ -685,6 +776,5 @@ $(document).ready(function () {
         a.download = 'customer_ledger_' + new Date().toISOString().slice(0,10) + '.csv';
         a.click();
     };
-});
 </script>
 @endsection

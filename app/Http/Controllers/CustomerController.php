@@ -61,10 +61,33 @@ class CustomerController extends Controller
     }
 }
 
-    // 🔹 Single customer detail
+    // 🔹 Single customer detail — returns JSON for the Sale form AJAX call
     public function show($id)
     {
-        return Customer::with('latestLedger')->findOrFail($id);
+        $customer = Customer::findOrFail($id);
+
+        // Get latest closing balance from ledger (accessor may not work over plain $.get without Accept header)
+        $latestLedger = CustomerLedger::where('customer_id', $id)->latest('id')->first();
+        $closingBalance = $latestLedger
+            ? (float) $latestLedger->closing_balance
+            : (float) ($customer->opening_balance ?? 0);
+
+        return response()->json([
+            'id'               => $customer->id,
+            'customer_id'      => $customer->customer_id,
+            'customer_name'    => $customer->customer_name,
+            'mobile'           => $customer->mobile,
+            'address'          => $customer->address,
+            'credit_limit'     => $customer->credit_limit,
+            'no_credit_limit'  => $customer->no_credit_limit,
+            'credit_upto'      => $customer->credit_upto,
+            'customer_type'    => $customer->customer_type,
+            'opening_balance'  => (float) ($customer->opening_balance ?? 0),
+            'closing_balance'  => $closingBalance,
+            'remarks'          => $customer->remarks ?? '',
+            'filer_type'       => $customer->filer_type,
+            'status'           => $customer->status,
+        ]);
     }
 
 

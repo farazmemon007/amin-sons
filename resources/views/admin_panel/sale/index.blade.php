@@ -34,7 +34,6 @@
     .card-body {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        position: relative;
     }
 
     .table {
@@ -58,7 +57,7 @@
     }
 
     .table-responsive {
-        position: relative;
+        /* Default Bootstrap handles this, no relative needed */
     }
 
     .btn {
@@ -104,7 +103,6 @@
     }
 
     .dropdown-menu {
-        position: fixed !important;
         z-index: 10000 !important;
         max-height: 300px;
         overflow-y: auto;
@@ -112,10 +110,7 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
-    /* Ensure table doesn't clip dropdown */
-    .table td {
-        position: relative;
-    }
+
 
     /* Higher z-index for card to sit above footer */
     .card {
@@ -217,11 +212,12 @@
 
 <div class="container-fluid">
     <div class="card shadow-sm border-0 mt-3">
-        <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center">
+        <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center flex-wrap" style="gap: 10px;">
             <h5 class="mb-0">Sales Records</h5>
-            <div>
-                <a href="{{ route('sale.add') }}" class="btn btn-primary me-2">Add Sale</a>
-                <a href="{{ url('bookings') }}" class="btn btn-primary">All Sale Orders</a>
+            <div class="d-flex align-items-center flex-wrap" style="gap: 10px;">
+                <input type="text" id="invoiceSearch" class="form-control form-control-sm" placeholder="🔍 Search Invoice No..." style="width: 250px; border-radius: 8px;">
+                <a href="{{ route('sale.add') }}" class="btn btn-primary btn-sm me-1">Add Sale</a>
+                <a href="{{ url('bookings') }}" class="btn btn-primary btn-sm">All Sale Orders</a>
             </div>
         </div>
 
@@ -290,7 +286,7 @@
 
         <!-- MORE OPTIONS DROPDOWN -->
         <div class="btn-group">
-            <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+            <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" data-boundary="window" aria-expanded="false">
                 <i class="fas fa-ellipsis-v"></i> More
             </button>
 
@@ -345,4 +341,62 @@
         </div>
     </div>
 </div>
+
+@section('js')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var searchInput = document.getElementById('invoiceSearch');
+        if(searchInput) {
+            searchInput.addEventListener('keyup', function() {
+                var filterTrim = this.value.toUpperCase().trim();
+                var isNum = /^\d+$/.test(filterTrim);
+                var numVal = isNum ? parseInt(filterTrim, 10).toString() : null;
+
+                var rows = document.querySelectorAll('table tbody tr');
+                
+                rows.forEach(function(row) {
+                    var match = false;
+                    
+                    if (filterTrim === "") {
+                        match = true;
+                    } else if (isNum) {
+                        var cells = row.querySelectorAll('td');
+                        cells.forEach(function(cell) {
+                            var cellText = (cell.textContent || cell.innerText).trim().toUpperCase();
+                            
+                            // 1. Smart Invoice Match
+                            if (cellText.startsWith('INV-')) {
+                                var nums = cellText.match(/\d+/g);
+                                if (nums && parseInt(nums[0], 10).toString() === numVal) {
+                                    match = true;
+                                }
+                            }
+                            // 2. Exact ID match
+                            else if (cellText === numVal) {
+                                match = true;
+                            }
+                            // 3. General loose match (only for numbers longer than 2 digits)
+                            else if (filterTrim.length > 2 && cellText.indexOf(filterTrim) > -1) {
+                                var isDate = /^\d{2}-\d{2}-\d{4}$/.test(cellText);
+                                if (!isDate) {
+                                    match = true;
+                                }
+                            }
+                        });
+                    } else {
+                        // Standard text match
+                        var upperText = (row.textContent || row.innerText).toUpperCase();
+                        if (upperText.indexOf(filterTrim) > -1) {
+                            match = true;
+                        }
+                    }
+
+                    row.style.display = match ? "" : "none";
+                });
+            });
+        }
+    });
+</script>
+@endsection
+
 @endsection
