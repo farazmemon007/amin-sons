@@ -1017,6 +1017,25 @@ class OutwardGatepassController extends Controller
     }
 
     /**
+     * Serve the transport receipt image file directly
+     * Bypasses symlink issues on hosting
+     */
+    public function getReceiptFile($id)
+    {
+        $gp = DB::table('outward_gatepasses')->where('id', $id)->first();
+        
+        if (!$gp || !$gp->transport_receipt_path) {
+            abort(404, 'Receipt not found');
+        }
+
+        if (!\Storage::disk('public')->exists($gp->transport_receipt_path)) {
+            abort(404, 'File not found in storage');
+        }
+
+        return response()->file(\Storage::disk('public')->path($gp->transport_receipt_path));
+    }
+
+    /**
      * Upload handwritten transport receipt image
      * ✅ ERP STANDARD: API endpoint for transport receipt upload
      */

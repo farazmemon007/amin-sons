@@ -266,6 +266,51 @@
             font-size: 0.8rem;
             font-weight: 600;
         }
+
+        /* Receipt Thumbnail Styles */
+        .receipt-thumb-wrapper {
+            position: relative;
+            width: 44px;
+            height: 44px;
+            cursor: pointer;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .receipt-thumb-wrapper:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: #2563eb;
+        }
+
+        .receipt-thumb-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .receipt-thumb-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(37, 99, 235, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .receipt-thumb-wrapper:hover .receipt-thumb-overlay {
+            opacity: 1;
+        }
     </style>
 
     <div class="gp-container">
@@ -359,9 +404,12 @@
                                 <td>{{ $gp->issued_by ?? '-' }}</td>
                                 <td>
                                     @if($gp->transport_receipt_path)
-                                        <button type="button" class="action-btn" title="View Receipt" onclick="viewTransportReceipt('{{ $gp->id }}', '{{ asset('storage/' . $gp->transport_receipt_path) }}')">
-                                            <i class="fas fa-image" style="color: #10b981;"></i>
-                                        </button>
+                                        <div class="receipt-thumb-wrapper" onclick="viewTransportReceipt('{{ $gp->id }}', '{{ route('OutwardGatepass.receiptFile', $gp->id) }}')" title="Click to View Full Receipt">
+                                            <img src="{{ route('OutwardGatepass.receiptFile', $gp->id) }}" alt="Receipt">
+                                            <div class="receipt-thumb-overlay">
+                                                <i class="fas fa-search-plus"></i>
+                                            </div>
+                                        </div>
                                     @else
                                         <span style="color: #9ca3af; font-size: 0.85rem;">-</span>
                                     @endif

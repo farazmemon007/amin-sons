@@ -387,6 +387,7 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('/OutwardGatepass/{id}', [OutwardGatepassController::class, 'show'])->middleware('permission:outward.gatepass.view')->name('OutwardGatepass.show');
     Route::get('/outward-gatepass/{id}/pdf', [OutwardGatepassController::class, 'pdf'])->middleware('permission:outward.gatepass.view')->name('OutwardGatepass.pdf');
     Route::get('/outward-gatepass/{id}/delivery-receipt', [OutwardGatepassController::class, 'getDeliveryReceipt'])->middleware('permission:outward.gatepass.view')->name('OutwardGatepass.deliveryReceipt');
+    Route::get('/outward-gatepass/{id}/receipt-file', [OutwardGatepassController::class, 'getReceiptFile'])->middleware('permission:outward.gatepass.view')->name('OutwardGatepass.receiptFile');
     Route::post('/outward-gatepass/{id}/transport-receipt', [OutwardGatepassController::class, 'uploadTransportReceipt'])->middleware('permission:outward.gatepass.edit')->name('OutwardGatepass.uploadTransportReceipt');
     Route::get('/outward-gatepass/{id}/thermal', [OutwardGatepassController::class, 'thermal'])->middleware('permission:outward.gatepass.view')->name('OutwardGatepass.thermal');
     Route::post('/outward-gatepass/{id}/packing-notes', [OutwardGatepassController::class, 'updatePackingNotes'])->middleware('permission:outward.gatepass.edit')->name('OutwardGatepass.updatePackingNotes');

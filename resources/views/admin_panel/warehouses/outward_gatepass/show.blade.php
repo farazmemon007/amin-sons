@@ -154,6 +154,22 @@
                                     <label class="label-title">Bilty Date:</label>
                                     <span class="info-value">{{ $gp->billty_date ?? '-' }}</span>
                                 </div>
+                                @if(!empty($gp->transport_receipt_path))
+                                <div class="col-12 mt-2">
+                                    <div class="mb-2 text-center">
+                                        <img src="{{ route('OutwardGatepass.receiptFile', $gp->id) }}" 
+                                             onclick="viewTransportReceipt('{{ $gp->id }}', '{{ route('OutwardGatepass.receiptFile', $gp->id) }}')"
+                                             alt="Receipt Preview" 
+                                             style="max-width: 100%; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer; transition: all 0.2s;"
+                                             onmouseover="this.style.borderColor='#2563eb'; this.style.transform='scale(1.02)';"
+                                             onmouseout="this.style.borderColor='#cbd5e1'; this.style.transform='scale(1)';"
+                                             title="Click to Zoom">
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-success w-100 shadow-sm" onclick="viewTransportReceipt('{{ $gp->id }}', '{{ route('OutwardGatepass.receiptFile', $gp->id) }}')">
+                                        <i class="fas fa-image me-1"></i> View Full Image
+                                    </button>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -286,6 +302,37 @@
         </div>
     </div>
 </div>
+
+{{-- ✅ VIEW TRANSPORT RECEIPT MODAL --}}
+<div class="modal fade" id="viewReceiptModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg" style="max-width: 90vw;">
+        <div class="modal-content" style="border-radius: 8px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                <h5 class="modal-title"><i class="fas fa-image me-2"></i> Transport Receipt Image</h5>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-light" onclick="rotateReceiptImage(-90)"><i class="fas fa-redo"></i></button>
+                    <button type="button" class="btn btn-sm btn-light" onclick="rotateReceiptImage(90)"><i class="fas fa-undo"></i></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body text-center bg-light" style="max-height: 80vh; overflow: auto;">
+                <div id="receiptImageContainer" style="display: inline-block; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <img id="fullReceiptImage" src="" style="max-width: 100%; transition: transform 0.3s ease;">
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small class="text-muted"><i class="fas fa-info-circle"></i> Use rotation buttons if image is sideways</small>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <a id="downloadReceiptLink" href="#" class="btn btn-success" download>
+                        <i class="fas fa-download me-1"></i> Download
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @section('js')
@@ -453,6 +500,28 @@
         a.href   = url;
         a.download = 'Outward_Gatepass_{{ $gp->id }}.csv';
         a.click();
+    };
+    // View Receipt Logic
+    let currentReceiptRotation = 0;
+    let viewReceiptModalInstance = null;
+
+    window.viewTransportReceipt = function(gpId, receiptUrl) {
+        if (!viewReceiptModalInstance) {
+            viewReceiptModalInstance = new bootstrap.Modal(document.getElementById('viewReceiptModal'));
+        }
+        
+        const img = document.getElementById('fullReceiptImage');
+        img.src = receiptUrl;
+        img.style.transform = 'rotate(0deg)';
+        currentReceiptRotation = 0;
+        
+        document.getElementById('downloadReceiptLink').href = receiptUrl;
+        viewReceiptModalInstance.show();
+    };
+
+    window.rotateReceiptImage = function(angle) {
+        currentReceiptRotation += angle;
+        document.getElementById('fullReceiptImage').style.transform = `rotate(${currentReceiptRotation}deg)`;
     };
 </script>
 @endsection
