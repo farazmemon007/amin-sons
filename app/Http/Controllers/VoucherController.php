@@ -300,146 +300,159 @@ public function getOpeningBalance($type, $id)
 
     public function store_rec_vochers(Request $request)
     {
-        // echo "<pre>";
-        // print_r($request->remarks);
-        // dd();
         DB::beginTransaction();
         try {
+            // 1. Generate RVID
             $rvid = $request->rvid ?: \App\Models\ReceiptsVoucher::generateRVID(auth()->id());
+            
+            // 2. Process Narrations (Handle 'Add New' case)
             $narrationIds = [];
-
-            foreach ($request->narration_id as $index => $narrId) {
-                $manualText = $request->narration_text[$index] ?? null;
-                $manualType = $request->narration_type_text[$index] ?? 'Manual';
-
-                if (empty($narrId) && !empty($manualText)) {
-                    // Auto expense_head set based on voucher type
-                    $expenseHead = 'Receipts Voucher';
-                    if (stripos($manualType, 'Receipt') !== false || $request->voucher_type == 'receipt') {
-                        $expenseHead = 'Receipts Voucher';
+            if ($request->narration_id) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    if (empty($narrId) && !empty($manualText)) {
+                        $newNar = \App\Models\Narration::create([
+                            'expense_head' => 'Receipts Voucher',
+                            'narration'    => $manualText,
+                        ]);
+                        $narrationIds[] = (string)$newNar->id;
+                    } else {
+                        $narrationIds[] = (string)$narrId;
                     }
-
-                    $new = \App\Models\Narration::create([
-                        'expense_head' => $expenseHead,
-                        'narration'    => $manualText,
-                    ]);
-
-                    $narrationIds[] = (string)$new->id; // store as string → ["7"]
-                } else {
-                    $narrationIds[] = (string)$narrId; // force string format
                 }
             }
 
-
+            // 3. Save Receipt Voucher Record
             $voucherData = [
                 'rvid'             => $rvid,
-                'receipt_date'     => $request->receipt_date,
-                'entry_date'       => $request->entry_date,
+                'receipt_date'     => $request->receipt_date ?? now()->toDateString(),
+                'entry_date'       => $request->entry_date ?? now()->toDateString(),
                 'type'             => $request->vendor_type,
                 'party_id'         => $request->vendor_id,
                 'tel'              => $request->tel,
                 'remarks'          => $request->remarks,
-
-                'narration_id' => json_encode($narrationIds),
+                'narration_id'     => json_encode($narrationIds),
                 'reference_no'     => json_encode($request->reference_no),
                 'row_account_head' => json_encode($request->row_account_head),
                 'row_account_id'   => json_encode($request->row_account_id),
                 'discount_value'   => json_encode($request->discount_value),
-                // 'kg'               => json_encode($request->kg),
                 'rate'             => json_encode($request->rate),
                 'amount'           => json_encode($request->amount),
-                'total_amount'     => $request->total_amount,
+                'total_amount'     => (float)$request->total_amount,
                 'processed'        => true,
             ];
 
-            ReceiptsVoucher::create($voucherData);
+            $savedVoucher = ReceiptsVoucher::create($voucherData);
+            $totalAmount = (float)$request->total_amount;
+            $branchId = auth()->user()->branch_id ?? 0;
 
-            // ✅ Ledger update logic
-            $amount = (float)$request->total_amount;
+            /**
+             * 4. PARTY SIDE POSTING (CREDIT)
+             * Receipt from customer/vendor decreases their receivable balance.
+             */
+            if ($request->vendor_type === 'customer') {
+                // Get latest ledger entry to calculate accurate closing balance
+                $lastLedger = CustomerLedger::where('customer_id', $request->vendor_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
 
-            if ($request->vendor_type === 'vendor') {
-                $branchId = auth()->user()->branch_id ?? 0;
+                $customer = \App\Models\Customer::find($request->vendor_id);
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($customer->opening_balance ?? 0);
+                
+                CustomerLedger::create([
+                    'customer_id'      => $request->vendor_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'transaction_date' => $request->receipt_date ?? now()->toDateString(),
+                    'description'      => "Receipt Voucher #$rvid " . ($request->remarks ? " - " . $request->remarks : ""),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance'  => $customer->opening_balance ?? 0,
+                    'total_debit'      => 0,
+                    'total_credit'     => $totalAmount,
+                    'closing_balance'  => $previousBalance - $totalAmount,
+                ]);
+
+            } elseif ($request->vendor_type === 'vendor') {
                 $lastLedger = VendorLedger::where('vendor_id', $request->vendor_id)
                     ->where('branch_id', $branchId)
                     ->orderBy('id', 'desc')
                     ->first();
 
-                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Vendor::find($request->vendor_id)->opening_balance ?? 0);
+                $vendor = \App\Models\Vendor::find($request->vendor_id);
+                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($vendor->opening_balance ?? 0);
 
                 VendorLedger::create([
                     'vendor_id'        => $request->vendor_id,
                     'branch_id'        => $branchId,
                     'admin_or_user_id' => auth()->id(),
-                    'transaction_date' => now(),
+                    'transaction_date' => $request->receipt_date ?? now()->toDateString(),
                     'description'      => "Receipt Voucher #$rvid",
-                    'opening_balance'  => $previousBalance,
+                    'opening_balance'  => $vendor->opening_balance ?? 0,
                     'previous_balance' => $previousBalance,
-                    'debit_amount'     => $amount,
-                    'credit_amount'    => 0,
-                    'closing_balance'  => $previousBalance - $amount,
+                    'debit_amount'     => 0,
+                    'credit_amount'    => $totalAmount, // Receiving from vendor (e.g. refund) credits them
+                    'closing_balance'  => $previousBalance + $totalAmount,
                 ]);
-            } elseif ($request->vendor_type == 'customer') {
-                $lastLedger = CustomerLedger::where('customer_id', $request->vendor_id)->orderBy('id', 'desc')->first();
-                $previousBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)(\App\Models\Customer::find($request->vendor_id)->opening_balance ?? 0);
 
-                CustomerLedger::create([
-                    'customer_id'      => $request->vendor_id,
-                    'admin_or_user_id' => auth()->id(),
-                    'previous_balance' => $previousBalance,
-                    'opening_balance'  => $previousBalance,
-                    'closing_balance'  => $previousBalance - $amount,
-                ]);
-            } else {
-                // Bank/Head case → pehle vendor/account side minus
+            } elseif (is_numeric($request->vendor_type)) {
+                // Direct GL Account Head case
                 $account = Account::find($request->vendor_id);
                 if ($account) {
-                    $account->opening_balance = $account->opening_balance - $amount;
+                    $this->postLedgerEntry(
+                        $account->id, 
+                        'receipt', 
+                        $rvid, 
+                        $savedVoucher->id, 
+                        $request->receipt_date ?? now()->toDateString(), 
+                        "Receipt Voucher Party Side: " . ($request->remarks ?? 'N/A'), 
+                        0, 
+                        $totalAmount
+                    );
+                    // Update account balance
+                    $account->opening_balance -= $totalAmount; // Credit increases/decreases based on type, helper handles ledger
                     $account->save();
                 }
             }
 
-            // ✅ Har case me row_account_id ka + hona zaroori hai
-          // ✅ Row account posting (Debit / Credit aware)
-if ($request->row_account_id && $request->amount) {
-    foreach ($request->row_account_id as $index => $accId) {
-
-        $rowAmount = isset($request->amount[$index])
-            ? (float)$request->amount[$index]
-            : 0;
-
-        if ($rowAmount <= 0) continue;
-
-        $rowAccount = Account::find($accId);
-        if (! $rowAccount) continue;
-
-        if ($rowAccount->type === 'Debit') {
-            // Debit account → increase
-            $rowAccount->opening_balance += $rowAmount;
-        } else {
-            // Credit account → decrease
-            $rowAccount->opening_balance -= $rowAmount;
-        }
-
-        $rowAccount->save();
-    }
-}
-
-
-            // ✅ POST TO ACCOUNT LEDGER (Receipt = DEBIT to bank/cash accounts)
-            $savedVoucher = ReceiptsVoucher::latest('id')->first();
+            /**
+             * 5. ACCOUNT SIDE POSTING (DEBIT)
+             * Receiving funds into bank/cash accounts increases their balance.
+             */
             if ($request->row_account_id && $request->amount) {
                 foreach ($request->row_account_id as $index => $accId) {
                     $rowAmount = (float)($request->amount[$index] ?? 0);
                     if ($rowAmount <= 0 || !$accId) continue;
-                    $this->postLedgerEntry($accId, 'receipt', $rvid, $savedVoucher?->id, $request->receipt_date ?? now()->toDateString(), $request->remarks, $rowAmount, 0);
+
+                    $rowAccount = Account::find($accId);
+                    if ($rowAccount) {
+                        // Update Account Balance (Debit increases asset accounts)
+                        if (trim(strtolower($rowAccount->type)) === 'debit') {
+                            $rowAccount->opening_balance += $rowAmount;
+                        } else {
+                            $rowAccount->opening_balance -= $rowAmount;
+                        }
+                        $rowAccount->save();
+
+                        // Post to GL Ledger
+                        $this->postLedgerEntry(
+                            $accId, 
+                            'receipt', 
+                            $rvid, 
+                            $savedVoucher->id, 
+                            $request->receipt_date ?? now()->toDateString(), 
+                            "Receipt from Party: " . ($request->remarks ?? 'Voucher #' . $rvid), 
+                            $rowAmount, 
+                            0
+                        );
+                    }
                 }
             }
 
             DB::commit();
-            return back()->with('success', 'Receipt Voucher saved successfully!');
+            return back()->with('success', "Receipt Voucher #$rvid saved successfully!");
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Receipt Voucher Store Error: " . $e->getMessage());
+            return back()->with('error', "Error saving voucher: " . $e->getMessage());
         }
     }
 

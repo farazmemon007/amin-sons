@@ -120,7 +120,9 @@ function yourFunction(url,method) {
                     return false;
                 }
 
-                callback(data)
+                if (typeof callback === 'function') {
+                    callback(data);
+                }
             },
             error: function (jqXHR, textStatus, errorThrown) {
                 ajaxErrorHandling(jqXHR, errorThrown);

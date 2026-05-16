@@ -26,8 +26,8 @@ if ($msg) {
                  <div class="col-lg-12">
                      <div class="d-flex justify-content-between align-items-center mb-3">
                          <h3>Category</h3>
-                         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal"
-                             id="reset">Create</button>
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#exampleModal"
+                            id="reset">Create</button>
                      </div>
                      <div class="border mt-1 shadow rounded " style="background-color: white;">
                          <div class="col-lg-12 m-auto">
@@ -92,7 +92,7 @@ if ($msg) {
                      </div>
              </div>
              <div class="modal-footer">
-                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                  <input type="submit" class="btn btn-primary save-btn">
              </div>
              </form>
@@ -107,27 +107,31 @@ if ($msg) {
      <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
      <script src="{{ asset('assets/js/mycode.js') }}"> </script>
- <script>
-     $(document).on('submit', '.myform', function(e) {
-         e.preventDefault();
-         var formdata = new FormData(this);
-         url = $(this).attr('action');
-         method = $(this).attr('method');
-         $(this).find(':submit').attr('disabled', true);
-         myAjax(url, formdata, method);
-     });
-     $(document).on('click', '.edit-btn', function() {
+    <script>
+        $(document).on('submit', '.myform', function(e) {
+            e.preventDefault();
+            var formdata = new FormData(this);
+            var url = $(this).attr('action');
+            var method = $(this).attr('method');
+            $(this).find(':submit').attr('disabled', true);
+            myAjax(url, formdata, method);
+        });
 
-         var tr = $(this).closest("tr");
-         var id = tr.find(".id").text();
-         var name = tr.find(".name").text();
-         $('#id').val(id); // Set the ID in the hidden input field
-         $('#name').val(name)
-         $("#exampleModal").modal("show")
+        $(document).on('click', '#reset', function() {
+            $('.myform')[0].reset();
+            $('#id').val('');
+            $('#name').val('');
+        });
 
-
-     });
- </script>
+        $(document).on('click', '.edit-btn', function() {
+            var tr = $(this).closest("tr");
+            var id = tr.find(".id").text();
+            var name = tr.find(".name").text();
+            $('#id').val(id);
+            $('#name').val(name);
+            $("#exampleModal").modal("show");
+        });
+    </script>
  <script>
      $(document).ready(function() {
          $('#default-datatable').DataTable({

@@ -9,7 +9,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h3>Zone</h3>
                         @can('zone.create')
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createModal" id="reset">
+                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#createModal" id="reset">
                             Create
                         </button>
                         @endcan
@@ -76,7 +76,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     <input type="submit" class="btn btn-primary save-btn" value="Save">
                 </div>
             </div>
@@ -103,7 +103,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                     <input type="submit" class="btn btn-primary save-btn" value="Update">
                 </div>
             </div>
