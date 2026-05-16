@@ -50,13 +50,13 @@ if ($msg) {
                                                      data-url="{{ route('store.category') }}">
                                                      Edit
                                                  </button>
-                                                 <button class="btn btn-danger btn-sm delete-btn"
+                                                 <!-- <button class="btn btn-danger btn-sm delete-btn"
                                                      data-url="{{ route('delete.category', $company->id) }}"
                                                      data-msg="Are you sure you want to delete this title"
                                                      data-method="get"
                                                      onclick="logoutAndDeleteFunction(this)">
                                                      Delete
-                                                 </button>
+                                                 </button> -->
                                              </td>
                                          </tr>
                                          @endforeach

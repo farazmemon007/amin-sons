@@ -160,6 +160,7 @@
     <form id="warehouseForm">
         @csrf
         <input type="hidden" name="sale_id" value="{{ $sale->id }}">
+        <input type="hidden" id="forceSaleField" name="force_sale" value="0">
         
         <div class="erp-card">
             <div class="erp-header d-flex justify-content-between align-items-center">
@@ -203,7 +204,7 @@
                                            data-required-qty="{{ $item->sales_qty }}"
                                            data-max-qty="{{ $maxAvailable }}"
                                            step="0.01"
-                                           value="{{ min($maxAvailable, $item->sales_qty) }}">
+                                           value="{{ $item->sales_qty }}">
                                 </div>
                             </div>
 
@@ -235,6 +236,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // Store warehouse stock data in JavaScript for filtering
 const warehouseStockData = {!! json_encode($warehouseStocks instanceof \Illuminate\Support\Collection ? $warehouseStocks->toArray() : []) !!};
@@ -333,12 +335,11 @@ function updateProductQuantities(locationType, locationId) {
         // Update input constraints and auto-fill
         if (qtyInput) {
             qtyInput.setAttribute('data-max-qty', availableQty);
-            qtyInput.max = availableQty;
+            // ⚠️ Do NOT set qtyInput.max — browser native validation blocks our custom Swal popup
             
-            // Auto-fill with min of available qty and required qty
+            // Auto-fill with required qty (show full picture, warn if over stock)
             const requiredQty = parseFloat(qtyInput.getAttribute('data-required-qty') || 0);
-            const defaultQty = availableQty >= requiredQty ? requiredQty : availableQty;
-            qtyInput.value = defaultQty;
+            qtyInput.value = requiredQty;
             
             console.log('Input Updated:', {productId, availableQty, requiredQty, defaultQty});
             
@@ -410,6 +411,44 @@ document.getElementById('warehouseForm').addEventListener('submit', async functi
         alert("Please select a specific location");
         return;
     }
+
+    // ── STOCK SHORTAGE CHECK ────────────────────────────────────────────────
+    const shortageItems = [];
+    document.querySelectorAll('.delivery-qty-input').forEach(function(input) {
+        const deliveryQty = parseFloat(input.value) || 0;
+        const availableQty = parseFloat(input.getAttribute('data-max-qty') || 0);
+        const requiredQty  = parseFloat(input.getAttribute('data-required-qty') || 0);
+        // Only flag if user actually wants to deliver more than available
+        if (deliveryQty > availableQty && deliveryQty > 0) {
+            const row = input.closest('.delivery-item-row');
+            const name = row ? (row.querySelector('h6')?.textContent?.trim() || 'Product') : 'Product';
+            shortageItems.push({ name, deliveryQty, availableQty });
+        }
+    });
+
+    if (shortageItems.length > 0 && document.getElementById('forceSaleField').value !== '1') {
+        const listHtml = shortageItems.map(p =>
+            `<li><strong>${p.name}</strong>: Available <strong>${p.availableQty}</strong>, You want to deliver <strong>${p.deliveryQty}</strong></li>`
+        ).join('');
+
+        const result = await Swal.fire({
+            icon: 'warning',
+            title: 'Stock Limit Exceeded',
+            html: `<p>The following items have insufficient stock:</p><ul style="text-align:left">${listHtml}</ul><p>Do you want to proceed and let stock go <strong style="color:red">negative</strong>?</p>`,
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, Proceed',
+            cancelButtonText: 'No, Cancel',
+        });
+
+        if (!result.isConfirmed) {
+            return; // User cancelled
+        }
+        // Mark as force sale
+        document.getElementById('forceSaleField').value = '1';
+    }
+    // ── END STOCK SHORTAGE CHECK ────────────────────────────────────────────
 
     loading.style.display = 'flex';
     errDiv.style.display = 'none';

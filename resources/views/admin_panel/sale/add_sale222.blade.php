@@ -2081,9 +2081,25 @@
                 // Non-admin user: validate stock for their branch before proceeding
                 const stockValidation = validateBranchStock(window.USER_BRANCH_ID);
                 if (!stockValidation.ok) {
-                    showAlert('danger', stockValidation.message);
-                    setReady($btn);
-                    return;
+                    const stockMsg = stockValidation.message;
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Stock Limit Exceeded',
+                        html: stockMsg.replace(/\n/g, '<br>') + '<br><br>Do you want to proceed with <strong style="color:red">negative stock</strong>?',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Yes, Proceed',
+                        cancelButtonText: 'No, Cancel',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // User confirmed — proceed directly, skip stock check
+                            proceedWithSale(partyType).finally(() => setReady($btn));
+                        } else {
+                            setReady($btn);
+                        }
+                    });
+                    return; // Wait for Swal response
                 }
             }
 
@@ -2204,8 +2220,31 @@
             // VALIDATE STOCK FOR SELECTED BRANCH
             const stockValidation = validateBranchStock(parseInt(selectedBranch));
             if (!stockValidation.ok) {
-                showAlert('danger', stockValidation.message);
-                setReady($btn);
+                const stockMsg = stockValidation.message;
+                // Close the branch modal first
+                try {
+                    const modalEl = document.getElementById('branchSelectionModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) modalInstance.hide();
+                } catch (err) { console.error(err); }
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Limit Exceeded',
+                    html: stockMsg.replace(/\n/g, '<br>') + '<br><br>Do you want to proceed with <strong style="color:red">negative stock</strong>?',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, Proceed',
+                    cancelButtonText: 'No, Cancel',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('input[name="branch_id"]').val(selectedBranch);
+                        proceedWithSale(partyType).finally(() => setReady($btn));
+                    } else {
+                        setReady($btn);
+                    }
+                });
                 return;
             }
             

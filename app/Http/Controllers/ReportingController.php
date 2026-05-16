@@ -1359,9 +1359,9 @@ class ReportingController extends Controller
             $saleAmount = floatval($deliveredAmountMap[$product->id] ?? 0);
 
             // ================= GET RESERVED QTY (PENDING DELIVERY) =================
-            // ✅ ERP STANDARD: Reserved = Total Ordered - Total Delivered
+            // ✅ ERP STANDARD: Reserved = Total Ordered - Total Delivered (never negative)
             $totalBooked = floatval($bookedQtyMap[$product->id] ?? 0);
-            $reservedQty = max(0, $totalBooked - $sold);
+            $reservedQty = max(0, $totalBooked - $sold); // How many still pending delivery
 
             // ================= GET WAREHOUSE-WISE BREAKDOWN =================
             $warehouseBreakdown = WarehouseStock::where('product_id', $product->id)

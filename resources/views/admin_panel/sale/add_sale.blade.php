@@ -199,10 +199,10 @@
                                             class="form-control item_disc" value="">
                                     </td>
 
-                                    <td class="qty">
-                                        <input type="number" name="qty[]" class="form-control quantity" value=""
-                                            min="1">
-                                    </td>
+                                     <td class="qty">
+                                         <input type="number" name="qty[]" class="form-control quantity" value=""
+                                             min="1" data-available-stock="0">
+                                     </td>
 
                                     <!-- Row Total (readonly) -->
                                     <td class="total border">
@@ -260,7 +260,9 @@
     </div>
     <div>
         <button type="submit" name="action" value="booking" class="btn btn-warning">Book</button>
-        <button type="submit" name="action" value="sale" class="btn btn-success">Sale</button>
+        <button type="button" class="btn btn-success" id="saleSubmitBtn">Sale</button>
+        <input type="hidden" name="action" id="saleActionInput" value="sale">
+        <input type="hidden" name="force_sale" id="forceSaleInput" value="0">
         <button type="button" class="btn btn-secondary">Close</button>
     </div>
 </div>
@@ -393,7 +395,7 @@ $(document).ready(function () {
     <td class="unit border"><input type="text" name="unit[]" class="form-control" readonly></td>
     <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1" ></td>
     <td><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value=""></td>
-    <td class="qty"><input type="number" name="qty[]" class="form-control quantity" value="" min="1"></td>
+    <td class="qty"><input type="number" name="qty[]" class="form-control quantity" value="" min="1" data-available-stock="0"></td>
     <td class="total border"><input type="text" name="total[]" class="form-control row-total" readonly></td>
     <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
 </tr>`;
@@ -469,8 +471,9 @@ $(document).ready(function () {
     data-product-unit="${unit}"
     data-product-code="${code}"
     data-price="${price}"
-    data-colors='${colors}'>
-  ${name} - ${code} - Rs. ${price}
+    data-colors='${colors}'
+    data-available-stock="${p.available_stock ?? 0}">
+  ${name} - ${code} - Rs. ${price} <small class="text-muted">(Stock: ${p.available_stock ?? 0})</small>
 </li>`;
                     });
                     $box.html(html);
@@ -493,6 +496,11 @@ $(document).ready(function () {
             $row.find('.unit input').val($li.data('product-unit'));
             $row.find('.price').val($li.data('price'));
             $row.find('.product_id').val($li.data('product-id'));
+
+            // Store available stock on the quantity input
+            const availableStock = parseInt($li.data('available-stock') || 0);
+            $row.find('.quantity').attr('data-available-stock', availableStock);
+            $row.find('.quantity').attr('data-product-name', $li.data('product-name'));
 
             $row.find('.quantity').val(1);
             $row.find('.item_disc').val(0);
@@ -546,6 +554,90 @@ $(document).ready(function () {
         // Initialize first row
         recalcRow($('#purchaseItems tr:first'));
         recalcSummary();
+
+        // ============================================================
+        //  STOCK CHECK: Warn when qty exceeds available stock
+        // ============================================================
+        $(document).on('change blur', '.quantity', function() {
+            const $input   = $(this);
+            const enteredQty   = parseInt($input.val()) || 0;
+            const available    = parseInt($input.attr('data-available-stock') || 0);
+            const productName  = $input.attr('data-product-name') || 'this product';
+
+            if (enteredQty > available) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Insufficient Stock!',
+                    html: `<strong>${productName}</strong><br>
+                           Available stock: <strong>${available}</strong><br>
+                           You entered: <strong>${enteredQty}</strong><br><br>
+                           Do you want to proceed and sell in <span style="color:red">negative stock</span>?`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, Proceed',
+                    cancelButtonText: 'No, Fix Qty',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Mark this row as force-allowed
+                        $input.attr('data-force', '1');
+                    } else {
+                        // Reset qty to available stock
+                        $input.val(available > 0 ? available : 1);
+                        $input.removeAttr('data-force');
+                        recalcRow($input.closest('tr'));
+                        recalcSummary();
+                    }
+                });
+            } else {
+                $input.removeAttr('data-force');
+            }
+        });
+
+        // ============================================================
+        //  SALE BUTTON: Final stock check before submitting
+        // ============================================================
+        $('#saleSubmitBtn').on('click', function() {
+            const $form = $(this).closest('form');
+            let problems = [];
+
+            $('#purchaseItems tr').each(function() {
+                const $row       = $(this);
+                const qty        = parseInt($row.find('.quantity').val()) || 0;
+                const available  = parseInt($row.find('.quantity').attr('data-available-stock') || 0);
+                const forced     = $row.find('.quantity').attr('data-force') === '1';
+                const name       = $row.find('.quantity').attr('data-product-name') || '';
+
+                if (qty > 0 && qty > available && !forced && name) {
+                    problems.push({ name, qty, available });
+                }
+            });
+
+            if (problems.length > 0) {
+                let listHtml = problems.map(p =>
+                    `<li><strong>${p.name}</strong>: Available <strong>${p.available}</strong>, Entered <strong>${p.qty}</strong></li>`
+                ).join('');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Shortage Detected!',
+                    html: `<p>The following items have insufficient stock:</p><ul style="text-align:left">${listHtml}</ul><p>Do you want to proceed with <span style="color:red">negative stock</span>?</p>`,
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, Force Sale',
+                    cancelButtonText: 'No, Cancel',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('#forceSaleInput').val('1');
+                        $form.submit();
+                    }
+                });
+            } else {
+                $('#forceSaleInput').val('0');
+                $form.submit();
+            }
+        });
 
         // Select2 Color Init on focus
     // Already in document ready

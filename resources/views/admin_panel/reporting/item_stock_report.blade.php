@@ -191,6 +191,8 @@ $(document).ready(function() {
         $('#reportBody').html('');
         warehouseDataStore = {}; // Reset warehouse data
 
+        let hasNegativeStock = false;
+
         rows.forEach(function(r, idx) {
             // ============= STORE WAREHOUSE DATA =============
             let dataKey = 'product_' + r.id;
@@ -210,10 +212,27 @@ $(document).ready(function() {
                 warehouseHtml = '<span class="text-muted">No breakdown</span>';
             }
 
+            // ============= NEGATIVE STOCK VISUAL LOGIC =============
+            let balance     = parseFloat(r.balance);
+            let stockValue  = parseFloat(r.stock_value);
+            let isNegative  = balance < 0;
+
+            if (isNegative) hasNegativeStock = true;
+
+            let balanceHtml = isNegative
+                ? `<strong class="text-danger">${balance.toFixed(2)} <span class="badge badge-danger" title="Negative Stock — sold more than available">⚠ Negative</span></strong>`
+                : `<strong>${balance.toFixed(2)}</strong>`;
+
+            let stockValueHtml = isNegative
+                ? `<strong class="text-danger">Rs. ${stockValue.toFixed(2)}</strong>`
+                : `<strong>Rs. ${stockValue.toFixed(2)}</strong>`;
+
+            let rowStyle = isNegative ? 'background-color: #fff5f5;' : '';
+
             // ============= BUILD TABLE ROW =============
             let row = `
-                <tr>
-                    <td>${idx + 1}</td>
+                <tr style="${rowStyle}">
+                    <td>${idx + 1}${isNegative ? ' <span class="text-danger" title="Negative Stock">⚠</span>' : ''}</td>
                     <td><strong>${r.item_code}</strong></td>
                     <td>${r.item_name}</td>
                     <td class="text-end">${parseFloat(r.initial_stock).toFixed(2)}</td>
@@ -221,16 +240,27 @@ $(document).ready(function() {
                     <td class="text-end">Rs. ${parseFloat(r.purchase_amount).toFixed(2)}</td>
                     <td class="text-end">${parseFloat(r.sold).toFixed(2)}</td>
                     <td class="text-end">Rs. ${parseFloat(r.sale_amount).toFixed(2)}</td>
-                    <td class="text-end"><span class="badge bg-warning text-dark">${parseFloat(r.reserved_qty).toFixed(2)}</span></td>
-                    <td class="text-end"><strong>${parseFloat(r.balance).toFixed(2)}</strong></td>
+                    <td class="text-end"><span class="badge bg-warning text-dark" title="Booked in sales but not yet physically delivered via gatepass">${parseFloat(r.reserved_qty).toFixed(2)} pending</span></td>
+                    <td class="text-end">${balanceHtml}</td>
                     <td class="text-end">Rs. ${parseFloat(r.price).toFixed(2)}</td>
-                    <td class="text-end"><strong>Rs. ${parseFloat(r.stock_value).toFixed(2)}</strong></td>
+                    <td class="text-end">${stockValueHtml}</td>
                     <td class="text-center">${warehouseHtml}</td>
                 </tr>
             `;
             
             $('#reportBody').append(row);
         });
+
+        // Negative stock summary row
+        if (hasNegativeStock) {
+            $('#reportBody').append(`
+                <tr class="bg-danger text-white">
+                    <td colspan="13" class="text-center fw-bold py-2">
+                        ⚠ One or more products have <strong>Negative Stock</strong> due to force sales. Please review and restock.
+                    </td>
+                </tr>
+            `);
+        }
         
         // Reinitialize DataTable with new data
         stockTable = $('#stockTable').DataTable({
@@ -255,7 +285,14 @@ $(document).ready(function() {
         });
 
         // Update grand total
-        $('#grandStockValue').text(parseFloat(grandTotal).toFixed(2));
+        let grandTotalVal = parseFloat(grandTotal);
+        let grandTotalEl  = $('#grandStockValue');
+        grandTotalEl.text(grandTotalVal.toFixed(2));
+        if (hasNegativeStock) {
+            grandTotalEl.addClass('text-danger');
+        } else {
+            grandTotalEl.removeClass('text-danger');
+        }
     }
 
     // ============= SHOW WAREHOUSE BREAKDOWN MODAL =============
@@ -274,12 +311,14 @@ $(document).ready(function() {
         warehouses.forEach(function(w) {
             let qty = parseFloat(w.qty || 0);
             totalQty += qty;
-            
+            let qtyClass = qty < 0 ? 'text-danger fw-bold' : '';
+            let qtyLabel = qty < 0 ? ` <span class="badge badge-danger">⚠ Negative</span>` : '';
+
             let row = `
                 <tr>
                     <td><strong>${w.warehouse_name || 'Unknown'}</strong></td>
                     <td>${w.location || '-'}</td>
-                    <td class="text-end">${qty.toFixed(2)}</td>
+                    <td class="text-end ${qtyClass}">${qty.toFixed(2)}${qtyLabel}</td>
                 </tr>
             `;
             $('#warehouseTableBody').append(row);

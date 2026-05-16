@@ -1872,20 +1872,47 @@ public function finddc($invoice)
         $q = $request->get('q');
 
         $products = Product::with(['brand'])
-            // only products with active discount
             ->where(function ($query) use ($q) {
                 $query->where('item_name', 'like', "%{$q}%")
                     ->orWhere('item_code', 'like', "%{$q}%")
                     ->orWhere('barcode_path', 'like', "%{$q}%");
             })
-            // branch restriction for non-super admins
             ->when(Auth::check() && !Auth::user()->hasRole('super admin'), function ($q2) {
                 $branchId = Auth::user()->branch_id ?? 0;
                 $q2->where('branch_id', $branchId);
             })
             ->get();
 
+        // Append stock quantity for each product
+        $branchId = Auth::check() ? (Auth::user()->branch_id ?? null) : null;
+        $products = $products->map(function ($product) use ($branchId) {
+            $stockQuery = WarehouseStock::where('product_id', $product->id);
+            if ($branchId) {
+                $stockQuery->where('branch_id', $branchId);
+            }
+            $product->available_stock = $stockQuery->sum('quantity');
+            return $product;
+        });
+
         return response()->json($products);
+    }
+
+    /**
+     * Check available stock for a product (AJAX).
+     * Returns: { available: int }
+     */
+    public function checkStock(Request $request)
+    {
+        $productId = $request->get('product_id');
+        $branchId  = Auth::check() ? (Auth::user()->branch_id ?? null) : null;
+
+        $stockQuery = WarehouseStock::where('product_id', $productId);
+        if ($branchId) {
+            $stockQuery->where('branch_id', $branchId);
+        }
+        $available = $stockQuery->sum('quantity');
+
+        return response()->json(['available' => (int) $available]);
     }
 
     public function store(Request $request)
@@ -4297,7 +4324,6 @@ public function finddc($invoice)
             // Pass as flat collection (no grouping - let JS handle filtering)
             // Select only needed fields to keep JSON lean
             $warehouseStocks = WarehouseStock::whereIn('product_id', $saleProductIds)
-                ->where('quantity', '>', 0)
                 ->where('branch_id', $sale->branch_id)  // ← Filter by sale's branch
                 ->whereNotNull('warehouse_id')  // ← WAREHOUSE ASSIGNMENTS ONLY
                 ->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity', 'price')
@@ -4305,14 +4331,12 @@ public function finddc($invoice)
 
             // ✅ NEW: Separate branch own stock from warehouse stock
             $branchOwnStocks = WarehouseStock::whereIn('product_id', $saleProductIds)
-                ->where('quantity', '>', 0)
                 ->where('branch_id', $sale->branch_id)
                 ->whereNull('warehouse_id')  // ← BRANCH'S OWN STOCK
                 ->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity', 'price')
                 ->get();
 
             $warehouseAssignments = WarehouseStock::whereIn('product_id', $saleProductIds)
-                ->where('quantity', '>', 0)
                 ->where('branch_id', $sale->branch_id)
                 ->whereNotNull('warehouse_id')  // ← WAREHOUSE ASSIGNMENTS
                 ->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity', 'price')
@@ -4598,22 +4622,25 @@ public function finddc($invoice)
                                     ->where('warehouse_id', $warehouseId)
                                     ->first();
                             }
-                            
-                            Log::error('Delivery quantity exceeds available stock', [
+
+                            // ✅ If force_sale=1 is passed, allow negative stock instead of aborting
+                            $forceSale = (bool)($request->input('force_sale', 0));
+
+                            if (!$forceSale) {
+                                Log::error('Delivery quantity exceeds available stock', [
+                                    'product' => optional($item->product)->item_name,
+                                    'requested' => $userDeliveryQty,
+                                    'available' => $availableQty,
+                                ]);
+                                abort(422, "Delivery quantity ({$userDeliveryQty}) exceeds available stock ({$availableQty}) for: " . optional($item->product)->item_name);
+                            }
+
+                            // Force sale allowed — log and continue (stock will go negative)
+                            Log::warning('Force sale: allowing negative stock', [
                                 'product' => optional($item->product)->item_name,
                                 'requested' => $userDeliveryQty,
                                 'available' => $availableQty,
-                                'warehouse_id' => $warehouseId,
-                                'branch_id' => $sale->branch_id,
-                                'location_type' => $locationType,
-                                'diagnostic_stock_without_branch_filter' => $diagnosticStock ? [
-                                    'id' => $diagnosticStock->id,
-                                    'quantity' => $diagnosticStock->quantity,
-                                    'branch_id' => $diagnosticStock->branch_id
-                                ] : 'NOT FOUND'
                             ]);
-                            
-                            abort(422, "Delivery quantity ($userDeliveryQty) exceeds available stock ($availableQty) for: " . optional($item->product)->item_name);
                         }
 
                         // Calculate remainder: what's left after user's delivery choice

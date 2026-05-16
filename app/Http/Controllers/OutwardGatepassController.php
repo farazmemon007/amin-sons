@@ -409,10 +409,11 @@ class OutwardGatepassController extends Controller
             $orderWarehouseId = $orderWarehouseId ?? $orderRow->warehouse_id ?? null;
         }
 
-        // Get branch_id from warehouse_stocks based on warehouse
-        $branchId = DB::table('warehouse_stocks')
+        // ✅ Get correct branch_id from the order, fallback to warehouse_stocks, then fallback to 1
+        $branchId = $orderRow->branch_id ?? DB::table('warehouse_stocks')
             ->where('warehouse_id', $orderWarehouseId)
-            ->value('branch_id') ?? 1; // Default to branch 1 if not found
+            ->whereNotNull('warehouse_id')
+            ->value('branch_id') ?? 1;
 
         try {
             // ✅ ATOMIC TRANSACTION - Gatepass creation with stock deduction + remaining tracking
@@ -498,14 +499,43 @@ class OutwardGatepassController extends Controller
                 }
 
                 // 3️⃣ Deduct stock from warehouse_stocks table
-                if (!empty($items) && !empty($orderWarehouseId)) {
+                if (!empty($items)) {
                     $decodedItems = json_decode($items, true);
+
+                    // Determine which warehouse_orders row to read for branch_id / location type
+                    $warehouseOrderRow = $orderRow;
+                    $deliveryLocationType = $warehouseOrderRow->delivery_location_type ?? null;
+
                     foreach ($decodedItems as $item) {
-                        if (!empty($item['product_id']) && !empty($item['qty'])) {
+                        if (empty($item['product_id']) || empty($item['qty'])) continue;
+
+                        if (!empty($orderWarehouseId)) {
+                            // ── Warehouse delivery: deduct from specific warehouse stock row ──
                             DB::table('warehouse_stocks')
                                 ->where('warehouse_id', $orderWarehouseId)
                                 ->where('product_id', $item['product_id'])
                                 ->decrement('quantity', (float)$item['qty']);
+                        } else {
+                            // ── Branch delivery: deduct from branch's own stock (warehouse_id IS NULL) ──
+                            $targetBranchId = $warehouseOrderRow->branch_id ?? $branchId;
+                            $updated = DB::table('warehouse_stocks')
+                                ->where('product_id', $item['product_id'])
+                                ->where('branch_id', $targetBranchId)
+                                ->whereNull('warehouse_id')
+                                ->decrement('quantity', (float)$item['qty']);
+
+                            if ($updated === 0) {
+                                // No row exists yet — create one with negative qty to reflect force sale
+                                DB::table('warehouse_stocks')->insert([
+                                    'product_id'   => $item['product_id'],
+                                    'branch_id'    => $targetBranchId,
+                                    'warehouse_id' => null,
+                                    'quantity'     => -(float)$item['qty'],
+                                    'price'        => 0,
+                                    'created_at'   => now(),
+                                    'updated_at'   => now(),
+                                ]);
+                            }
                         }
                     }
                 }
