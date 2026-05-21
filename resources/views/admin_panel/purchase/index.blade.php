@@ -119,7 +119,7 @@
                     <tbody class="text-center">
                         @foreach ($Purchase as $purchase)
                         <tr>
-                            <td class="fw-bold text-muted">#{{ $purchase->id }}</td>
+                            <td class="fw-bold text-muted">#{{ intval(preg_replace('/[^0-9]/', '', $purchase->formatted_invoice)) }}</td>
                             
                             @if($showBranchColumn)
                                 <td><span class="badge bg-light text-dark border">{{ $purchase->branch->name ?? 'N/A' }}</span></td>
