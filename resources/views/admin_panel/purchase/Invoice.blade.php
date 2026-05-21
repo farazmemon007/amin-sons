@@ -183,9 +183,9 @@
             <!-- Header Banner -->
             <div class="pi-header-banner">
                 <div class="pi-title">
-                    <div class="d-flex align-items-center gap-3 mb-2">
+                    <div class="d-flex align-items-center mb-2">
                         <h1>PURCHASE INVOICE</h1>
-                        <span class="pi-badge" style="background: #dcfce7; color: #166534;">
+                        <span class="pi-badge" style="background: #dcfce7; color: #166534; padding: 0.5rem 1.2rem; margin-left: 30px;">
                             RECEIVED
                         </span>
                     </div>
@@ -205,6 +205,17 @@
                     <div class="info-label">Invoice Details</div>
                     <div class="info-value mb-1">{{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d M, Y') }}</div>
                     <div class="small text-muted text-uppercase" style="font-size: 10px;">Type: {{ ucfirst($purchase->purchase_type) }} Purchase</div>
+                    
+                    @if($purchase->inwardGatepasses->count() > 0)
+                        <div class="mt-2 pt-2 border-top">
+                            <div class="info-label" style="font-size: 9px; color: #2563eb;">Gatepass Number</div>
+                            <div class="small fw-bold text-dark">
+                                {{ $purchase->inwardGatepasses->map(function($ig) { 
+                                    return 'GP-' . str_pad($ig->id, 4, '0', STR_PAD_LEFT); 
+                                })->implode(', ') }}
+                            </div>
+                        </div>
+                    @endif
                 </div>
                 <div class="info-box success">
                     <div class="info-label">Supplier / Vendor</div>
