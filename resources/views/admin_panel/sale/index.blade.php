@@ -286,7 +286,7 @@
 
         <!-- MORE OPTIONS DROPDOWN -->
         <div class="btn-group">
-            <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle dropdown-toggle-split" data-toggle="dropdown" data-boundary="window" aria-expanded="false">
+            <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle dropdown-toggle-split" data-boundary="window" aria-expanded="false">
                 <i class="fas fa-ellipsis-v"></i> More
             </button>
 
@@ -397,36 +397,76 @@
         }
         
         // Fix for dropdown clipping in responsive tables
-        $('.dropdown-toggle').on('click', function (e) {
-            var $el = $(this);
-            var $dropdown = $el.next('.dropdown-menu');
-            
-            // If the dropdown is not already appended to body
+        function openDropdown($el) {
+            var $dropdown = $el.data('dropdown-menu');
+            if (!$dropdown || $dropdown.length === 0) {
+                $dropdown = $el.closest('.btn-group').find('.dropdown-menu');
+                $el.data('dropdown-menu', $dropdown);
+            }
+            if (!$dropdown || $dropdown.length === 0) return;
+
+            // Hide others
+            $('.dropdown-appended').not($dropdown).hide();
+
+            // Append to body
             if (!$dropdown.hasClass('dropdown-appended')) {
                 $('body').append($dropdown);
                 $dropdown.addClass('dropdown-appended');
             }
             
-            // Calculate position
+            $dropdown.show();
             var offset = $el.offset();
+            var leftPos = offset.left - ($dropdown.outerWidth() - $el.outerWidth());
+            if (leftPos < 0) leftPos = 10;
+
             $dropdown.css({
                 'position': 'absolute',
                 'top': offset.top + $el.outerHeight(),
-                'left': offset.left - ($dropdown.outerWidth() - $el.outerWidth()),
-                'display': 'block',
+                'left': leftPos,
                 'z-index': 10500
             });
-            
-            // Handle closing
-            $(document).one('click', function closeDropdown(e) {
-                if (!$(e.target).closest('.dropdown-toggle').length && !$(e.target).closest('.dropdown-menu').length) {
-                    $('.dropdown-appended').css('display', 'none');
-                } else if (!$(e.target).closest('.dropdown-toggle').is($el)) {
-                    $dropdown.css('display', 'none');
-                } else {
-                    $(document).one('click', closeDropdown);
-                }
-            });
+        }
+
+        // Open on Hover
+        $(document).on('mouseenter', '.dropdown-toggle', function() {
+            clearTimeout(closeTimer);
+            openDropdown($(this));
+        });
+
+        // Open on Click
+        $(document).on('click', '.dropdown-toggle', function (e) {
+            e.stopPropagation();
+            openDropdown($(this));
+        });
+
+        // Close when clicking outside
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown-toggle').length && !$(e.target).closest('.dropdown-menu').length) {
+                $('.dropdown-appended').hide();
+            }
+        });
+
+        var closeTimer;
+
+        // Small delay to move from button to menu
+        $(document).on('mouseleave', '.dropdown-toggle', function() {
+            var $el = $(this);
+            var $dropdown = $el.data('dropdown-menu');
+            if ($dropdown && $dropdown.is(':visible')) {
+                closeTimer = setTimeout(function() {
+                    $dropdown.hide();
+                }, 150); 
+            }
+        });
+
+        // Keep open if moving into menu
+        $(document).on('mouseenter', '.dropdown-appended', function() {
+            clearTimeout(closeTimer);
+        });
+
+        // Close when leaving menu
+        $(document).on('mouseleave', '.dropdown-appended', function() {
+            $(this).hide();
         });
         
     });

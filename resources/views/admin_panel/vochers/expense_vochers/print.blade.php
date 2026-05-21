@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Payment Voucher - AMT</title>
+    <title>Expense Voucher - AMT</title>
 
     <!-- Poppins font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -154,7 +154,7 @@
             <div class="logo" style="text-align:right;">
                 <img src="{{ asset('amt-logo.png') }}" alt="AMT Logo" style="max-width:200px;" onerror="this.style.display='none'">
                 <div style="margin-top:8px;">
-                    <span class="receipt-badge">PAYMENT VOUCHER</span>
+                    <span class="receipt-badge">EXPENSE VOUCHER</span>
                 </div>
             </div>
         </header>
@@ -164,9 +164,9 @@
         <div class="meta-row">
             <div class="left">
                 @if(is_numeric($voucher->type))
-                {{-- 🏦 Paid From Account --}}
+                {{-- 🏦 Paid To Account --}}
                 <div class="line">
-                    <div class="label">Paid From (Account):</div>
+                    <div class="label">Paid To (Account):</div>
                     <div class="value">
                         {{ $party->name ?? '-' }}
                     </div>
@@ -248,7 +248,7 @@
 
             <div class="right">
                 <div style="margin-bottom:8px; font-weight:700;">
-                    Voucher No: <span style="float:right;">{{ $voucher->pvid }}</span>
+                    Voucher No: <span style="float:right;">{{ $voucher->evid }}</span>
                 </div>
                 <div class="meta-item">
                     <span>Voucher Date:</span>
@@ -258,11 +258,11 @@
         </div>
 
         <div class="payments">
-            <h3>Payment(s) Detail.</h3>
+            <h3>Expense Detail.</h3>
             @foreach($rows as $key => $row)
             <p>
                 <strong>{{ $key + 1 }} . Amount of Rs. {{ number_format($row['amount'], 2) }}</strong>
-                &nbsp;&nbsp; Received with thanks, Dated:
+                &nbsp;&nbsp; Paid with thanks, Dated:
                 <strong>{{ \Carbon\Carbon::parse($voucher->receipt_date)->format('l, d F, Y') }}</strong>
                 against supply of {{ $row['narration'] ?? 'N/A' }} towards account:
                 <strong>{{ $row['account_head'] ?? '-' }}, {{ $row['account_name'] ?? '' }} Code: {{ $row['account_code'] ?? '' }}</strong>
@@ -272,9 +272,6 @@
             <div class="amount-words">
                 Amount in words: <strong id="amountInWords">{{ $voucher->total_amount }}</strong> Only
             </div>
-            <!-- <ul class="mini-list">
-                <li>Amount in figures: <strong>Rs. {{ number_format($voucher->total_amount,2) }}</strong></li>
-            </ul> -->
         </div>
 
         <!-- summary -->
@@ -289,18 +286,16 @@
                     <td style="color:#6b0f8a;">>>> {{ number_format($previousBalance,2) }}</td>
                 </tr>
                 <tr>
-                    <td>Total Payment Received. (-)</td>
+                    <td>Total Paid. (-)</td>
                     <td style="color:#6b0f8a;">>>> {{ number_format($voucher->total_amount,2) }}</td>
                 </tr>
                 <tr>
-                    <td>Amount Payable.</td>
+                    <td>Balance Remaining.</td>
                     <td style="color:#0b5a2b;">>>> {{ number_format($amountPayable,2) }}</td>
                 </tr>
             </table>
 
         </div>
-
-
 
         <div class="footer">
             <div>
@@ -340,8 +335,6 @@
             document.getElementById("amountInWords").innerText = words;
         });
     </script>
-
-
 </body>
 
 </html>

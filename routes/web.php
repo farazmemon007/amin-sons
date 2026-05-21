@@ -321,7 +321,7 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::get('purchase/return', [PurchaseController::class, 'purchaseReturnIndex'])->middleware('permission:purchase.return.view')->name('purchase.return.index');
     Route::get('purchase/return/{id}', [PurchaseController::class, 'showReturnForm'])->middleware('permission:purchase.return.view')->name('purchase.return.show');
     Route::post('purchase/return/store', [PurchaseController::class, 'storeReturn'])->middleware('permission:purchase.return.create|purchase.return.edit')->name('purchase.return.store');
-    Route::get('/getPartyList', [PurchaseController::class, 'getPartyList'])->middleware('permission:vendor.view')->name('party.list');
+    Route::get('/getPartyList', [PurchaseController::class, 'getPartyList'])->name('party.list');
 
     // Purchase Order (PO) Routes
     Route::prefix('purchase-orders')->group(function () {
@@ -573,8 +573,10 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
     Route::get('/get-vendor-balance/{id}', [VendorController::class, 'getVendorBalance']);
     ///// Recipt Vouchers
     Route::get('/receipt-voucher/print/{id}', [VoucherController::class, 'print'])->middleware('permission:receipts.voucher.print')->name('receiptVoucher.print');
-    Route::get('/get-accounts-by-head/{headId}', [VoucherController::class, 'getAccountsByHead'])->middleware('permission:chart.of.accounts.view');
+    Route::get('/get-accounts-by-head/{headId}', [VoucherController::class, 'getAccountsByHead']);
+    Route::get('/get-receipt-party-list', [VoucherController::class, 'getReceiptPartyList'])->name('receipt.party.list');
     Route::get('/get-opening-balance/{type}/{id}', [VoucherController::class, 'getOpeningBalance'])->middleware('permission:chart.of.accounts.view');
+    Route::post('/store-narration-ajax', [VoucherController::class, 'storeNarrationAjax'])->name('store.narration.ajax');
 
 
     Route::get('/all-recepit-vochers', [VoucherController::class, 'all_recepit_vochers'])->middleware('permission:receipts.voucher.view')->name('all-recepit-vochers');

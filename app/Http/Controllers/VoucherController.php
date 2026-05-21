@@ -11,9 +11,11 @@ use App\Models\ExpenseVoucher;
 use App\Models\Narration;
 use App\Models\PaymentVoucher;
 use App\Models\ReceiptsVoucher;
+use App\Models\Vendor;
 use App\Models\VendorLedger;
 use App\Models\Voucher;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class VoucherController extends Controller
@@ -233,19 +235,34 @@ class VoucherController extends Controller
                 ->first();
         }
 
-        return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+        $branch = null;
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->branch_id) {
+            $branch = DB::table('branches')->where('id', \Illuminate\Support\Facades\Auth::user()->branch_id)->first();
+        }
+
+        return view('admin_panel.vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'branch'));
     }
 
-     public function getAccountsByHead($headId)
+     public function getAccountsByHead(Request $request, $headId)
     {
         // ✅ BRANCH-AWARE ACCOUNTS: Simple users see only their branch's accounts
         $isSuper = Auth::check() && Auth::user()->hasRole('super admin');
-        $branchId = Auth::check() ? Auth::user()->branch_id : null;
+        
+        // If super admin and a specific branch is requested via AJAX
+        if ($isSuper && $request->has('branch_id') && $request->branch_id != '') {
+            $branchId = $request->branch_id;
+        } else {
+            $branchId = Auth::check() ? Auth::user()->branch_id : null;
+        }
         
         $accounts = Account::where('head_id', $headId)
             ->where('status', 1)
             ->when(!$isSuper && $branchId, function ($q) use ($branchId) {
                 $q->where('branch_id', $branchId);
+            })
+            // If Super Admin selected a specific branch
+            ->when($isSuper && $request->has('branch_id') && $request->branch_id != '', function ($q) use ($branchId) {
+                 $q->where('branch_id', $branchId);
             })
             ->get();
         
@@ -274,6 +291,93 @@ public function getOpeningBalance($type, $id)
 
 
 
+    /**
+     * ✅ BRANCH-AWARE: Fetch party list for Receipt Voucher based on type
+     * Returns customers, walkin customers, or vendors with their current balances
+     */
+    public function getReceiptPartyList(Request $request)
+    {
+        $type = strtolower($request->query('type', ''));
+        $isSuper = Auth::check() && Auth::user()->hasRole('super admin');
+        
+        if ($isSuper && $request->has('branch_id') && $request->branch_id != '') {
+            $branchId = $request->branch_id;
+        } else {
+            $branchId = Auth::check() ? Auth::user()->branch_id : null;
+        }
+
+        if ($type === 'customer') {
+            $query = Customer::with(['ledgers' => fn($q) => $q->latest()])
+                ->whereIn('customer_type', ['credit', 'cash']);
+
+            // Branch filter
+            if (!$isSuper && $branchId) {
+                $query->where('branch_id', $branchId);
+            }
+            if ($isSuper && $request->has('branch_id') && $request->branch_id != '') {
+                $query->where('branch_id', $branchId);
+            }
+
+            $customers = $query->get()->map(function ($c) {
+                $ledger = $c->ledgers->first();
+                $closing = $ledger ? (float)$ledger->closing_balance : (float)($c->opening_balance ?? 0);
+                return [
+                    'id'              => $c->id,
+                    'text'            => $c->customer_name,
+                    'mobile'          => $c->mobile ?? '',
+                    'closing_balance' => $closing,
+                ];
+            });
+            return response()->json($customers);
+
+        } elseif ($type === 'walkin') {
+            $query = Customer::where('customer_type', 'walking');
+
+            if (!$isSuper && $branchId) {
+                $query->where('branch_id', $branchId);
+            }
+            if ($isSuper && $request->has('branch_id') && $request->branch_id != '') {
+                $query->where('branch_id', $branchId);
+            }
+
+            $walkins = $query->get()->map(function ($c) {
+                $closing = (float)($c->opening_balance ?? 0);
+                return [
+                    'id'              => $c->id,
+                    'text'            => $c->customer_name,
+                    'mobile'          => $c->mobile ?? '',
+                    'closing_balance' => $closing,
+                ];
+            });
+            return response()->json($walkins);
+
+        } elseif ($type === 'vendor') {
+            $query = \App\Models\Vendor::query();
+            if (!$isSuper && $branchId) {
+                $query->where('branch_id', $branchId);
+            }
+            if ($isSuper && $request->has('branch_id') && $request->branch_id != '') {
+                $query->where('branch_id', $branchId);
+            }
+
+            $vendors = $query->get()->map(function ($v) use ($branchId) {
+                $lastLedger = \App\Models\VendorLedger::where('vendor_id', $v->id)
+                    ->where('branch_id', $branchId ?? $v->branch_id)
+                    ->orderByDesc('id')
+                    ->first();
+                $closing = $lastLedger ? (float)$lastLedger->closing_balance : (float)($v->opening_balance ?? 0);
+                return [
+                    'id'              => $v->id,
+                    'text'            => $v->name,
+                    'mobile'          => $v->phone ?? $v->contact ?? '',
+                    'closing_balance' => $closing,
+                ];
+            });
+            return response()->json($vendors);
+        }
+
+        return response()->json([]);
+    }
 
 
     public function recepit_vochers()
@@ -282,10 +386,10 @@ public function getOpeningBalance($type, $id)
             ->pluck('narration', 'id');
         $AccountHeads = AccountHead::get();
 
-        // echo "<pre>";
-        // print_r($AccountHeads) ;
-        // echo "<pre>";
-        // dd();
+        // Check if user is super admin
+        $isSuperAdmin = Auth::user()->hasRole('super admin');
+        $currentBranch = Auth::user()->branch_id;
+        $Branch = \App\Models\Branch::all();
 
         // Last RVID nikalna
         $lastVoucher = \App\Models\ReceiptsVoucher::latest('id')->first();
@@ -294,7 +398,7 @@ public function getOpeningBalance($type, $id)
         $nextId = $lastVoucher ? $lastVoucher->id + 1 : 1;
         $nextRvid = 'RVID-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
 
-        return view('admin_panel.vochers.reciepts_vouchers', compact('narrations', 'AccountHeads', 'nextRvid'));
+        return view('admin_panel.vochers.reciepts_vouchers', compact('narrations', 'AccountHeads', 'nextRvid', 'isSuperAdmin', 'currentBranch', 'Branch'));
     }
 
 
@@ -323,6 +427,11 @@ public function getOpeningBalance($type, $id)
             }
 
             // 3. Save Receipt Voucher Record
+            $remarks = $request->remarks;
+            if ($request->vendor_type === 'walkin' && !empty($request->walking_customer_name)) {
+                $remarks = 'Walk-in Name: ' . $request->walking_customer_name . ($remarks ? ' - ' . $remarks : '');
+            }
+
             $voucherData = [
                 'rvid'             => $rvid,
                 'receipt_date'     => $request->receipt_date ?? now()->toDateString(),
@@ -330,7 +439,7 @@ public function getOpeningBalance($type, $id)
                 'type'             => $request->vendor_type,
                 'party_id'         => $request->vendor_id,
                 'tel'              => $request->tel,
-                'remarks'          => $request->remarks,
+                'remarks'          => $remarks,
                 'narration_id'     => json_encode($narrationIds),
                 'reference_no'     => json_encode($request->reference_no),
                 'row_account_head' => json_encode($request->row_account_head),
@@ -344,7 +453,13 @@ public function getOpeningBalance($type, $id)
 
             $savedVoucher = ReceiptsVoucher::create($voucherData);
             $totalAmount = (float)$request->total_amount;
-            $branchId = auth()->user()->branch_id ?? 0;
+            
+            // Get proper branch_id from request or auth
+            if (Auth::user()->hasRole('super admin') && $request->has('branch_id') && $request->branch_id != '') {
+                $branchId = $request->branch_id;
+            } else {
+                $branchId = auth()->user()->branch_id ?? 0;
+            }
 
             /**
              * 4. PARTY SIDE POSTING (CREDIT)
@@ -362,8 +477,6 @@ public function getOpeningBalance($type, $id)
                 CustomerLedger::create([
                     'customer_id'      => $request->vendor_id,
                     'admin_or_user_id' => auth()->id(),
-                    'transaction_date' => $request->receipt_date ?? now()->toDateString(),
-                    'description'      => "Receipt Voucher #$rvid " . ($request->remarks ? " - " . $request->remarks : ""),
                     'previous_balance' => $previousBalance,
                     'opening_balance'  => $customer->opening_balance ?? 0,
                     'total_debit'      => 0,
@@ -722,7 +835,12 @@ public function getOpeningBalance($type, $id)
                 ->first();
         }
 
-        return view('admin_panel.vochers.payment_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+        $branch = null;
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->branch_id) {
+            $branch = DB::table('branches')->where('id', \Illuminate\Support\Facades\Auth::user()->branch_id)->first();
+        }
+
+        return view('admin_panel.vochers.payment_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'branch'));
     }
 
 
@@ -980,7 +1098,12 @@ public function getOpeningBalance($type, $id)
                 ->first();
         }
 
-        return view('admin_panel.vochers.expense_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance'));
+        $branch = null;
+        if (\Illuminate\Support\Facades\Auth::check() && \Illuminate\Support\Facades\Auth::user()->branch_id) {
+            $branch = DB::table('branches')->where('id', \Illuminate\Support\Facades\Auth::user()->branch_id)->first();
+        }
+
+        return view('admin_panel.vochers.expense_vochers.print', compact('voucher', 'rows', 'party', 'previousBalance', 'branch'));
     }
 
     // =========================================================================
@@ -1052,6 +1175,24 @@ public function getOpeningBalance($type, $id)
             'credit'            => $credit,
             'running_balance'   => $newBalance,
             'created_by'        => auth()->id(),
+        ]);
+    }
+
+    public function storeNarrationAjax(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'narration' => 'required|string|max:255'
+        ]);
+
+        $narration = \App\Models\Narration::create([
+            'expense_head' => 'Receipts Voucher',
+            'narration'    => $request->narration,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'id' => $narration->id,
+            'text' => $narration->narration
         ]);
     }
 }

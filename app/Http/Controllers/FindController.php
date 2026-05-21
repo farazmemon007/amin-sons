@@ -360,7 +360,8 @@ class FindController extends Controller
 
         if ($number !== '') {
             $query->where(function ($q) use ($number) {
-                $q->where('gatepass_no', $number)
+                $q->where('id', $number)
+                  ->orWhere('gatepass_no', $number)
                   ->orWhere('gatepass_no', 'like', "%{$number}%");
             });
         }
@@ -383,7 +384,7 @@ class FindController extends Controller
         $items = $records->map(function ($gp) {
             return [
                 'id'            => $gp->id,
-                'doc_number'    => $gp->gatepass_no ?? 'N/A',
+                'doc_number'    => $gp->gatepass_no ? $gp->gatepass_no . ' (#' . str_pad($gp->id, 4, '0', STR_PAD_LEFT) . ')' : '#' . str_pad($gp->id, 4, '0', STR_PAD_LEFT),
                 'manual_number' => null,
                 'date'          => $gp->gatepass_date ? \Carbon\Carbon::parse($gp->gatepass_date)->format('d-M-Y') : '—',
                 'party'         => optional($gp->vendor)->name ?? '—',

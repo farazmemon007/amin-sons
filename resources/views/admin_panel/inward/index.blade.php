@@ -164,6 +164,32 @@
         color: #0f172a !important;
         border: 1px solid #e2e8f0 !important;
     }
+    /* Button CSS for dropdown */
+    .action-dropdown {
+        border-radius: 12px;
+        padding: 6px;
+        min-width: 180px;
+        z-index: 10000 !important;
+        border: none;
+    }
+
+    .action-dropdown .dropdown-item {
+        padding: 9px 14px;
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.25s ease;
+        font-size: 0.85rem;
+    }
+
+    .action-dropdown .dropdown-item:hover {
+        background: linear-gradient(90deg, #f8f9fa, #eef1f5);
+        transform: translateX(4px);
+    }
+    
+    .dropdown-appended {
+        display: none;
+        position: absolute;
+    }
 </style>
 
 <div class="main-content erp-container">
@@ -242,27 +268,42 @@
                                             @endif
                                         </td>
                                         <td class="text-center">
-                                            <a href="{{ route('InwardGatepass.show', $gp->id) }}" class="action-btn btn-view" title="View Details">
-                                                <i class="bi bi-eye"></i> View
-                                            </a>
-
-                                            <a href="{{ route('InwardGatepass.edit', $gp->id) }}" class="action-btn btn-edit" title="Edit">
-                                                <i class="bi bi-pencil"></i> Edit
-                                            </a>
-
-                                            @if(!$gp->purchase_id)
-                                                <a href="{{ route('add_bill', $gp->id) }}" class="action-btn btn-bill" title="Create Purchase Bill">
-                                                    <i class="bi bi-receipt"></i> Create Bill
-                                                </a>
-                                            @endif
-
-                                            <form action="{{ route('InwardGatepass.destroy', $gp->id) }}" method="POST" class="d-inline delete-form">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="button" class="action-btn btn-delete delete-btn" title="Delete">
-                                                    <i class="bi bi-trash"></i> Delete
+                                            <!-- CONSOLIDATED ACTIONS -->
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-outline-dark dropdown-toggle dropdown-toggle-split" data-boundary="window" aria-expanded="false">
+                                                    <i class="bi bi-three-dots-vertical"></i> More
                                                 </button>
-                                            </form>
+
+                                                <ul class="dropdown-menu dropdown-menu-end shadow-lg action-dropdown">
+                                                    <li>
+                                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('InwardGatepass.show', $gp->id) }}">
+                                                            <i class="bi bi-eye text-primary"></i> View
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('InwardGatepass.edit', $gp->id) }}">
+                                                            <i class="bi bi-pencil text-warning"></i> Edit
+                                                        </a>
+                                                    </li>
+                                                    @if(!$gp->purchase_id)
+                                                    <li>
+                                                        <a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('add_bill', $gp->id) }}">
+                                                            <i class="bi bi-receipt text-success"></i> Create Bill
+                                                        </a>
+                                                    </li>
+                                                    @endif
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form action="{{ route('InwardGatepass.destroy', $gp->id) }}" method="POST" class="m-0">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="button" class="dropdown-item d-flex align-items-center gap-2 text-danger delete-btn">
+                                                                <i class="bi bi-trash"></i> Delete
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -291,6 +332,77 @@
                                     "search": "Search Gatepass:",
                                     "lengthMenu": "Show _MENU_ entries"
                                 }
+                            });
+
+                            // --- CONSOLIDATED ACTIONS DROPDOWN LOGIC ---
+                            var closeTimer;
+
+                            function openDropdown($el) {
+                                var $dropdown = $el.data('dropdown-menu');
+                                if (!$dropdown || $dropdown.length === 0) {
+                                    $dropdown = $el.closest('.btn-group').find('.dropdown-menu');
+                                    $el.data('dropdown-menu', $dropdown);
+                                }
+                                if (!$dropdown || $dropdown.length === 0) return;
+
+                                $('.dropdown-appended').not($dropdown).hide();
+
+                                if (!$dropdown.hasClass('dropdown-appended')) {
+                                    $('body').append($dropdown);
+                                    $dropdown.addClass('dropdown-appended');
+                                }
+                                
+                                $dropdown.show();
+                                var offset = $el.offset();
+                                var leftPos = offset.left - ($dropdown.outerWidth() - $el.outerWidth());
+                                if (leftPos < 0) leftPos = 10;
+
+                                $dropdown.css({
+                                    'position': 'absolute',
+                                    'top': offset.top + $el.outerHeight(),
+                                    'left': leftPos,
+                                    'z-index': 10500
+                                });
+                            }
+
+                            // Open on Hover
+                            $(document).on('mouseenter', '.dropdown-toggle', function() {
+                                clearTimeout(closeTimer);
+                                openDropdown($(this));
+                            });
+
+                            // Open on Click
+                            $(document).on('click', '.dropdown-toggle', function (e) {
+                                e.stopPropagation();
+                                openDropdown($(this));
+                            });
+
+                            // Close when clicking outside
+                            $(document).on('click', function (e) {
+                                if (!$(e.target).closest('.dropdown-toggle').length && !$(e.target).closest('.dropdown-menu').length) {
+                                    $('.dropdown-appended').hide();
+                                }
+                            });
+
+                            // Small delay to move from button to menu
+                            $(document).on('mouseleave', '.dropdown-toggle', function() {
+                                var $el = $(this);
+                                var $dropdown = $el.data('dropdown-menu');
+                                if ($dropdown && $dropdown.is(':visible')) {
+                                    closeTimer = setTimeout(function() {
+                                        $dropdown.hide();
+                                    }, 150); 
+                                }
+                            });
+
+                            // Keep open if moving into menu
+                            $(document).on('mouseenter', '.dropdown-appended', function() {
+                                clearTimeout(closeTimer);
+                            });
+
+                            // Close when leaving menu
+                            $(document).on('mouseleave', '.dropdown-appended', function() {
+                                $(this).hide();
                             });
                         });
                     </script>

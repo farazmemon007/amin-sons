@@ -2,7 +2,15 @@
 
 @section('content')
 <style>
-    .find-wrapper { max-width: 960px; margin: 30px auto; padding: 0 16px; }
+    .find-wrapper { 
+        max-width: 960px; 
+        margin: 30px auto; 
+        padding: 0 16px;
+        /* Force hardware acceleration to prevent "giggling"/jitter during scroll */
+        transform: translateZ(0);
+        -webkit-font-smoothing: antialiased;
+        backface-visibility: hidden;
+    }
 
     .find-header {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
@@ -41,6 +49,8 @@
         border: 1px solid #e2e8f0;
         padding: 28px;
         margin-bottom: 28px;
+        /* Ensure card height is stable */
+        contain: layout;
     }
 
     .search-row {
@@ -182,8 +192,10 @@
         border-radius: 12px;
         padding: 18px 22px;
         margin-bottom: 12px;
-        transition: all .2s;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, border-color 0.2s;
         box-shadow: 0 2px 8px rgba(0,0,0,.03);
+        /* Prevent layout shift */
+        will-change: transform, box-shadow;
     }
     .result-card:hover {
         border-color: #c7d2fe;
@@ -275,6 +287,16 @@
         cursor: pointer;
     }
     .rc-btn-pending:hover { background: #e2e8f0; color: #64748b; }
+    
+    /* Lock scroll logic */
+    .lock-scroll {
+        overflow: hidden !important;
+        height: 100vh !important;
+    }
+    
+    .lock-scroll body {
+        overflow: hidden !important;
+    }
 </style>
 
 <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
@@ -360,6 +382,9 @@
 </div>
 
 <script>
+// Initial scroll lock
+document.documentElement.classList.add('lock-scroll');
+
 function doFind() {
     var type      = document.getElementById('find_type').value;
     var number    = document.getElementById('find_number').value.trim();
@@ -394,6 +419,9 @@ function doFind() {
         },
         dataType: 'json',
         success: function(resp) {
+            // Unlock scroll as soon as we have a response
+            document.documentElement.classList.remove('lock-scroll');
+            
             document.getElementById('find_loading').style.display = 'none';
             document.getElementById('btn_find').disabled = false;
 
@@ -407,6 +435,9 @@ function doFind() {
             renderResults(resp);
         },
         error: function(xhr) {
+            // Unlock scroll on error too so user can see error alert/footer
+            document.documentElement.classList.remove('lock-scroll');
+            
             document.getElementById('find_loading').style.display = 'none';
             document.getElementById('btn_find').disabled = false;
             alert('Error searching: ' + (xhr.responseJSON?.message || 'Server error'));

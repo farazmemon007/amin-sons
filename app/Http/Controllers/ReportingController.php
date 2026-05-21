@@ -242,7 +242,7 @@ class ReportingController extends Controller
                 'receipts_vouchers.id           as id',
                 'receipts_vouchers.rvid         as rvid',
                 'receipts_vouchers.receipt_date as txn_date',
-                'receipts_vouchers.amount       as credit_amount',
+                'receipts_vouchers.total_amount as credit_amount',
                 'receipts_vouchers.reference_no as reference_no',
                 'receipts_vouchers.remarks      as remarks',
                 'narrations.narration           as narration_text',
@@ -265,7 +265,7 @@ class ReportingController extends Controller
                 'payment_vouchers.id           as id',
                 'payment_vouchers.pvid         as pvid',
                 'payment_vouchers.receipt_date as txn_date',
-                'payment_vouchers.amount       as credit_amount',
+                'payment_vouchers.total_amount as credit_amount',
                 'payment_vouchers.reference_no as reference_no',
                 'payment_vouchers.remarks      as remarks',
                 'narrations.narration          as narration_text',
@@ -1926,7 +1926,7 @@ class ReportingController extends Controller
             }
 
             $paymentsMap[$dateKey] = [
-                'amount' => floatval($receipt->amount ?? 0),
+                'amount' => floatval($receipt->total_amount ?? 0),
                 'reference' => $receipt->reference_no ?? "-",
                 'payment_mode' => $paymentMode,
                 'account_name' => $accountName,
@@ -2112,7 +2112,7 @@ class ReportingController extends Controller
             }
 
             $paymentsMap[$dateKey] = [
-                'amount' => floatval($receipt->amount ?? 0),
+                'amount' => floatval($receipt->total_amount ?? 0),
                 'reference' => $receipt->reference_no ?? "-",
                 'voucher_no' => $receipt->receipt_no ?? "REC-" . $receipt->id,
                 'payment_mode' => $paymentMode,
