@@ -210,13 +210,19 @@
                 <div class="info-box">
                     <div class="info-label">Warehouse & Reference</div>
                     <div class="info-value mb-1">{{ $gatepass->warehouse->warehouse_name ?? 'Default WH' }}</div>
-                    <div class="small fw-bold text-accent">
-                        @if($gatepass->purchase_order_id)
-                            Ref: PO #{{ $gatepass->purchaseOrder->po_number ?? $gatepass->purchase_order_id }}
-                        @elseif($gatepass->purchase_id)
-                            Ref: PI #{{ $gatepass->purchase->invoice_no ?? $gatepass->purchase_id }}
+                    <div class="small fw-bold">
+                        @if($gatepass->purchase_id)
+                            <span class="text-accent" style="font-size: 11px;">PURCHASE INVOICE: #{{ $gatepass->purchase->invoice_no ?? $gatepass->purchase_id }}</span>
                         @else
-                            Ref: Direct Stock Inward
+                            <span class="text-danger" style="font-size: 11px; letter-spacing: 0.5px;">INVOICE STATUS: PENDING</span>
+                        @endif
+
+                        @if($gatepass->purchase_order_id)
+                            <div class="text-muted mt-1" style="font-size: 9px; opacity: 0.8;">LINKED PO: #{{ $gatepass->purchaseOrder->po_number ?? $gatepass->purchase_order_id }}</div>
+                        @endif
+                        
+                        @if(!$gatepass->purchase_id && !$gatepass->purchase_order_id)
+                            <div class="text-muted mt-1" style="font-size: 9px;">DIRECT STOCK ENTRY</div>
                         @endif
                     </div>
                 </div>

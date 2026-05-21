@@ -10,8 +10,8 @@
         --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
     }
 
-    .main-content { background-color: #f8fafc; min-height: 100vh; padding: 2rem 1.5rem; }
-    .premium-card { border: none; border-radius: 1.5rem; box-shadow: var(--card-shadow); background: white; overflow: hidden; margin-bottom: 2rem; }
+    .main-content { background-color: #f8fafc; min-height: 100vh; padding: 1.5rem 0.75rem; }
+    .premium-card { border: none; border-radius: 1.5rem; box-shadow: var(--card-shadow); background: white; overflow: hidden; margin-bottom: 2rem; width: 100%; }
     .card-header-gradient { background: var(--primary-gradient); padding: 1.5rem 2rem; border: none; }
     .card-title-premium { color: white; font-weight: 800; font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 0.75rem; }
     
@@ -20,10 +20,10 @@
     .fi:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); background-color: white; }
     .fi[readonly] { background-color: #f1f5f9; color: #475569; cursor: not-allowed; }
 
-    .table-premium { border-collapse: separate; border-spacing: 0 0.5rem; }
-    .table-premium thead th { background: #f1f5f9; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; padding: 1rem; border: none; }
+    .table-premium { border-collapse: separate; border-spacing: 0 0.5rem; width: 100% !important; }
+    .table-premium thead th { background: #f1f5f9; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; padding: 0.75rem 0.5rem; border: none; }
     .table-premium tbody tr { transition: transform 0.2s, box-shadow 0.2s; }
-    .table-premium tbody td { padding: 1rem; vertical-align: middle; background: white; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+    .table-premium tbody td { padding: 0.75rem 0.5rem; vertical-align: middle; background: white; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
     .table-premium tbody td:first-child { border-left: 1px solid #f1f5f9; border-top-left-radius: 0.75rem; border-bottom-left-radius: 0.75rem; }
     .table-premium tbody td:last-child { border-right: 1px solid #f1f5f9; border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; }
 
@@ -40,11 +40,11 @@
 
     .payment-badge { padding: 0.5rem 1rem; border-radius: 2rem; cursor: pointer; transition: all 0.2s; font-weight: 600; border: 2px solid transparent; background: #f1f5f9; color: #64748b; }
     .payment-badge.active { background: #eef2ff; color: #4f46e5; border-color: #4f46e5; }
-    .fi-table { padding: 0.75rem 0.5rem !important; }
+    .fi-table { padding: 0.6rem 0.4rem !important; font-size: 0.85rem !important; }
 </style>
 
 <div class="main-content">
-    <div class="container-fluid">
+    <div class="container-fluid px-2">
         <form action="{{ route('store.bill', $gatepass->id) }}" method="POST" id="billForm">
             @csrf
             <input type="hidden" name="branch_id" value="{{ $gatepass->branch_id }}">
@@ -58,9 +58,9 @@
                     <div class="text-white opacity-75 fw-bold">GRN Ref: #{{ $gatepass->id }}</div>
                 </div>
 
-                <div class="card-body p-4 p-lg-5">
+                <div class="card-body p-3 p-lg-4">
                     <!-- Header Info -->
-                    <div class="row g-4 mb-5">
+                    <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="section-label">Vendor / Supplier</label>
                             <input type="text" class="fi" value="{{ $gatepass->vendor->name ?? 'N/A' }}" readonly>
@@ -81,8 +81,8 @@
                     </div>
 
                     <!-- Items Table -->
-                    <div class="table-responsive mb-5" style="overflow-x: auto;">
-                        <table class="table table-premium" style="min-width: 1200px;">
+                    <div class="table-responsive mb-4">
+                        <table class="table table-premium">
                             <thead>
                                 <tr>
                                     <th style="width: 18%;">Product Details</th>
@@ -112,8 +112,22 @@
                                 @endphp
                                 <tr class="item-group-row" data-group-id="{{ $groupId }}">
                                     <td>
-                                        <div class="fw-bold text-dark" style="font-size: 1.05rem;">{{ $product->item_name }}</div>
-                                        <div class="small text-muted mb-2">{{ $product->item_code }}</div>
+                                        <div class="fw-bold text-dark mb-1" style="font-size: 1.1rem; line-height: 1.2;">{{ $product->item_name }}</div>
+                                        <div class="d-flex align-items-center flex-wrap gap-1 mb-2 mt-2">
+                                            <span class="badge bg-white text-muted border px-2 py-1" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                                <i class="bi bi-qr-code me-1"></i>{{ $product->item_code }}
+                                            </span>
+                                            @if($product->brand)
+                                                <span class="badge text-primary px-2 py-1" style="background: #eef2ff; font-size: 0.65rem; font-weight: 800; border: 1px solid #c7d2fe; text-transform: uppercase;">
+                                                    <i class="bi bi-tag-fill me-1"></i>{{ $product->brand->name }}
+                                                </span>
+                                            @endif
+                                            @if($product->model)
+                                                <span class="badge text-secondary px-2 py-1" style="background: #f8fafc; font-size: 0.65rem; font-weight: 700; border: 1px solid #e2e8f0;">
+                                                    <i class="bi bi-cpu me-1"></i>{{ $product->model }}
+                                                </span>
+                                            @endif
+                                        </div>
                                         
                                         <!-- Color Breakdown Badges -->
                                         <div class="d-flex flex-wrap gap-1 mt-1">

@@ -221,7 +221,7 @@ class PurchaseController extends Controller
     public function addBill($gatepassId)
     {
         // Fetch the gatepass along with its related items and products
-        $gatepass = InwardGatepass::with(['items.product', 'vendor', 'warehouse', 'branch'])->findOrFail($gatepassId);
+        $gatepass = InwardGatepass::with(['items.product.brand', 'vendor', 'warehouse', 'branch'])->findOrFail($gatepassId);
 
         // ✅ ERP Enhancement: Fetch last purchase price for each item
         foreach($gatepass->items as $item) {
