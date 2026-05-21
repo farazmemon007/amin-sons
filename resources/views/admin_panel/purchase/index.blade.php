@@ -10,13 +10,75 @@
     .table tbody td { padding: 14px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
     .bg-soft-success { background-color: #d1f7e8 !important; color: #008d50 !important; }
     .bg-soft-warning { background-color: #fff3cd !important; color: #856404 !important; }
-    .dropdown-menu { border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 10px; padding: 8px; z-index: 9999 !important; }
+    .dropdown-menu { 
+        border: none; 
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+        border-radius: 12px; 
+        padding: 10px; 
+        z-index: 10000 !important; 
+        border: 1px solid #edf2f7;
+        margin-top: -5px !important;
+    }
     .dropdown-menu.show { display: block !important; }
-    .dropdown-item { transition: all 0.2s ease; padding: 10px 16px !important; font-size: 13px !important; font-weight: 500; color: #475569; border-radius: 6px; }
-    .dropdown-item:hover { background-color: #f1f5f9 !important; color: #0f172a !important; }
-    .dropdown-item i { width: 20px; font-size: 14px; margin-right: 8px; }
+    .dropdown-item { 
+        transition: all 0.2s ease; 
+        padding: 10px 16px !important; 
+        font-size: 13px !important; 
+        font-weight: 500; 
+        color: #475569; 
+        border-radius: 8px; 
+        display: flex;
+        align-items: center;
+    }
+    .dropdown-item:hover { 
+        background-color: #f8fafc !important; 
+        color: #6366f1 !important; 
+        transform: translateX(4px);
+    }
+    .dropdown-item i { width: 20px; font-size: 14px; margin-right: 10px; }
     .dropdown-divider { border-top: 1px solid #f1f5f9; margin: 0.5rem 0; }
+    
+    /* Manage Button Hover Styling */
+    .manage-dropdown { position: relative; }
+    .btn-manage {
+        transition: all 0.3s;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #475569;
+    }
+    .manage-dropdown:hover .btn-manage {
+        background: #6366f1;
+        color: #fff;
+        border-color: #6366f1;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+    
     .dataTables_wrapper .dataTables_filter input { border-radius: 8px; border: 1px solid #ddd; padding: 6px 12px; margin-bottom: 10px; }
+
+    /* ✅ Fix Double Scrollbars & Clean ERP Styling */
+    .table-responsive {
+        overflow-x: auto;
+        overflow-y: visible !important; /* Prevent internal vertical scrollbar */
+        padding-bottom: 80px; /* Space for dropdown menu to pop out without triggering scroll */
+        margin-bottom: -80px;
+    }
+
+    /* Modern Thin Scrollbar for ERP */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+</style>
 </style>
 
 <div class="main-content">
@@ -39,8 +101,8 @@
             </div>
         @endif
 
-        <div class="card p-0 overflow-hidden">
-            <div class="table-responsive">
+        <div class="card p-0" style="overflow: visible !important;">
+            <div class="table-responsive" style="overflow: visible !important;">
                 <table id="purchase-table" class="table table-hover mb-0 w-100">
                     <thead>
                         <tr class="text-center">
@@ -96,8 +158,8 @@
                             </td>
 
                             <td>
-                                <div class="dropdown">
-                                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle fw-bold px-3" type="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="border-radius: 8px; font-size: 12px; border-color: #e2e8f0; color: #475569;">
+                                <div class="dropdown manage-dropdown">
+                                    <button class="btn btn-manage btn-sm dropdown-toggle fw-bold px-3" type="button" aria-haspopup="true" aria-expanded="false" style="border-radius: 8px; font-size: 12px;">
                                         Manage
                                     </button>
                                     <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
@@ -146,13 +208,23 @@
                 "search": "_INPUT_",
                 "searchPlaceholder": "Filter records..."
             },
-            // ✅ CRITICAL: Re-initialize dropdowns whenever the table is redrawn (search, pagination, sort)
-            "drawCallback": function(settings) {
-                var dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'))
-                var dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
-                    return new bootstrap.Dropdown(dropdownToggleEl)
-                });
-            }
+        });
+
+        // ✅ Hover Logic for "Manage" Dropdown (Premium ERP style)
+        // We use delegation to ensure it works after DataTable redraws/pagination
+        $(document).on('mouseenter', '.manage-dropdown', function() {
+            var $el = $(this);
+            var $menu = $el.find('.dropdown-menu');
+            
+            // Hide all other open menus first for clean transition
+            $('.dropdown-menu').removeClass('show');
+            
+            $menu.addClass('show');
+            $el.find('.btn-manage').attr('aria-expanded', 'true');
+        }).on('mouseleave', '.manage-dropdown', function() {
+            var $el = $(this);
+            $el.find('.dropdown-menu').removeClass('show');
+            $el.find('.btn-manage').attr('aria-expanded', 'false');
         });
     });
 </script>
