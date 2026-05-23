@@ -627,7 +627,7 @@ Route::get('report/customer-ledger/fetch-new', [ReportingController::class, 'fet
     Route::get('report/vendor-ledger-new', [ReportingController::class, 'vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.new');
     Route::get('report/vendor-ledger/fetch-new', [ReportingController::class, 'fetch_vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.fetch.new');
     Route::get('report/vendors-by-branch', [ReportingController::class, 'vendorsByBranch'])->middleware('permission:report.vendor.ledger.view|report.purchase.view')->name('vendors-by-branch');
-    Route::get('/warehouses-by-branch', [App\Http\Controllers\WarehouseController::class, 'warehousesByBranch'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit')->name('warehouses-by-branch');
+    Route::get('/warehouses-by-branch', [App\Http\Controllers\WarehouseController::class, 'warehousesByBranch'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit|purchase.create')->name('warehouses-by-branch');
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:report.inventory.onhand.view')->name('reports.onhand');
     
     // ✅ Stock Hold Audit Report (ERP Compliance)

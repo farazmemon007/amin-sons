@@ -10,8 +10,8 @@
         --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
     }
 
-    .main-content { background-color: #f8fafc; min-height: 100vh; padding: 2rem 1.5rem; }
-    .premium-card { border: none; border-radius: 1.5rem; box-shadow: var(--card-shadow); background: white; overflow: hidden; margin-bottom: 2rem; }
+    .main-content { background-color: #f8fafc; min-height: 100vh; padding: 1.5rem 0; }
+    .premium-card { border: none; border-radius: 1.5rem; box-shadow: var(--card-shadow); background: white; overflow: hidden; margin-bottom: 2rem; width: 100%; }
     .card-header-gradient { background: var(--primary-gradient); padding: 1.5rem 2rem; border: none; }
     .card-title-premium { color: white; font-weight: 800; font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 0.75rem; }
     
@@ -20,12 +20,27 @@
     .fi:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); background-color: white; }
     .fi[readonly] { background-color: #f1f5f9; color: #475569; cursor: not-allowed; }
 
-    .table-premium { border-collapse: separate; border-spacing: 0 0.5rem; }
-    .table-premium thead th { background: #f1f5f9; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; padding: 1rem; border: none; }
+    .table-premium { border-collapse: separate; border-spacing: 0 0.5rem; width: 100% !important; }
+    .table-premium thead th { background: #f1f5f9; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; padding: 0.75rem 0.5rem; border: none; }
     .table-premium tbody tr { transition: transform 0.2s, box-shadow 0.2s; }
-    .table-premium tbody td { padding: 1rem; vertical-align: middle; background: white; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+    .table-premium tbody td { padding: 0.75rem 0.5rem; vertical-align: middle; background: white; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
     .table-premium tbody td:first-child { border-left: 1px solid #f1f5f9; border-top-left-radius: 0.75rem; border-bottom-left-radius: 0.75rem; }
     .table-premium tbody td:last-child { border-right: 1px solid #f1f5f9; border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; }
+
+    /* Compact inputs inside premium table */
+    .table-premium .fi { padding: 0.4rem 0.4rem !important; font-size: 0.8rem !important; border-radius: 0.5rem !important; }
+    .table-premium .select2-container--default .select2-selection--single { height: 32px !important; border-radius: 0.5rem !important; }
+    .table-premium .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 30px !important; padding-left: 10px !important; font-size: 0.8rem !important; }
+    .table-premium .select2-container--default .select2-selection--single .select2-selection__arrow { height: 30px !important; }
+    .table-premium .input-group-text { padding: 0.25rem 0.5rem !important; font-size: 0.8rem !important; border-radius: 0.5rem 0 0 0.5rem !important; }
+    .table-premium .btn { padding: 0.25rem 0.5rem !important; font-size: 0.8rem !important; }
+    .table-premium .disc-type-toggle { border-radius: 0 0.5rem 0.5rem 0 !important; height: 32px !important; }
+
+    /* Advanced input-group alignment inside table cells */
+    .table-premium .input-group { flex-wrap: nowrap !important; }
+    .table-premium .input-group .fi { flex: 1 1 auto !important; width: 1% !important; }
+    .table-premium .input-group-text + .fi { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; border-top-right-radius: 0.5rem !important; border-bottom-right-radius: 0.5rem !important; }
+    .table-premium .fi:first-child { border-top-left-radius: 0.5rem !important; border-bottom-left-radius: 0.5rem !important; border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
 
     .summary-card { background: #f8fafc; border-radius: 1rem; padding: 1.5rem; border: 1.5px dashed #cbd5e1; }
     .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
@@ -48,7 +63,7 @@
 </style>
 
 <div class="main-content">
-    <div class="container-fluid">
+    <div class="container-fluid px-0">
         <form action="{{ route('purchase.storeLocal') }}" method="POST" id="localPurchaseForm">
             @csrf
 
@@ -92,9 +107,9 @@
                     <div class="text-white opacity-75 fw-bold">Direct Inventory Entry</div>
                 </div>
 
-                <div class="card-body p-4 p-lg-5">
+                <div class="card-body p-3 p-lg-4">
                     <!-- Header Info -->
-                    <div class="row g-4 mb-5">
+                    <div class="row g-3 mb-4">
                         <div class="col-md-3">
                             <label class="section-label">Vendor / Supplier / Shop <span class="text-danger">*</span></label>
                             <input type="text" name="vendor_name" class="fi" placeholder="Enter Local Market Shop Name" required>
@@ -137,15 +152,15 @@
                         <table class="table table-premium" id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 20%;">Product Details <span class="text-danger">*</span></th>
-                                    <th style="width: 12%;">Packing Type</th>
-                                    <th style="width: 24%; text-align: center;">Packing Details</th>
+                                    <th style="width: 15%;">Product Details <span class="text-danger">*</span></th>
+                                    <th style="width: 10%;">Packing Type</th>
+                                    <th style="width: 20%; text-align: center;">Packing Details</th>
                                     <th style="width: 8%; text-align: center;">Total Qty <span class="text-danger">*</span></th>
                                     <th style="width: 12%;">Cost Price <span class="text-danger">*</span></th>
                                     <th style="width: 10%;">Disc</th>
                                     <th style="width: 8%;">Disc Amt</th>
-                                    <th style="width: 14%; text-align: right;">Line Total</th>
-                                    <th style="width: 5%;"></th>
+                                    <th style="width: 13%; text-align: right;">Line Total</th>
+                                    <th style="width: 4%;"></th>
                                 </tr>
                             </thead>
                             <tbody id="itemsList">
@@ -154,7 +169,7 @@
                                         <select name="product_id[]" class="fi select2 product-select" required>
                                             <option value="">Select Product</option>
                                             @foreach($Products as $p)
-                                                <option value="{{ $p->id }}" data-price="{{ $p->purchase_price }}" data-unit="{{ $p->unit->name ?? 'unit' }}">{{ $p->item_name }} ({{ $p->item_code }})</option>
+                                                <option value="{{ $p->id }}" data-price="{{ $p->last_purchase_price }}" data-unit="{{ $p->unit->name ?? 'unit' }}">{{ $p->item_name }} ({{ $p->item_code }})</option>
                                             @endforeach
                                         </select>
                                         <input type="hidden" name="unit[]" class="unit-input" value="unit">
@@ -171,14 +186,23 @@
                                     <!-- PACKING DETAILS -->
                                     <td>
                                         <!-- Standard View -->
-                                        <div class="standard-packing-view">
+                                        <div class="standard-packing-view text-center">
                                             <input type="text" class="fi text-center" value="Piece" readonly style="background-color: #f1f5f9;">
                                         </div>
                                         <!-- Customize View -->
                                         <div class="customize-packing-view gap-2" style="display: none;">
-                                            <input type="number" name="packing_qty[]" class="fi text-center pack-qty-input" step="1" min="0" value="0" placeholder="Pack Qty">
-                                            <input type="number" name="item_per_piece[]" class="fi text-center ipp-input" step="1" min="0" value="0" placeholder="Pcs/Pack">
-                                            <input type="number" name="loose_piece[]" class="fi text-center loose-pcs-input" step="1" min="0" value="0" placeholder="Loose">
+                                            <div class="flex-grow-1 text-center" style="width: 33%;">
+                                                <div style="font-size: 0.6rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Packs</div>
+                                                <input type="number" name="packing_qty[]" class="fi text-center pack-qty-input" step="1" min="0" value="0" placeholder="Packs">
+                                            </div>
+                                            <div class="flex-grow-1 text-center" style="width: 33%;">
+                                                <div style="font-size: 0.6rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Pcs/Pk</div>
+                                                <input type="number" name="item_per_piece[]" class="fi text-center ipp-input" step="1" min="0" value="0" placeholder="Pcs/Pack">
+                                            </div>
+                                            <div class="flex-grow-1 text-center" style="width: 33%;">
+                                                <div style="font-size: 0.6rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Loose</div>
+                                                <input type="number" name="loose_piece[]" class="fi text-center loose-pcs-input" step="1" min="0" value="0" placeholder="Loose">
+                                            </div>
                                         </div>
                                     </td>
                                     
@@ -200,10 +224,10 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <input type="text" class="fi text-end fw-bold disc-amt-display" value="0.00" readonly style="background:#f8fafc; color:#64748b; font-size:0.9rem;">
+                                        <input type="text" class="fi text-end fw-bold disc-amt-display" value="0.00" readonly style="background:#f8fafc; color:#64748b; font-size:0.85rem;">
                                     </td>
                                     <td class="text-end">
-                                        <input type="text" class="fi text-end fw-bold line-total" value="0.00" readonly style="background:#f0fdf4; color:#15803d; font-size:1rem;">
+                                        <input type="text" class="fi text-end fw-bold line-total" value="0.00" readonly style="background:#f0fdf4; color:#15803d; font-size:0.85rem;">
                                     </td>
                                     <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-danger remove-row" style="border-radius: 8px; margin-top: 5px;"><i class="fa fa-trash"></i></button>
@@ -591,6 +615,43 @@ $(document).ready(function() {
 
     // Initial calc
     recalc();
+
+    // ✅ ERP: Dynamic Warehouse Loading by Branch
+    $('#branch_id').on('change', function() {
+        const branchId = $(this).val();
+        if (!branchId) return;
+
+        const $warehouseSelect = $('#warehouse_id');
+        
+        // Show loading state
+        $warehouseSelect.prop('disabled', true);
+        
+        $.ajax({
+            url: "{{ route('warehouses-by-branch') }}",
+            type: "GET",
+            data: { branch_id: branchId },
+            success: function(res) {
+                let html = '<option value="">🏢 Direct to Shop (Branch Display)</option>';
+                if (res && res.length > 0) {
+                    res.forEach(function(w) {
+                        html += `<option value="${w.id}">🏢 ${w.warehouse_name}</option>`;
+                    });
+                }
+                $warehouseSelect.html(html).prop('disabled', false).trigger('change');
+            },
+            error: function() {
+                $warehouseSelect.prop('disabled', false);
+                Swal.fire('Error', 'Warehouses load karne mein masla hua.', 'error');
+            }
+        });
+    });
+
+    // If Super Admin, trigger initial load for the selected branch
+    @if($isSuperAdmin)
+        if($('#branch_id').val()) {
+            $('#branch_id').trigger('change');
+        }
+    @endif
 
     // Guard: warn if any price is 0
     $('#localPurchaseForm').on('submit', function(e) {

@@ -1500,7 +1500,19 @@ class PurchaseController extends Controller
         
         $Vendor = Vendor::where('branch_id', $currentBranch)->get();
         $Branch = Branch::all();
-        $Products = Product::all();
+        $Products = Product::with('unit')->get();
+
+        // ✅ ERP STANDARD: Compute last purchase price for each product
+        // Priority: 1. Last Purchase Invoice Price  2. Wholesale Price  3. Zero
+        foreach ($Products as $product) {
+            $lastPurchaseItem = \App\Models\PurchaseItem::where('product_id', $product->id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $product->last_purchase_price = $lastPurchaseItem
+                ? (float)$lastPurchaseItem->price
+                : (float)($product->wholesale_price ?? 0);
+        }
         
         // Fetch warehouses with branch info for better identification
         $warehouseQuery = Warehouse::with('branches');
