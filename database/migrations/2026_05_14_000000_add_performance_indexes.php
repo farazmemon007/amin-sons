@@ -34,12 +34,14 @@ return new class extends Migration
 
         // Receipts Vouchers table indexes
         Schema::table('receipts_vouchers', function (Blueprint $table) {
+            $table->string('party_id', 191)->nullable()->change();
             $table->index('party_id');
             $table->index('receipt_date');
         });
 
         // Payment Vouchers table indexes
         Schema::table('payment_vouchers', function (Blueprint $table) {
+            $table->string('party_id', 191)->nullable()->change();
             $table->index('party_id');
             $table->index('receipt_date');
         });
@@ -77,11 +79,13 @@ return new class extends Migration
         Schema::table('receipts_vouchers', function (Blueprint $table) {
             $table->dropIndex(['party_id']);
             $table->dropIndex(['receipt_date']);
+            $table->text('party_id')->nullable()->change();
         });
 
         Schema::table('payment_vouchers', function (Blueprint $table) {
             $table->dropIndex(['party_id']);
             $table->dropIndex(['receipt_date']);
+            $table->text('party_id')->nullable()->change();
         });
 
         Schema::table('stocks', function (Blueprint $table) {
