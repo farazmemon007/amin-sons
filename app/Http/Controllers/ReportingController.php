@@ -327,9 +327,9 @@ class ReportingController extends Controller
 
         // Add Receipt Vouchers
         foreach ($receiptsRaw as $rec) {
-            $isBank = ($rec->head_name && str_contains(strtolower($rec->head_name), 'bank')) 
-                || ($rec->account_title && str_contains(strtolower($rec->account_title), 'bank'))
-                || ($rec->account_title && in_array(strtoupper($rec->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
+            $isBank = (isset($rec->head_name) && str_contains(strtolower($rec->head_name), 'bank')) 
+                || (isset($rec->account_title) && str_contains(strtolower($rec->account_title), 'bank'))
+                || (isset($rec->account_title) && in_array(strtoupper($rec->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
             $vno    = $rec->rvid ?? ('BRV-' . $rec->id);
             // Description: narration or remarks or default
             $desc   = $rec->narration_text
@@ -352,9 +352,9 @@ class ReportingController extends Controller
 
         // Add Payment Vouchers (discounts, tour expense, etc.)
         foreach ($paymentVouchersRaw as $pv) {
-            $isBank = ($pv->head_name && str_contains(strtolower($pv->head_name), 'bank')) 
-                || ($pv->account_title && str_contains(strtolower($pv->account_title), 'bank'))
-                || ($pv->account_title && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
+            $isBank = (isset($pv->head_name) && str_contains(strtolower($pv->head_name), 'bank')) 
+                || (isset($pv->account_title) && str_contains(strtolower($pv->account_title), 'bank'))
+                || (isset($pv->account_title) && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
             $vno  = $pv->pvid ?? ('PV-' . $pv->id);
             $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT VOUCHER');
             $events[] = [
@@ -824,7 +824,8 @@ class ReportingController extends Controller
                 'receipts_vouchers.remarks      as remarks',
                 'receipts_vouchers.row_account_id as row_account_id',
                 'narrations.narration           as narration_text',
-                'account_heads.name             as head_name'
+                'account_heads.name             as head_name',
+                'accounts.title                 as account_title'
             )
             ->orderBy('receipts_vouchers.receipt_date', 'asc')
             ->get();
@@ -894,9 +895,9 @@ class ReportingController extends Controller
 
         // Add Receipt Vouchers (Refunds FROM vendor - Credit)
         foreach ($receiptsRaw as $rec) {
-            $isBank = ($rec->head_name && str_contains(strtolower($rec->head_name), 'bank'))
-                || ($rec->account_title && str_contains(strtolower($rec->account_title), 'bank')) // Using account_title join if available
-                || ($rec->remarks && str_contains(strtolower($rec->remarks), 'bank'));
+            $isBank = (isset($rec->head_name) && str_contains(strtolower($rec->head_name), 'bank'))
+                || (isset($rec->account_title) && str_contains(strtolower($rec->account_title), 'bank')) // Using account_title join if available
+                || (isset($rec->remarks) && str_contains(strtolower($rec->remarks), 'bank'));
             $vno  = $rec->rvid ?? ('RV-' . $rec->id);
             $desc = $rec->narration_text ?? ($rec->remarks ?: 'REFUND RECEIVED');
             
@@ -940,9 +941,9 @@ class ReportingController extends Controller
 
         // Add Payment Vouchers (Payments TO vendor - Debit)
         foreach ($paymentVouchersRaw as $pv) {
-            $isBank = ($pv->head_name && str_contains(strtolower($pv->head_name), 'bank')) 
-                || ($pv->account_title && str_contains(strtolower($pv->account_title), 'bank'))
-                || ($pv->account_title && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
+            $isBank = (isset($pv->head_name) && str_contains(strtolower($pv->head_name), 'bank')) 
+                || (isset($pv->account_title) && str_contains(strtolower($pv->account_title), 'bank'))
+                || (isset($pv->account_title) && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
             $vno  = $pv->pvid ?? ('PV-' . $pv->id);
             $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT TO VENDOR');
             

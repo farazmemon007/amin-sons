@@ -176,11 +176,12 @@ class VoucherController extends Controller
 
         // Rows build
         $rows = [];
-        foreach ($narrations as $index => $narrId) {
+        foreach ($accounts as $index => $accountId) {
+            $narrId = $narrations[$index] ?? null;
             $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
             $ref = $references[$index] ?? null;
             $accountHead = DB::table('account_heads')->where('id', $accountHeads[$index] ?? null)->value('name');
-            $account = DB::table('accounts')->where('id', $accounts[$index] ?? null)->first();
+            $account = DB::table('accounts')->where('id', $accountId)->first();
             $amount = (float)($amounts[$index] ?? 0);
 
             $rows[] = [
@@ -774,11 +775,12 @@ public function getOpeningBalance($type, $id)
 
         // 🧾 Build detailed rows
         $rows = [];
-        foreach ($narrations as $index => $narrId) {
+        foreach ($accounts as $index => $accountId) {
+            $narrId = $narrations[$index] ?? null;
             $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
             $ref = $references[$index] ?? null;
             $accountHead = DB::table('account_heads')->where('id', $accountHeads[$index] ?? null)->value('name');
-            $account = DB::table('accounts')->where('id', $accounts[$index] ?? null)->first();
+            $account = DB::table('accounts')->where('id', $accountId)->first();
             $amount = (float)($amounts[$index] ?? 0);
 
             $rows[] = [
@@ -1040,11 +1042,12 @@ public function getOpeningBalance($type, $id)
 
         // 🧾 Prepare detailed rows
         $rows = [];
-        foreach ($narrations as $index => $narrId) {
+        foreach ($accounts as $index => $accountId) {
+            $narrId = $narrations[$index] ?? null;
             $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
             $ref = $references[$index] ?? null;
             $accountHead = DB::table('account_heads')->where('id', $accountHeads[$index] ?? null)->value('name');
-            $account = DB::table('accounts')->where('id', $accounts[$index] ?? null)->first();
+            $account = DB::table('accounts')->where('id', $accountId)->first();
             $amount = (float)($amounts[$index] ?? 0);
 
             $rows[] = [

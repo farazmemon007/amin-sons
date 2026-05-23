@@ -3,309 +3,587 @@
 
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Receipt Voucher - AMT</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Receipt Voucher - {{ $voucher->rvid }}</title>
 
-    <!-- Poppins font -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --green: #0b5a2b;
-            --purple: #6b0f8a;
-            --border: #1f7a2f;
-            --muted: #666;
-            --box-bg: #fff;
+            --primary: #1e293b;
+            --primary-light: #334155;
+            --accent: #0f766e;
+            --accent-light: #ccfbf1;
+            --text-dark: #0f172a;
+            --text-muted: #475569;
+            --bg-light: #f8fafc;
+            --border-color: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: 'Poppins', Arial, sans-serif;
-            background: #f6f6f6;
-            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: var(--text-dark);
+            line-height: 1.5;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
 
+        /* ── Container Page ── */
         .page {
-            width: 960px;
-            margin: 18px auto;
-            padding: 28px;
-            background: white;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            max-width: 960px;
+            margin: 30px auto;
+            padding: 40px;
+            background: #ffffff;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
         }
 
+        /* Watermark Background */
         #watermark {
             position: absolute;
             left: 50%;
-            top: 48%;
-            transform: translate(-50%, -50%) rotate(-18deg);
-            width: 720px;
-            opacity: 0.08;
+            top: 50%;
+            transform: translate(-50%, -50%) rotate(-15deg);
+            width: 80%;
+            max-width: 600px;
+            opacity: 0.03;
+            pointer-events: none;
         }
 
+        /* ── Header ── */
         header {
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
         }
 
-        .brand h1 {
-            margin: 0;
-            font-size: 40px;
-            font-weight: 700;
+        .company-details h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.02em;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .company-details p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .company-details .highlight {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .voucher-badge-container {
+            text-align: right;
+        }
+
+        .logo-img {
+            max-height: 55px;
+            margin-bottom: 12px;
+            object-fit: contain;
         }
 
         .receipt-badge {
-            border: 2px solid #222;
-            padding: 8px 12px;
+            background-color: var(--primary);
+            color: #ffffff;
+            padding: 8px 16px;
+            font-size: 14px;
             font-weight: 700;
+            border-radius: 6px;
+            letter-spacing: 0.05em;
+            display: inline-block;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
-        hr.sep {
-            border-top: 2px solid #000;
-            margin: 14px 0 18px;
-        }
-
-        .meta-row {
-            display: flex;
+        /* ── Meta Section ── */
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 18px;
+            margin-bottom: 30px;
         }
 
-        .left {
-            flex: 1;
-            border: 2px solid #000;
-            padding: 12px 14px;
+        .card {
+            background: var(--bg-light);
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
         }
 
-        .left .line {
+        .card-title {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+        }
+
+        .meta-line {
             display: flex;
-            margin-bottom: 6px;
-        }
-
-        .left .label {
-            min-width: 110px;
-            font-weight: 700;
-        }
-
-        .right {
-            width: 260px;
-            border: 2px solid var(--border);
-            padding: 10px;
-        }
-
-        .right .meta-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-weight: 600;
-        }
-
-        .payments {
-            margin-top: 18px;
-        }
-
-        .payments h3 {
-            margin: 0 0 8px;
-            text-decoration: underline;
-        }
-
-        .amount-words {
-            margin-top: 6px;
-            font-style: italic;
-            font-weight: 600;
-        }
-
-        .summary {
-            margin-top: 14px;
-            border: 3px solid #1f7a2f;
-            padding: 12px;
-        }
-
-        .summary td {
-            padding: 6px 4px;
-            font-weight: 600;
-        }
-
-        .summary td:last-child {
-            text-align: right;
-            font-weight: 700;
-        }
-
-        .footer {
-            margin-top: 18px;
-            display: flex;
-            justify-content: space-between;
+            margin-bottom: 8px;
             font-size: 13px;
         }
 
-        .thank {
+        .meta-line:last-child {
+            margin-bottom: 0;
+        }
+
+        .meta-label {
+            font-weight: 600;
+            color: var(--text-muted);
+            width: 100px;
+            flex-shrink: 0;
+        }
+
+        .meta-value {
+            color: var(--text-dark);
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        /* ── Receipt Details Table ── */
+        .details-section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 14px;
             font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .erp-table {
+            width: 100%;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .erp-table th {
+            background-color: var(--primary);
+            color: #ffffff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            padding: 12px 14px;
+            text-align: left;
+        }
+
+        .erp-table td {
+            padding: 12px 14px;
+            font-size: 13px;
+            border-bottom: 1px solid #e2e8f0;
+            color: var(--text-dark);
+        }
+
+        .erp-table tbody tr:nth-child(even) {
+            background-color: var(--bg-light);
+        }
+
+        .erp-table td.amount-col {
+            text-align: right;
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .erp-table th.amount-col {
+            text-align: right;
+        }
+
+        .erp-table .total-row td {
+            font-weight: 700;
+            background-color: #f1f5f9;
+            border-top: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        /* ── Summary & Words ── */
+        .bottom-section {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            margin-bottom: 35px;
+            align-items: start;
+        }
+
+        .words-card {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .words-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .words-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            font-style: italic;
+            line-height: 1.4;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .summary-table td {
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+
+        .summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .summary-table td.val {
+            text-align: right;
+            font-weight: 700;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .summary-table .highlight td {
+            background-color: var(--accent-light);
+            color: var(--accent);
+            border-radius: 4px;
+            font-weight: 700;
+        }
+
+        /* ── Signature Section ── */
+        .signature-section {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 50px;
+            padding-top: 20px;
+        }
+
+        .sig-box {
+            text-align: center;
+        }
+
+        .sig-line {
+            border-top: 1px dashed var(--border-color);
+            margin-bottom: 8px;
+            width: 85%;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sig-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        /* ── Footer Info ── */
+        .footer-info {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 14px;
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* ── Print Styling ── */
+        @media print {
+            body {
+                background-color: #ffffff;
+            }
+
+            .page {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+            }
+
+            header {
+                margin-top: 10px;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="page">
-        <img id="watermark" src="{{ asset('amt-watermark.png') }}" alt="AMT watermark">
+    @php
+        $senderName = '-';
+        $senderHead = '-';
+        $senderCode = '-';
+        $senderType = 'Party';
 
+        if (is_numeric($voucher->type)) {
+            $senderName = $party->name ?? '-';
+            $senderHead = $party->head_name ?? 'Account Head';
+            $senderCode = $party->phone ?? '-';
+            $senderType = 'Account Head';
+        } elseif ($voucher->type === 'vendor') {
+            $senderName = $party->name ?? '-';
+            $senderHead = 'Vendor Accounts';
+            $senderCode = $party->phone ?? '-';
+            $senderType = 'Vendor';
+        } elseif (in_array($voucher->type, ['customer', 'walkin'])) {
+            $senderName = $party->customer_name ?? '-';
+            $senderHead = 'Customer Accounts';
+            $senderCode = $party->mobile ?? '-';
+            $senderType = $voucher->type === 'walkin' ? 'Walk-in Customer' : 'Customer';
+        }
+
+        $receiverName = '-';
+        $receiverHead = '-';
+        $receiverCode = '-';
+
+        if (count($rows) === 1) {
+            $receiverName = $rows[0]['account_name'] ?? '-';
+            $receiverHead = $rows[0]['account_head'] ?? '-';
+            $receiverCode = $rows[0]['account_code'] ?? '-';
+        } elseif (count($rows) > 1) {
+            $receiverName = 'Multiple Accounts';
+            $receiverHead = 'Mixed Heads';
+            $receiverCode = 'Mixed Codes';
+        }
+    @endphp
+
+    <div class="page">
+        <!-- Watermark Background -->
+        <img id="watermark" src="{{ asset('amt-watermark.png') }}" alt="AMT watermark" onerror="this.style.display='none'">
+
+        <!-- Header -->
         <header>
-            <div class="brand">
-                <h1>{{ $branch->name ?? 'Company Name' }}</h1>
-                <p>{{ $branch->address ?? 'Company Address' }}</p>
-                <p>Mobile / Whatsapp: {{ $branch->number ?? 'N/A' }}</p>
+            <div class="company-details">
+                <h1>{{ $branch->name ?? 'AMIT SONS' }}</h1>
+                <p>{{ $branch->address ?? 'Main Branch, Karachi' }}</p>
+                <p>Mobile / Whatsapp: <span class="highlight">{{ $branch->number ?? 'N/A' }}</span></p>
             </div>
-            <div class="logo" style="text-align:right;">
-                <img src="{{ asset('amt-logo.png') }}" alt="AMT Logo" style="max-width:200px;" onerror="this.style.display='none'">
-                <div style="margin-top:8px;">
+            <div class="voucher-badge-container">
+                <img src="{{ asset('amt-logo.png') }}" alt="Logo" class="logo-img" onerror="this.style.display='none'">
+                <div>
                     <span class="receipt-badge">RECEIPT VOUCHER</span>
                 </div>
             </div>
         </header>
 
-        <hr class="sep">
-
-        <div class="meta-row">
-            <div class="left">
+        <!-- Meta Grid -->
+        <div class="meta-grid">
+            <!-- Sender Details Card -->
+            <div class="card">
+                <div class="card-title">Sender / Received From</div>
+                
+                <div class="meta-line">
+                    <span class="meta-label">Name:</span>
+                    <span class="meta-value" style="font-weight: 700; color: var(--accent);">{{ $senderName }}</span>
+                </div>
+                
                 @if(is_numeric($voucher->type))
-                {{-- 🏦 Received From Account --}}
-                <div class="line">
-                    <div class="label">Received From (Account):</div>
-                    <div class="value">
-                        {{ $party->name ?? '-' }}
+                    <div class="meta-line">
+                        <span class="meta-label">Account Head:</span>
+                        <span class="meta-value">{{ $senderHead }}</span>
                     </div>
-                </div>
-                <div class="line">
-                    <div class="label">Account Head:</div>
-                    <div class="value">
-                        {{ $party->head_name ?? '-' }}
+                    <div class="meta-line">
+                        <span class="meta-label">Account Code:</span>
+                        <span class="meta-value" style="font-family: monospace;">{{ $senderCode }}</span>
                     </div>
-                </div>
-                <div class="line">
-                    <div class="label">Account Code:</div>
-                    <div class="value">
-                        {{ $party->phone ?? '-' }}
-                    </div>
-                </div>
-
-                @elseif($voucher->type === 'vendor')
-                {{-- 👷 Vendor --}}
-                <div class="line">
-                    <div class="label">Vendor Name:</div>
-                    <div class="value">{{ $party->name ?? '-' }}</div>
-                </div>
-                <div class="line">
-                    <div class="label">Address:</div>
-                    <div class="value">{{ $party->address ?? '-' }}</div>
-                </div>
-                <div class="line">
-                    <div class="label">Phone:</div>
-                    <div class="value">{{ $party->phone ?? '-' }}</div>
-                </div>
-
-                @elseif($voucher->type === 'customer')
-                {{-- 🧾 Customer --}}
-                <div class="line">
-                    <div class="label">Customer Name:</div>
-                    <div class="value">{{ $party->customer_name ?? '-' }}</div>
-                </div>
-                <div class="line">
-                    <div class="label">Address:</div>
-                    <div class="value">{{ $party->address ?? '-' }}</div>
-                </div>
-                <div class="line">
-                    <div class="label">Phone:</div>
-                    <div class="value">{{ $party->mobile ?? '-' }}</div>
-                </div>
-
-                @elseif($voucher->type === 'walkin')
-                {{-- 🚶 Walk-in Customer --}}
-                <div class="line">
-                    <div class="label">Walk-in Customer:</div>
-                    <div class="value">{{ $party->customer_name ?? '-' }}</div>
-                </div>
-                <div class="line">
-                    <div class="label">Address:</div>
-                    <div class="value">{{ $party->address ?? '-' }}</div>
-                </div>
-                <div class="line">
-                    <div class="label">Phone:</div>
-                    <div class="value">{{ $party->mobile ?? '-' }}</div>
-                </div>
-
                 @else
-                {{-- ❌ No data fallback --}}
-                <div class="line">
-                    <div class="label">Party:</div>
-                    <div class="value">-</div>
-                </div>
-                <div class="line">
-                    <div class="label">Address:</div>
-                    <div class="value">-</div>
-                </div>
-                <div class="line">
-                    <div class="label">Phone:</div>
-                    <div class="value">-</div>
-                </div>
+                    <div class="meta-line">
+                        <span class="meta-label">Type:</span>
+                        <span class="meta-value" style="text-transform: capitalize; font-weight: 600;">{{ $senderType }}</span>
+                    </div>
+                    <div class="meta-line">
+                        <span class="meta-label">Phone:</span>
+                        <span class="meta-value">{{ $senderCode }}</span>
+                    </div>
                 @endif
             </div>
 
-            <div class="right">
-                <div style="margin-bottom:8px; font-weight:700;">
-                    Voucher No: <span style="float:right;">{{ $voucher->rvid }}</span>
+            <!-- Receiver Details Card -->
+            <div class="card">
+                <div class="card-title">Receiver / Deposited To</div>
+                
+                <div class="meta-line">
+                    <span class="meta-label">Name:</span>
+                    <span class="meta-value" style="font-weight: 700; color: var(--accent);">{{ $receiverName }}</span>
                 </div>
-                <div class="meta-item">
-                    <span>Voucher Date:</span>
-                    <span>{{ \Carbon\Carbon::parse($voucher->receipt_date)->format('d-M-Y') }}</span>
+                <div class="meta-line">
+                    <span class="meta-label">Account Head:</span>
+                    <span class="meta-value">{{ $receiverHead }}</span>
+                </div>
+                <div class="meta-line">
+                    <span class="meta-label">Account Code:</span>
+                    <span class="meta-value" style="font-family: monospace;">{{ $receiverCode }}</span>
+                </div>
+            </div>
+
+            <!-- Voucher Details Card -->
+            <div class="card">
+                <div class="card-title">Voucher Reference</div>
+                <div class="meta-line">
+                    <span class="meta-label">Voucher No:</span>
+                    <span class="meta-value" style="font-weight: 800; color: var(--accent);">{{ $voucher->rvid }}</span>
+                </div>
+                <div class="meta-line">
+                    <span class="meta-label">Voucher Date:</span>
+                    <span class="meta-value">{{ \Carbon\Carbon::parse($voucher->receipt_date)->format('d-M-Y') }}</span>
+                </div>
+                <div class="meta-line">
+                    <span class="meta-label">Payment Mode:</span>
+                    <span class="meta-value" style="font-weight: 600;">Cash/Bank</span>
                 </div>
             </div>
         </div>
 
-        <div class="payments">
-            <h3>Receipt Detail.</h3>
-            @foreach($rows as $key => $row)
-            <p>
-                <strong>{{ $key + 1 }} . Amount of Rs. {{ number_format($row['amount'], 2) }}</strong>
-                &nbsp;&nbsp; Received with thanks, Dated:
-                <strong>{{ \Carbon\Carbon::parse($voucher->receipt_date)->format('l, d F, Y') }}</strong>
-                against supply of {{ $row['narration'] ?? 'N/A' }} towards account:
-                <strong>{{ $row['account_head'] ?? '-' }}, {{ $row['account_name'] ?? '' }} Code: {{ $row['account_code'] ?? '' }}</strong>
-            </p>
-            @endforeach
-
-            <div class="amount-words">
-                Amount in words: <strong id="amountInWords">{{ $voucher->total_amount }}</strong> Only
-            </div>
-        </div>
-
-        <!-- summary -->
-        <div class="summary">
-            @php
-            $amountPayable = $previousBalance - $voucher->total_amount;
-            @endphp
-
-            <table style="width:100%; border-collapse:collapse; font-size:14px;">
-                <tr>
-                    <td>Previous Balance.</td>
-                    <td style="color:#6b0f8a;">>>> {{ number_format($previousBalance,2) }}</td>
-                </tr>
-                <tr>
-                    <td>Total Received. (-)</td>
-                    <td style="color:#6b0f8a;">>>> {{ number_format($voucher->total_amount,2) }}</td>
-                </tr>
-                <tr>
-                    <td>Balance Remaining.</td>
-                    <td style="color:#0b5a2b;">>>> {{ number_format($amountPayable,2) }}</td>
-                </tr>
+        <!-- Receipt Details Table -->
+        <div class="details-section">
+            <h3 class="section-title">Itemized Receipt Breakdowns</h3>
+            <table class="erp-table">
+                <thead>
+                    <tr>
+                        <th style="width: 8%;">S.No</th>
+                        <th style="width: 25%;">Account / Code</th>
+                        <th style="width: 15%;">Reference</th>
+                        <th style="width: 37%;">Narration / Remarks</th>
+                        <th style="width: 15%; text-align: right;">Amount (PKR)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($rows as $key => $row)
+                    @php
+                        $rowNarration = $row['narration'] ?? null;
+                        if (empty($rowNarration) || $rowNarration === 'N/A') {
+                            $rowNarration = $voucher->remarks ?? null;
+                        }
+                        if (empty($rowNarration)) {
+                            $rowNarration = "Receipt Voucher — Received from " . $senderName;
+                        }
+                    @endphp
+                    <tr>
+                        <td>{{ $key + 1 }}</td>
+                        <td>
+                            <div style="font-weight: 600;">{{ $row['account_name'] ?? '-' }}</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ $row['account_head'] ?? '' }} ({{ $row['account_code'] ?? '' }})</div>
+                        </td>
+                        <td><span style="font-family: monospace; font-size: 12px;">{{ $row['reference'] ?? '—' }}</span></td>
+                        <td>{{ $rowNarration }}</td>
+                        <td class="amount-col">{{ number_format($row['amount'], 2) }}</td>
+                    </tr>
+                    @endforeach
+                    <tr class="total-row">
+                        <td colspan="4" style="text-align: right;">Total Amount Received:</td>
+                        <td class="amount-col">PKR {{ number_format($voucher->total_amount, 2) }}</td>
+                    </tr>
+                </tbody>
             </table>
-
         </div>
 
-        <div class="footer">
-            <div>
-                Print Time & Date:
-                {{ now()->format('H:i:s') }} | {{ now()->format('l, d F, Y') }}
+        <!-- Bottom Grid (Words + Financial Summary) -->
+        <div class="bottom-section">
+            <!-- Words Card -->
+            <div class="card words-card">
+                <div class="words-title">Amount in words</div>
+                <div class="words-value"><span id="amountInWords">{{ $voucher->total_amount }}</span> Only</div>
             </div>
-            <div class="thank">>>> Thank You for Payment.</div>
+
+            <!-- Financial Summary Box -->
+            <div class="card" style="padding: 10px 14px;">
+                @php
+                    $amountPayable = $previousBalance - $voucher->total_amount;
+                @endphp
+                <table class="summary-table">
+                    <tr>
+                        <td>Previous Outstanding:</td>
+                        <td class="val">PKR {{ number_format($previousBalance, 2) }}</td>
+                    </tr>
+                    <tr>
+                        <td>Amount Received (-):</td>
+                        <td class="val" style="color: var(--accent);">PKR {{ number_format($voucher->total_amount, 2) }}</td>
+                    </tr>
+                    <tr class="highlight">
+                        <td>Remaining Balance:</td>
+                        <td class="val">PKR {{ number_format($amountPayable, 2) }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Signature Lines -->
+        <div class="signature-section">
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">Prepared By</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">Checked By</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">Approved By</div>
+            </div>
+            <div class="sig-box">
+                <div class="sig-line"></div>
+                <div class="sig-label">Received / depositor</div>
+            </div>
+        </div>
+
+        <!-- Footer Details -->
+        <div class="footer-info">
+            <div>
+                System Logged: {{ now()->format('d-M-Y H:i:s') }}
+            </div>
         </div>
     </div>
 
+    <!-- Number to Words Converter Script -->
     <script>
         function numberToWords(num) {
             const a = [
@@ -328,11 +606,12 @@
             return str.trim();
         }
 
-        // page load pe convert karo
         document.addEventListener("DOMContentLoaded", function() {
-            let amount = parseInt(document.getElementById("amountInWords").innerText);
-            let words = numberToWords(amount);
-            document.getElementById("amountInWords").innerText = words;
+            let amountElement = document.getElementById("amountInWords");
+            let amountVal = parseInt(amountElement.innerText);
+            if (!isNaN(amountVal)) {
+                amountElement.innerText = numberToWords(amountVal);
+            }
         });
     </script>
 </body>

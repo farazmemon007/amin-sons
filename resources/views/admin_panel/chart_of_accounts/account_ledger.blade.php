@@ -277,7 +277,18 @@
                                     <span style="color:var(--muted);">—</span>
                                 @endif
                             </td>
-                            <td>{{ $entry->description ?? '—' }}</td>
+                            <td>
+                                @php
+                                    $desc = $entry->description ?? '—';
+                                    // ✅ Clean up legacy "N/A" entries — replace with account title
+                                    if (str_contains($desc, ': N/A')) {
+                                        $desc = str_replace(': N/A', ': ' . ($account->title ?? 'Account'), $desc);
+                                    }
+                                    // ✅ Also clean up "Party Side:" prefix for cleaner display
+                                    $desc = str_replace('Receipt Voucher Party Side: ', 'RV — ', $desc);
+                                @endphp
+                                {{ $desc }}
+                            </td>
                             <td class="text-end">
                                 @if($entry->debit > 0)
                                     <span class="amount-debit">{{ number_format($entry->debit, 2) }}</span>
