@@ -255,7 +255,7 @@
                                     <option value="{{ $head->id }}" data-kind="account">{{ $head->name }}</option>
                                 @endforeach
                                 <option value="customer"  data-kind="party">Customer</option>
-                                <option value="walkin"    data-kind="party">Walkin Customer</option>
+                                <!-- <option value="walkin"    data-kind="party">Walkin Customer</option> -->
                                 <option value="vendor"    data-kind="party">Vendor</option>
                             </select>
                         </div>
