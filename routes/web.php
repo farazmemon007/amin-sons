@@ -499,6 +499,7 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
    
     // web.php
     Route::get('/warehouse-stock-quantity', [StockTransferController::class, 'getStockQuantity'])->middleware('permission:stock.transfer.view')->name('warehouse.stock.quantity');
+    Route::get('/product-locations-stock', [StockTransferController::class, 'getProductLocationsStock'])->middleware('permission:stock.transfer.view')->name('product.locations.stock');
 
     
     Route::get('/get-customers-by-type', [CustomerController::class, 'getByType'])->middleware('permission:customer.view');

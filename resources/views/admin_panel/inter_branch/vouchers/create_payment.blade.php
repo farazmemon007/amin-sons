@@ -32,7 +32,7 @@
                                     <option value="">-- Select Branch --</option>
                                     @foreach ($branches as $branch)
                                         <option value="{{ $branch->id }}">
-                                            🏪 {{ $branch->branch_name ?? 'Branch #' . $branch->id }}
+                                            🏪 {{ $branch->name ?? $branch->branch_name ?? 'Branch #' . $branch->id }}
                                         </option>
                                     @endforeach
                                 </select>

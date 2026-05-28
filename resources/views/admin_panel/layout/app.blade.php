@@ -425,7 +425,7 @@
 
             <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
                 <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
-                    <i class="fas fa-warehouse"></i> Warehouese Managment
+                    <i class="fas fa-warehouse"></i> Warehouse Managment
                 </a>
                 <ul style="list-style: none; padding: 0;">
                     @can('warehouse.view')
@@ -437,9 +437,9 @@
                     {{-- @can('warehouse.stock.view')
                     <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stocks</a></li>
                     @endcan --}}
-                    @can('stock.transfer.view')
+                    <!-- @can('stock.transfer.view')
                     <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfers</a></li>
-                    @endcan
+                    @endcan -->
                     @can('warehouse.orders.view')
                     <li><a href="{{url('warehouse_orders')}}"><i class="fas fa-file-alt"></i> Warehouse Orders</a></li>
                     @endcan

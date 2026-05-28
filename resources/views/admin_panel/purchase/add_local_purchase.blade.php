@@ -110,12 +110,49 @@
                 <div class="card-body p-3 p-lg-4">
                     <!-- Header Info -->
                     <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="section-label">Vendor / Supplier / Shop <span class="text-danger">*</span></label>
-                            <input type="text" name="vendor_name" class="fi" placeholder="Enter Local Market Shop Name" required>
-                            <!-- Hidden vendor_id to satisfy existing logic if needed -->
-                            <input type="hidden" name="vendor_id" value="">
+                        {{-- ===== VENDOR SOURCE TOGGLE ===== --}}
+                        <div class="col-12">
+                            <label class="section-label">Purchase From</label>
+                            <div class="d-flex gap-2 mb-3">
+                                <label class="payment-badge active" id="badgeLocalMarket" style="font-size:0.85rem;">
+                                    <input type="radio" name="_vendor_mode" value="local" class="d-none" checked>
+                                    🛒 Local Market (Walk-In Shop)
+                                </label>
+                                <label class="payment-badge" id="badgeRegisteredVendor" style="font-size:0.85rem;">
+                                    <input type="radio" name="_vendor_mode" value="vendor" class="d-none">
+                                    🏢 Registered Vendor (Ledger Update)
+                                </label>
+                            </div>
                         </div>
+
+                        {{-- LOCAL MARKET: free-text shop name --}}
+                        <div class="col-md-3" id="localMarketField">
+                            <label class="section-label">Vendor / Supplier / Shop <span class="text-danger">*</span></label>
+                            <input type="text" name="vendor_name" id="vendor_name_text" class="fi" placeholder="Enter Local Market Shop Name">
+                            <input type="hidden" name="vendor_id" id="vendor_id_hidden" value="">
+                        </div>
+
+                        {{-- REGISTERED VENDOR: select2 dropdown --}}
+                        <div class="col-md-3" id="registeredVendorField" style="display:none;">
+                            <label class="section-label">Select Registered Vendor <span class="text-danger">*</span></label>
+                            <select name="vendor_id_select" id="vendor_id_select" class="fi select2">
+                                <option value="">— Select Vendor —</option>
+                                @foreach($Vendor as $v)
+                                    <option value="{{ $v->id }}"
+                                        data-name="{{ $v->name }}"
+                                        data-phone="{{ $v->phone ?? '' }}">
+                                        {{ $v->name }} @if($v->phone) ({{ $v->phone }}) @endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            {{-- These hidden fields get populated on vendor select --}}
+                            <input type="hidden" name="vendor_name" id="vendor_name_hidden" value="">
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-info-circle"></i>
+                                Vendor ka ledger automatically update hoga (Credit entry)
+                            </small>
+                        </div>
+
                         <div class="col-md-3">
                             <label class="section-label">Branch <span class="text-danger">*</span></label>
                             @if($isSuperAdmin)
@@ -340,7 +377,58 @@ $(document).ready(function() {
     }
     initSelect2();
 
-    // Add Row
+    // ===== VENDOR MODE TOGGLE =====
+    function switchVendorMode(mode) {
+        if (mode === 'local') {
+            $('#localMarketField').show();
+            $('#registeredVendorField').hide();
+            // Enable local text, disable vendor select from validation
+            $('#vendor_name_text').prop('required', true);
+            $('#vendor_id_select').prop('required', false);
+            // Clear registered vendor data
+            $('#vendor_id_hidden').val('');
+            $('#vendor_name_hidden').val('');
+            $('#vendor_id_select').val('').trigger('change');
+        } else {
+            $('#localMarketField').hide();
+            $('#registeredVendorField').show();
+            // Disable local text required, enable vendor dropdown required
+            $('#vendor_name_text').prop('required', false).val('');
+            $('#vendor_id_select').prop('required', true);
+            $('#vendor_id_hidden').val('');
+        }
+    }
+
+    $('#badgeLocalMarket').click(function() {
+        $('input[name="_vendor_mode"][value="local"]').prop('checked', true);
+        $(this).addClass('active');
+        $('#badgeRegisteredVendor').removeClass('active');
+        switchVendorMode('local');
+    });
+
+    $('#badgeRegisteredVendor').click(function() {
+        $('input[name="_vendor_mode"][value="vendor"]').prop('checked', true);
+        $(this).addClass('active');
+        $('#badgeLocalMarket').removeClass('active');
+        switchVendorMode('vendor');
+    });
+
+    // When registered vendor is selected → populate hidden fields
+    $('#vendor_id_select').on('change', function() {
+        const selected = $(this).find(':selected');
+        const vid  = selected.val() || '';
+        const name = selected.data('name') || '';
+        const phone = selected.data('phone') || '';
+
+        // Populate the actual form fields that backend reads
+        $('#vendor_id_hidden').val(vid);
+        $('#vendor_name_hidden').val(name);
+
+        // Also try to populate the phone/tel field if it exists
+        $('input[name="tel"]').val(phone);
+    });
+
+
     $('#addRow').click(function() {
         var newRow = $('.item-row:first').clone();
         newRow.find('input').not('.disc-type-input, .disc-input-hidden, .unit-input, .standard-packing-view input').val(0);
@@ -666,6 +754,27 @@ $(document).ready(function() {
                 title: 'Check Prices!',
                 text: 'Kuch items ka unit price 0 ya khaali hai. Please check karein.'
             });
+            return false;
+        }
+
+        // ===== Vendor mode final sync =====
+        const mode = $('input[name="_vendor_mode"]:checked').val();
+        if (mode === 'vendor') {
+            const vid = $('#vendor_id_select').val();
+            if (!vid) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Vendor Required', text: 'Please select a registered vendor.' });
+                return false;
+            }
+            $('#vendor_id_hidden').val(vid);
+            $('#vendor_name_hidden').val($('#vendor_id_select').find(':selected').data('name') || '');
+        } else {
+            $('#vendor_id_hidden').val('');
+            if (!$('#vendor_name_text').val().trim()) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Shop Name Required', text: 'Please enter vendor/shop name.' });
+                return false;
+            }
         }
     });
 });

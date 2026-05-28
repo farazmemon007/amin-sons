@@ -21,7 +21,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4>
-                <i class="fas fa-exchange-alt"></i> Stock Transfer Details - {{ $branch->branch_name ?? 'Branch #' . $branch->id }}
+                <i class="fas fa-exchange-alt"></i> Stock Transfer Details - {{ $branch->name ?? $branch->branch_name ?? 'Branch #' . $branch->id }}
             </h4>
             <small class="text-muted">View all inter-branch stock transfers with date filtering</small>
         </div>
@@ -145,12 +145,12 @@
                             </td>
                             <td>
                                 <strong>
-                                    {{ $transfer->fromBranch->branch_name ?? 'Branch #' . $transfer->from_branch_id }}
+                                    {{ $transfer->fromBranch->name ?? $transfer->fromBranch->branch_name ?? 'Branch #' . $transfer->from_branch_id }}
                                 </strong>
                             </td>
                             <td>
                                 <strong>
-                                    {{ $transfer->toBranch->branch_name ?? 'Branch #' . $transfer->to_branch_id }}
+                                    {{ $transfer->toBranch->name ?? $transfer->toBranch->branch_name ?? 'Branch #' . $transfer->to_branch_id }}
                                 </strong>
                             </td>
                             <td>

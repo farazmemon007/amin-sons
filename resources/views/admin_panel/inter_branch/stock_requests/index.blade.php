@@ -49,7 +49,7 @@
                                             @foreach ($incomingRequests as $request)
                                                 <tr>
                                                     <td>
-                                                        <strong>{{ $request->fromBranch->branch_name ?? 'Branch #' . $request->from_branch_id }}</strong>
+                                                        <strong>{{ $request->fromBranch->name ?? $request->fromBranch->branch_name ?? 'Branch #' . $request->from_branch_id }}</strong>
                                                     </td>
                                                     <td>
                                                         <small>
@@ -101,7 +101,7 @@
                                             @foreach ($outgoingRequests as $request)
                                                 <tr>
                                                     <td>
-                                                        <strong>{{ $request->toBranch->branch_name ?? 'Branch #' . $request->to_branch_id }}</strong>
+                                                        <strong>{{ $request->toBranch->name ?? $request->toBranch->branch_name ?? 'Branch #' . $request->to_branch_id }}</strong>
                                                     </td>
                                                     <td>
                                                         <small>

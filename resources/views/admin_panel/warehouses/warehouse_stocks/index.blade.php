@@ -395,11 +395,7 @@
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchProducts" placeholder="Search product or code...">
                 </div>
-                @can('warehouse.stock.create')
-                <a href="{{ route('warehouse_stocks.create') }}" class="btn btn-view">
-                    <i class="fas fa-plus"></i> Add Stock
-                </a>
-                @endcan
+
             </div>
         </div>
 
@@ -443,9 +439,7 @@
                     <div class="empty-state" style="grid-column: 1/-1;">
                         <i class="fas fa-inbox"></i>
                         <p>No products found in warehouse inventory</p>
-                        @can('warehouse.stock.create')
-                        <a href="{{ route('warehouse_stocks.create') }}">Add First Stock</a>
-                        @endcan
+
                     </div>
                 @endforelse
             </div>

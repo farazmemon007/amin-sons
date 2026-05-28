@@ -1497,8 +1497,9 @@ class PurchaseController extends Controller
     {
         $currentBranch = Auth::user()->branch_id ?? 1;
         $isSuperAdmin = Auth::user() && Auth::user()->hasRole('super admin');
-        
-        $Vendor = Vendor::where('branch_id', $currentBranch)->get();
+
+        // ✅ Super admin gets all vendors; regular user gets their branch vendors
+        $Vendor = $isSuperAdmin ? Vendor::orderBy('name')->get() : Vendor::where('branch_id', $currentBranch)->orderBy('name')->get();
         $Branch = Branch::all();
         $Products = Product::with('unit')->get();
 
@@ -1554,11 +1555,24 @@ class PurchaseController extends Controller
 
     /**
      * ✅ STORE LOCAL PURCHASE (Direct Stock Update)
+     * Supports two modes:
+     *   1. Local Market  → vendor_id = null, vendor_name = free text
+     *   2. Registered Vendor → vendor_id = selected vendor, vendor_name = vendor name, ledger updated by store()
      */
     public function storeLocalPurchase(Request $request)
     {
-        // Similar to store() but with 'local' flag to enable immediate stock update
+        // Mark as local so store() updates stock immediately
         $request->merge(['purchase_type' => 'local']);
+
+        // Ensure vendor_name is resolved from whichever hidden field is populated
+        // (blade sends vendor_name as either the text input or the hidden field filled by JS)
+        if (!$request->filled('vendor_name') && $request->filled('vendor_id')) {
+            $vendor = Vendor::find($request->vendor_id);
+            if ($vendor) {
+                $request->merge(['vendor_name' => $vendor->name]);
+            }
+        }
+
         return $this->store($request);
     }
 

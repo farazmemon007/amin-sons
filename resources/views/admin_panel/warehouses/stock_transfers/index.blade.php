@@ -172,7 +172,7 @@
                                     <div class="d-flex align-items-center">
                                         <i class="fas fa-store text-warning me-2"></i>
                                         <div>
-                                            <div class="fw-bold text-dark">{{ $transfer->fromBranch->branch_name ?? 'Branch #' . $transfer->fromBranch->id }}</div>
+                                            <div class="fw-bold text-dark">{{ $transfer->fromBranch->name ?? $transfer->fromBranch->branch_name ?? 'Branch #' . $transfer->fromBranch->id }}</div>
                                             <small class="text-muted">Branch</small>
                                         </div>
                                     </div>
@@ -195,7 +195,7 @@
                                     <div class="d-flex align-items-center">
                                         <i class="fas fa-store text-warning me-2"></i>
                                         <div>
-                                            <div class="fw-bold text-dark">{{ $transfer->toBranch->branch_name ?? 'Branch #' . $transfer->toBranch->id }}</div>
+                                            <div class="fw-bold text-dark">{{ $transfer->toBranch->name ?? $transfer->toBranch->branch_name ?? 'Branch #' . $transfer->toBranch->id }}</div>
                                             <small class="text-muted">Branch</small>
                                         </div>
                                     </div>
@@ -238,19 +238,90 @@
                                 </div>
                             </td>
                             
-                            <!-- Actions -->
                             <td style="text-align: center;">
-                                @can('stock.transfer.delete')
-                                    <form action="{{ route('stock_transfers.destroy', $transfer->id) }}" method="POST" style="display:inline;">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm" 
-                                            onclick="return confirm('Are you sure? This action cannot be undone!');"
-                                            title="Delete Transfer">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                @endcan
+                                <button type="button" class="btn btn-info btn-sm text-white shadow-sm" 
+                                        data-toggle="modal" data-target="#transferModal{{ $transfer->id }}"
+                                        title="View Details">
+                                    <i class="fas fa-info-circle"></i> Details
+                                </button>
+                                <!-- Modal for Transfer Details -->
+                                <div class="modal fade" id="transferModal{{ $transfer->id }}" tabindex="-1" aria-hidden="true" style="text-align: left;">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 shadow">
+                                            <div class="modal-header bg-light">
+                                                <h5 class="modal-title fw-bold text-dark">
+                                                    <i class="fas fa-exchange-alt text-primary me-2"></i> Transfer Details
+                                                </h5>
+                                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body p-4">
+                                                <div class="row mb-2">
+                                                    <div class="col-sm-5 text-muted fw-bold">Product:</div>
+                                                    <div class="col-sm-7 text-dark">{{ $transfer->product->item_name ?? 'N/A' }}</div>
+                                                </div>
+                                                <div class="row mb-2">
+                                                    <div class="col-sm-5 text-muted fw-bold">Item Code:</div>
+                                                    <div class="col-sm-7 text-dark">{{ $transfer->product->item_code ?? 'N/A' }}</div>
+                                                </div>
+                                                <div class="row mb-2">
+                                                    <div class="col-sm-5 text-muted fw-bold">Model No:</div>
+                                                    <div class="col-sm-7 text-dark">{{ $transfer->product->model ?? 'N/A' }}</div>
+                                                </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-sm-5 text-muted fw-bold">Brand:</div>
+                                                    <div class="col-sm-7 text-dark">{{ $transfer->product->brand->brand_name ?? $transfer->product->brand->name ?? 'N/A' }}</div>
+                                                </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-sm-5 text-muted fw-bold">Quantity:</div>
+                                                    <div class="col-sm-7">
+                                                        <span class="badge bg-primary px-3 py-2" style="font-size: 0.9rem;">{{ $transfer->quantity }} units</span>
+                                                    </div>
+                                                </div>
+                                                <hr>
+                                                <div class="row mb-3">
+                                                    <div class="col-sm-5 text-muted fw-bold">From (Source):</div>
+                                                    <div class="col-sm-7 text-dark">
+                                                        @if($transfer->fromWarehouse)
+                                                            <i class="fas fa-warehouse text-info me-1"></i> {{ $transfer->fromWarehouse->warehouse_name }}
+                                                        @elseif($transfer->fromBranch)
+                                                            <i class="fas fa-store text-warning me-1"></i> {{ $transfer->fromBranch->name ?? $transfer->fromBranch->branch_name ?? 'Branch #' . $transfer->fromBranch->id }}
+                                                        @else
+                                                            N/A
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <div class="row mb-3">
+                                                    <div class="col-sm-5 text-muted fw-bold">To (Destination):</div>
+                                                    <div class="col-sm-7 text-dark">
+                                                        @if($transfer->toWarehouse)
+                                                            <i class="fas fa-warehouse text-info me-1"></i> {{ $transfer->toWarehouse->warehouse_name }}
+                                                        @elseif($transfer->toBranch)
+                                                            <i class="fas fa-store text-warning me-1"></i> {{ $transfer->toBranch->name ?? $transfer->toBranch->branch_name ?? 'Branch #' . $transfer->toBranch->id }}
+                                                        @elseif($transfer->to_shop)
+                                                            <i class="fas fa-shopping-bag text-success me-1"></i> Branch Main Shop
+                                                        @else
+                                                            N/A
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                                <hr>
+                                                <div class="row mb-3">
+                                                    <div class="col-sm-5 text-muted fw-bold">Date:</div>
+                                                    <div class="col-sm-7 text-dark">{{ $transfer->created_at->format('d M Y, h:i A') }}</div>
+                                                </div>
+                                                @if($transfer->remarks)
+                                                <div class="row">
+                                                    <div class="col-sm-5 text-muted fw-bold">Remarks:</div>
+                                                    <div class="col-sm-7 text-dark">{{ $transfer->remarks }}</div>
+                                                </div>
+                                                @endif
+                                            </div>
+                                            <div class="modal-footer bg-light">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                         @endforeach
