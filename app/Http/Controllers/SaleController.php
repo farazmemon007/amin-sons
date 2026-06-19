@@ -2522,46 +2522,172 @@ public function finddc($invoice)
     // sale return start
     public function saleretun($id)
     {
-        $sale = Sale::findOrFail($id);
+        $sale = Sale::with('saleItems.product', 'customer')->findOrFail($id);
         $customers = Customer::all();
+        
+        // Fetch accounts specific to the branch of the sale, and check for active status (boolean 1 or string 'active')
+        $accounts = \App\Models\Account::with('head')
+            ->where('branch_id', $sale->branch_id)
+            ->where(function ($query) {
+                $query->where('status', 1)
+                      ->orWhere('status', 'active');
+            })
+            ->get();
 
-        // Decode sale pivot or comma fields
-        $products = explode(',', $sale->product);
-        $codes = explode(',', $sale->product_code);
-        $brands = explode(',', $sale->brand);
-        $units = explode(',', $sale->unit);
-        $prices = explode(',', $sale->per_price);
-        $discounts = explode(',', $sale->per_discount);
-        $qtys = explode(',', $sale->qty);
-        $totals = explode(',', $sale->per_total);
-        $colors_json = json_decode($sale->color, true);
+        // Calculate already returned quantities from SalesReturn
+        $salesReturns = SalesReturn::where('sale_id', $sale->id)->get();
+        $alreadyReturned = [];
+
+        foreach ($salesReturns as $sr) {
+            $srProducts = explode(',', $sr->product);
+            $srCodes = explode(',', $sr->product_code);
+            $srQtys = explode(',', $sr->qty);
+            
+            foreach ($srProducts as $i => $pname) {
+                // Try to match by code or name
+                $code = $srCodes[$i] ?? '';
+                $q = floatval($srQtys[$i] ?? 0);
+                
+                $product = Product::where('item_name', trim($pname))
+                    ->orWhere('item_code', trim($code))
+                    ->first();
+                
+                if ($product) {
+                    $pid = $product->id;
+                    if (!isset($alreadyReturned[$pid])) {
+                        $alreadyReturned[$pid] = 0;
+                    }
+                    $alreadyReturned[$pid] += $q;
+                }
+            }
+        }
 
         $items = [];
+        
+        // Use sale_items if available to get TRUE purchased quantity
+        if ($sale->saleItems && $sale->saleItems->count() > 0) {
+            foreach ($sale->saleItems as $sItem) {
+                $pid = $sItem->product_id;
+                $purchasedQty = floatval($sItem->sales_qty ?? $sItem->qty ?? 0);
+                $retQty = $alreadyReturned[$pid] ?? 0;
+                $remQty = max(0, $purchasedQty - $retQty);
 
-        foreach ($products as $index => $p) {
-            $product = Product::where('item_name', trim($p))
-                ->orWhere('item_code', trim($codes[$index] ?? ''))
-                ->first();
+                $items[] = [
+                    'product_id' => $pid,
+                    'item_name'  => $sItem->product->item_name ?? '',
+                    'item_code'  => $sItem->product->item_code ?? '',
+                    'brand'      => $sItem->product->brand->name ?? '',
+                    'unit'       => $sItem->product->unit ?? '',
+                    'price'      => floatval($sItem->retail_price ?? $sItem->per_price ?? 0),
+                    'discount'   => floatval($sItem->discount_amount ?? $sItem->per_discount ?? 0),
+                    'qty'        => $purchasedQty,
+                    'already_returned' => $retQty,
+                    'remaining_qty' => $remQty,
+                    'total'      => floatval($sItem->amount ?? $sItem->per_total ?? 0),
+                    'color'      => json_decode($sItem->color ?? '[]', true),
+                    'warehouse_id' => $sItem->warehouse_id,
+                ];
+            }
+        } else {
+            // Legacy comma-separated decoding
+            $products = explode(',', $sale->product);
+            $codes = explode(',', $sale->product_code);
+            $brands = explode(',', $sale->brand);
+            $units = explode(',', $sale->unit);
+            $prices = explode(',', $sale->per_price);
+            $discounts = explode(',', $sale->per_discount);
+            // In the legacy system, $sale->qty was modified in-place, so it represents remaining.
+            $qtys = explode(',', $sale->qty);
+            $totals = explode(',', $sale->per_total);
+            $colors_json = json_decode($sale->color, true);
 
-            $items[] = [
-                'product_id' => $product->id ?? '',
-                'item_name'  => $product->item_name ?? $p,
-                'item_code'  => $product->item_code ?? ($codes[$index] ?? ''),
-                'brand'      => $product->brand->name ?? ($brands[$index] ?? ''),
-                'unit'       => $product->unit ?? ($units[$index] ?? ''),
-                'price'      => floatval($prices[$index] ?? 0),
-                'discount'   => floatval($discounts[$index] ?? 0),
-                'qty'        => intval($qtys[$index] ?? 1),
-                'total'      => floatval($totals[$index] ?? 0),
-                'color'      => isset($colors_json[$index]) ? json_decode($colors_json[$index], true) : [],
-            ];
+            foreach ($products as $index => $p) {
+                $product = Product::where('item_name', trim($p))
+                    ->orWhere('item_code', trim($codes[$index] ?? ''))
+                    ->first();
+                    
+                $pid = $product->id ?? null;
+                $remQty = floatval($qtys[$index] ?? 1);
+                
+                $items[] = [
+                    'product_id' => $pid,
+                    'item_name'  => $product->item_name ?? $p,
+                    'item_code'  => $product->item_code ?? ($codes[$index] ?? ''),
+                    'brand'      => $product->brand->name ?? ($brands[$index] ?? ''),
+                    'unit'       => $product->unit ?? ($units[$index] ?? ''),
+                    'price'      => floatval($prices[$index] ?? 0),
+                    'discount'   => floatval($discounts[$index] ?? 0),
+                    'qty'        => $remQty, // Display remaining as purchased for legacy
+                    'already_returned' => 0,
+                    'remaining_qty' => $remQty,
+                    'total'      => floatval($totals[$index] ?? 0),
+                    'color'      => isset($colors_json[$index]) ? json_decode($colors_json[$index], true) : [],
+                    'warehouse_id' => null,
+                ];
+            }
         }
 
         return view('admin_panel.sale.return.create', [
             'sale'      => $sale,
             'Customer'  => $customers,
             'saleItems' => $items,
+            'accounts'  => $accounts,
         ]);
+    }
+
+    private function upsertStocks(int $productId, float $qtyDelta, int $branchId, int $warehouseId): void
+    {
+        $now = now();
+        $whId = $warehouseId > 0 ? $warehouseId : null;
+
+        // 1. Update warehouse_stocks
+        $query = DB::table('warehouse_stocks')
+            ->where('product_id', $productId)
+            ->where('branch_id', $branchId);
+        
+        if ($whId) {
+            $query->where('warehouse_id', $whId);
+        } else {
+            $query->whereNull('warehouse_id');
+        }
+
+        $affectedWarehouse = $query->update([
+            'quantity'   => DB::raw('quantity + '.((int)$qtyDelta)),
+            'updated_at' => $now,
+        ]);
+
+        if ($affectedWarehouse === 0) {
+            DB::table('warehouse_stocks')->insert([
+                'branch_id'    => $branchId,
+                'warehouse_id' => $whId,
+                'product_id'   => $productId,
+                'quantity'     => (int)$qtyDelta,
+                'price'        => null,
+                'remarks'      => 'Sale Return stock',
+                'created_at'   => $now,
+                'updated_at'   => $now,
+            ]);
+        }
+
+        // 2. Update stocks (summary table)
+        $affectedStocks = DB::table('stocks')
+            ->where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->update([
+                'qty'        => DB::raw('qty + '.((int)$qtyDelta)),
+                'updated_at' => $now,
+            ]);
+
+        if ($affectedStocks === 0) {
+            DB::table('stocks')->insert([
+                'product_id'   => $productId,
+                'branch_id'    => $branchId,
+                'qty'          => (int)$qtyDelta,
+                'reserved_qty' => 0,
+                'created_at'   => $now,
+                'updated_at'   => $now,
+            ]);
+        }
     }
 
     public function storeSaleReturn(Request $request)
@@ -2569,169 +2695,360 @@ public function finddc($invoice)
         DB::beginTransaction();
 
         try {
-            // keep same location as sale (hidden fields in blade)
-            $branchId = (int) ($request->input('branch_id', 1));
+            $branchId    = (int) ($request->input('branch_id', 1));
             $warehouseId = (int) ($request->input('warehouse_id', 1));
+            $saleId      = (int) $request->sale_id;
 
-            $srMovements = [];
+            $product_ids   = $request->product_id   ?? [];
+            $product_names = $request->product       ?? [];
+            $product_codes = $request->item_code     ?? [];
+            $brands        = $request->uom           ?? [];
+            $units         = $request->unit          ?? [];
+            $prices        = $request->price         ?? [];
+            $discounts     = $request->item_disc     ?? [];
+            $quantities    = $request->qty           ?? [];
+            $totals        = $request->total         ?? [];
+            $colors        = $request->color         ?? [];
 
-            $product_ids = $request->product_id ?? [];
-            $product_names = $request->product ?? [];
-            $product_codes = $request->item_code ?? [];
-            $brands = $request->uom ?? [];
-            $units = $request->unit ?? [];
-            $prices = $request->price ?? [];
-            $discounts = $request->item_disc ?? [];
-            $quantities = $request->qty ?? [];
-            $totals = $request->total ?? [];
-            $colors = $request->color ?? [];
-
-            $combined_products = $combined_codes = $combined_brands = $combined_units = [];
-            $combined_prices = $combined_discounts = $combined_qtys = $combined_totals = $combined_colors = [];
+            $combined_products = $combined_codes   = $combined_brands  = $combined_units = [];
+            $combined_prices   = $combined_discounts = $combined_qtys = $combined_totals = $combined_colors = [];
 
             $total_items = 0;
+            // returnMap: product_id => qty being returned (for ERP stage logic)
+            $returnMap = [];
 
             foreach ($product_ids as $index => $product_id) {
-                $qty = max(0.0, (float) ($quantities[$index] ?? 0));
-                $price = max(0.0, (float) ($prices[$index] ?? 0));
+                $qty   = max(0.0, (float) ($quantities[$index] ?? 0));
+                $price = max(0.0, (float) ($prices[$index]    ?? 0));
 
                 if (! $product_id || $qty <= 0 || $price <= 0) {
                     continue;
                 }
 
-                $combined_products[] = $product_names[$index] ?? '';
-                $combined_codes[] = $product_codes[$index] ?? '';
-                $combined_brands[] = $brands[$index] ?? '';
-                $combined_units[] = $units[$index] ?? '';
-                $combined_prices[] = $price;
-                $combined_discounts[] = $discounts[$index] ?? 0;
-                $combined_qtys[] = $qty;
-                $combined_totals[] = $totals[$index] ?? 0;
+                $combined_products[]  = $product_names[$index] ?? '';
+                $combined_codes[]     = $product_codes[$index] ?? '';
+                $combined_brands[]    = $brands[$index]        ?? '';
+                $combined_units[]     = $units[$index]         ?? '';
+                $combined_prices[]    = $price;
+                $combined_discounts[] = $discounts[$index]     ?? 0;
+                $combined_qtys[]      = $qty;
+                $combined_totals[]    = $totals[$index]        ?? 0;
 
-                $decodedColor = $colors[$index] ?? [];
-                $combined_colors[] = is_array($decodedColor)
+                $decodedColor       = $colors[$index] ?? [];
+                $combined_colors[]  = is_array($decodedColor)
                     ? json_encode($decodedColor)
                     : json_encode((array) json_decode($decodedColor, true));
 
-                // restore stock at SAME location (lock row to avoid race)
-                $stock = Stock::where('product_id', $product_id)
-                    ->where('branch_id', $branchId)
-                    ->where('warehouse_id', $warehouseId)
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($stock) {
-                    $stock->qty += $qty;
-                    $stock->save();
-                } else {
-                    Stock::create([
-                        'product_id'   => $product_id,
-                        'branch_id'    => $branchId,
-                        'qty'          => $qty,
-                        'reserved_qty' => 0,
-                    ]);
-                }
-
-                // movement queue (IN) → ref_id after save
-                $srMovements[] = [
-                    'product_id' => $product_id,
-                    'type'       => 'in',
-                    'qty'        => (float) $qty,
-                    'ref_type'   => 'SR',
-                    'ref_id'     => null,
-                    'note'       => 'Sale return',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-
+                $returnMap[(int)$product_id] = ($returnMap[(int)$product_id] ?? 0) + $qty;
                 $total_items += $qty;
             }
 
-            // create Sale Return first
+            if ($total_items <= 0) {
+                throw new \Exception('No items were returned.');
+            }
+
+            // ------------------------------------------------------------------
+            // ERP STAGE DETECTION
+            // Stage A: No DC exists            → affect Ledger + Accounts only
+            // Stage B: DC exists, no Gate Pass → affect Ledger + Accounts + reserved_qty + DC items
+            // Stage C: Gate Pass exists         → affect Ledger + Accounts + physical stock + DC + GP items
+            // ------------------------------------------------------------------
+            $dc = DB::table('warehouse_orders')
+                ->where('sale_id', $saleId)
+                ->first();
+
+            $gatepass  = null;
+            $movements = []; // physical stock movement records, only populated in Stage C
+
+            if ($dc) {
+                $gatepass = DB::table('outward_gatepasses')
+                    ->where('order_id', $dc->id)
+                    ->first();
+            }
+
+            // ------------------------------------------------------------------
+            // STAGE B: DC exists, NO Gate Pass → reduce reserved_qty + update DC
+            // ------------------------------------------------------------------
+            if ($dc && ! $gatepass) {
+                foreach ($returnMap as $pid => $retQty) {
+                    // Release reserved stock (goods not yet dispatched)
+                    DB::table('stocks')
+                        ->where('product_id', $pid)
+                        ->where('branch_id', $branchId)
+                        ->decrement('reserved_qty', $retQty);
+
+                    // Reduce DC line-item qty
+                    $dcItem = DB::table('warehouse_order_items')
+                        ->where('warehouse_order_id', $dc->id)
+                        ->where('product_id', $pid)
+                        ->first();
+                    if ($dcItem) {
+                        $newQty = max(0, (float)$dcItem->qty - $retQty);
+                        DB::table('warehouse_order_items')
+                            ->where('id', $dcItem->id)
+                            ->update([
+                                'qty'        => $newQty,
+                                'amount'     => $newQty * (float)($dcItem->retail_price ?? 0),
+                                'updated_at' => now(),
+                            ]);
+                    }
+
+                    // Update DC JSON items column
+                    $this->updateWarehouseOrderItemsJson($dc->id, $pid, $retQty);
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // STAGE C: Gate Pass exists → restore physical stock + update GP + DC
+            // ------------------------------------------------------------------
+            if ($dc && $gatepass) {
+                foreach ($returnMap as $pid => $retQty) {
+                    // Restore physical stock in stocks table
+                    $affected = DB::table('stocks')
+                        ->where('product_id', $pid)
+                        ->where('branch_id', $branchId)
+                        ->update([
+                            'qty'        => DB::raw('qty + ' . (float)$retQty),
+                            'updated_at' => now(),
+                        ]);
+                    if ($affected === 0) {
+                        DB::table('stocks')->insert([
+                            'product_id'   => $pid,
+                            'branch_id'    => $branchId,
+                            'warehouse_id' => $warehouseId > 0 ? $warehouseId : 1,
+                            'qty'          => (int)$retQty,
+                            'reserved_qty' => 0,
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                    }
+
+                    // Restore warehouse_stocks
+                    $whId   = $warehouseId > 0 ? $warehouseId : null;
+                    $wsQry  = DB::table('warehouse_stocks')
+                        ->where('product_id', $pid)
+                        ->where('branch_id', $branchId);
+                    $whId ? $wsQry->where('warehouse_id', $whId) : $wsQry->whereNull('warehouse_id');
+                    if ($wsQry->update(['quantity' => DB::raw('quantity + ' . (float)$retQty), 'updated_at' => now()]) === 0) {
+                        DB::table('warehouse_stocks')->insert([
+                            'product_id'   => $pid,
+                            'branch_id'    => $branchId,
+                            'warehouse_id' => $whId,
+                            'quantity'     => (int)$retQty,
+                            'price'        => null,
+                            'remarks'      => 'Sale Return stock restore',
+                            'created_at'   => now(),
+                            'updated_at'   => now(),
+                        ]);
+                    }
+
+                    // Reduce Gate Pass items JSON
+                    if (! empty($gatepass->items)) {
+                        $gpItems = json_decode($gatepass->items, true) ?? [];
+                        foreach ($gpItems as &$gpItem) {
+                            if ((int)($gpItem['product_id'] ?? 0) === $pid) {
+                                $gpItem['qty']    = max(0, (float)$gpItem['qty'] - $retQty);
+                                $gpItem['amount'] = $gpItem['qty'] * (float)($gpItem['retail_price'] ?? 0);
+                            }
+                        }
+                        unset($gpItem);
+                        DB::table('outward_gatepasses')
+                            ->where('id', $gatepass->id)
+                            ->update(['items' => json_encode($gpItems), 'updated_at' => now()]);
+                    }
+
+                    // Reduce DC line-item qty
+                    $dcItem = DB::table('warehouse_order_items')
+                        ->where('warehouse_order_id', $dc->id)
+                        ->where('product_id', $pid)
+                        ->first();
+                    if ($dcItem) {
+                        $newQty = max(0, (float)$dcItem->qty - $retQty);
+                        DB::table('warehouse_order_items')
+                            ->where('id', $dcItem->id)
+                            ->update([
+                                'qty'        => $newQty,
+                                'amount'     => $newQty * (float)($dcItem->retail_price ?? 0),
+                                'updated_at' => now(),
+                            ]);
+                    }
+
+                    // Update DC JSON items column
+                    $this->updateWarehouseOrderItemsJson($dc->id, $pid, $retQty);
+                }
+
+                // Insert physical stock movement records (goods came back)
+                $movements = [];
+                foreach ($returnMap as $pid => $retQty) {
+                    $movements[] = [
+                        'product_id' => $pid,
+                        'type'       => 'in',
+                        'qty'        => $retQty,
+                        'ref_type'   => 'SALE_RETURN',
+                        'ref_id'     => null, // will be updated after SalesReturn saved
+                        'note'       => 'Sale return — Gate Pass stage',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // ALL STAGES: Reduce original sale_items qty, recalculate sale totals
+            // ------------------------------------------------------------------
+            foreach ($returnMap as $pid => $retQty) {
+                DB::table('sale_items')
+                    ->where('sale_id', $saleId)
+                    ->where('product_id', $pid)
+                    ->update([
+                        'sales_qty'  => DB::raw('GREATEST(0, sales_qty - ' . (float)$retQty . ')'),
+                        'amount'     => DB::raw('GREATEST(0, sales_qty - ' . (float)$retQty . ') * retail_price'),
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            // Recalculate sale header totals from updated sale_items
+            $sit = DB::table('sale_items')
+                ->where('sale_id', $saleId)
+                ->selectRaw('SUM(amount) as subtotal, SUM(sales_qty) as total_qty, SUM(discount_amount) as total_disc')
+                ->first();
+
+            $newSubtotal = (float)($sit->subtotal  ?? 0);
+            $newQty      = (float)($sit->total_qty ?? 0);
+            $newDisc     = (float)($sit->total_disc ?? 0);
+            $newNet      = $newSubtotal - $newDisc;
+
+            DB::table('sales')->where('id', $saleId)->update([
+                'total_bill_amount'   => $newSubtotal,
+                'total_extradiscount' => $newDisc,
+                'total_net'           => $newNet,
+                'total_items'         => $newQty,
+                'updated_at'          => now(),
+            ]);
+
+            // ------------------------------------------------------------------
+            // Create SalesReturn record
+            // ------------------------------------------------------------------
             $saleReturn = new SalesReturn;
-            $saleReturn->sale_id = $request->sale_id;
-            $saleReturn->customer = $request->customer;
-            $saleReturn->reference = $request->reference;
-            $saleReturn->product = implode(',', $combined_products);
-            $saleReturn->product_code = implode(',', $combined_codes);
-            $saleReturn->brand = implode(',', $combined_brands);
-            $saleReturn->unit = implode(',', $combined_units);
-            $saleReturn->per_price = implode(',', $combined_prices);
-            $saleReturn->per_discount = implode(',', $combined_discounts);
-            $saleReturn->qty = implode(',', $combined_qtys);
-            $saleReturn->per_total = implode(',', $combined_totals);
-            $saleReturn->color = json_encode($combined_colors);
-            $saleReturn->total_amount_Words = $request->total_amount_Words;
-            $saleReturn->total_bill_amount = $request->total_subtotal;
+            $saleReturn->sale_id             = $request->sale_id;
+            $saleReturn->customer            = $request->customer_id;
+            $saleReturn->reference           = $request->reference;
+            $saleReturn->product             = implode(',', $combined_products);
+            $saleReturn->product_code        = implode(',', $combined_codes);
+            $saleReturn->brand               = implode(',', $combined_brands);
+            $saleReturn->unit                = implode(',', $combined_units);
+            $saleReturn->per_price           = implode(',', $combined_prices);
+            $saleReturn->per_discount        = implode(',', $combined_discounts);
+            $saleReturn->qty                 = implode(',', $combined_qtys);
+            $saleReturn->per_total           = implode(',', $combined_totals);
+            $saleReturn->color               = json_encode($combined_colors);
+            $saleReturn->total_amount_Words  = $request->total_amount_Words;
+            $saleReturn->total_bill_amount   = $request->total_subtotal;
             $saleReturn->total_extradiscount = $request->total_extra_cost;
-            $saleReturn->total_net = $request->total_net;
-            $saleReturn->cash = $request->cash;
-            $saleReturn->card = $request->card;
-            $saleReturn->change = $request->change;
-            $saleReturn->total_items = $total_items;
-            $saleReturn->return_note = $request->return_note;
+            $saleReturn->total_net           = $request->total_net;
+            $saleReturn->cash                = $request->cash;
+            $saleReturn->card                = $request->card;
+            $saleReturn->change              = $request->change;
+            $saleReturn->total_items         = $total_items;
+            $saleReturn->return_note         = $request->return_note;
             $saleReturn->save();
 
-            // insert movements with proper ref_id
-            if (! empty($srMovements)) {
-                foreach ($srMovements as &$m) {
-                    $m['ref_id'] = $saleReturn->id;
+            // Update movement ref_id now that SalesReturn is persisted (Stage C only)
+            if ($dc && $gatepass && ! empty($movements)) {
+                foreach ($movements as &$mv) {
+                    $mv['ref_id'] = $saleReturn->id;
                 }
-                unset($m);
-
-                DB::table('stock_movements')->insert($srMovements);
+                unset($mv);
+                DB::table('stock_movements')->insert($movements);
             }
 
-            // update original sale
-            $sale = Sale::find($request->sale_id);
-            if ($sale) {
-                $sale_qtys = array_map('floatval', explode(',', $sale->qty));
-                $sale_totals = array_map('floatval', explode(',', $sale->per_total));
-                $sale_prices = array_map('floatval', explode(',', $sale->per_price));
+            // ------------------------------------------------------------------
+            // Customer Ledger: Credit Note (customer owes less after return)
+            // ------------------------------------------------------------------
+            $customer_id = $request->customer_id;
+            if ($customer_id) {
+                $latestLedger = CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
+                $prevBal      = $latestLedger ? (float)$latestLedger->closing_balance : 0;
+                $newClosing   = $prevBal - (float)$request->total_net;
 
-                foreach ($product_ids as $index => $product_id) {
-                    $return_qty = max(0.0, (float) ($quantities[$index] ?? 0));
-                    if ($return_qty > 0 && isset($sale_qtys[$index])) {
-                        $sale_qtys[$index] = max(0.0, $sale_qtys[$index] - $return_qty);
-                        $price = $sale_prices[$index] ?? 0.0;
-                        $sale_totals[$index] = $price * $sale_qtys[$index];
-                    }
-                }
-
-                $sale->qty = implode(',', $sale_qtys);
-                $sale->per_total = implode(',', $sale_totals);
-                $sale->total_net = array_sum($sale_totals);
-                $sale->total_bill_amount = $sale->total_net;
-                $sale->total_items = array_sum($sale_qtys);
-                $sale->save();
-            }
-
-            // ledger impact
-            $customer_id = $request->customer;
-            $ledger = CustomerLedger::where('customer_id', $customer_id)->latest('id')->first();
-
-            if ($ledger) {
-                $ledger->previous_balance = $ledger->closing_balance;
-                $ledger->closing_balance = $ledger->closing_balance - $request->total_net;
-                $ledger->save();
-            } else {
                 CustomerLedger::create([
                     'customer_id'      => $customer_id,
                     'admin_or_user_id' => auth()->id(),
-                    'previous_balance' => 0,
-                    'closing_balance'  => 0 - $request->total_net,
-                    'opening_balance'  => 0 - $request->total_net,
+                    'previous_balance' => $prevBal,
+                    'total_credit'     => (float)$request->total_net,
+                    'closing_balance'  => $newClosing,
+                    'opening_balance'  => 0,
                 ]);
+            }
+
+            // ------------------------------------------------------------------
+            // Accounts: Cash Refund — debit selected accounts
+            // ------------------------------------------------------------------
+            if ($request->refund_type === 'cash') {
+                $refundAccountIds = $request->input('refund_account_id', []);
+                $refundAmounts    = $request->input('refund_amount', []);
+                foreach ($refundAccountIds as $i => $accountId) {
+                    $refAmt = (float)($refundAmounts[$i] ?? 0);
+                    if (! $accountId || $refAmt <= 0) continue;
+                    DB::table('accounts')
+                        ->where('id', (int)$accountId)
+                        ->decrement('opening_balance', $refAmt);
+                }
             }
 
             DB::commit();
 
+            $stage = $dc ? ($gatepass ? 'C (Gate Pass)' : 'B (DC Only)') : 'A (Invoice Only)';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Sale return saved successfully. Stage: ' . $stage,
+                ]);
+            }
+
             return redirect()->route('sale.index')->with('success', 'Sale return saved successfully.');
+
         } catch (\Exception $e) {
             DB::rollBack();
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sale return failed: ' . $e->getMessage()
+                ], 500);
+            }
+
             return back()->with('error', 'Sale return failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Reduce the qty of a specific product in the warehouse_orders.items JSON column.
+     * Called from storeSaleReturn for Stage B and Stage C.
+     */
+    private function updateWarehouseOrderItemsJson(int $dcId, int $productId, float $retQty): void
+    {
+        $wo = DB::table('warehouse_orders')->where('id', $dcId)->first();
+        if (! $wo || empty($wo->items)) return;
+
+        $items = json_decode($wo->items, true);
+        if (! is_array($items)) return;
+
+        foreach ($items as &$item) {
+            if ((int)($item['product_id'] ?? 0) === $productId) {
+                $item['qty'] = max(0, (float)$item['qty'] - $retQty);
+                if (isset($item['retail_price'])) {
+                    $item['amount'] = $item['qty'] * (float)$item['retail_price'];
+                }
+            }
+        }
+        unset($item);
+
+        DB::table('warehouse_orders')->where('id', $dcId)->update([
+            'items'      => json_encode($items),
+            'updated_at' => now(),
+        ]);
     }
 
     public function salereturnview()

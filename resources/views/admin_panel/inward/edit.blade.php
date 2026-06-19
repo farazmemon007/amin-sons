@@ -46,6 +46,10 @@
         .btn-remove-color { color: #ef4444; cursor: pointer; padding: 5px; transition: 0.2s; }
         .btn-remove-color:hover { color: #b91c1c; transform: scale(1.1); }
         .qty-readonly { background-color: #f1f5f9 !important; font-weight: 700; color: #475569; }
+        
+        .unit-price-col, .unit-price-cell, .line-total-col, .line-total-cell {
+            display: none !important;
+        }
     </style>
 
     <div class="osm-wrap">
@@ -175,9 +179,9 @@
                                 <th class="pack-qty-col" style="display:none;">Pack Qty</th>
                                 <th class="item-per-piece-col" style="display:none;">Item/Pc</th>
                                 <th class="loose-pcs-col" style="display:none;">Loose</th>
-                                <th style="min-width:120px;" class="text-end">Unit Price</th>
+                                <th style="min-width:120px;" class="unit-price-col text-end">Unit Price</th>
                                 <th style="min-width:100px;" class="text-center">Received Qty</th>
-                                <th style="min-width:150px;" class="text-end">Line Total</th>
+                                <th style="min-width:150px;" class="line-total-col text-end">Line Total</th>
                                 <th style="width:50px"></th>
                             </tr>
                         </thead>
@@ -185,7 +189,7 @@
                             <!-- JS will render rows -->
                         </tbody>
                     </table>
-                    <tfoot style="background: #f8fafc;">
+                    <tfoot style="background: #f8fafc; display:none;">
                         <tr>
                             <td colspan="10" class="text-end fw-900 py-3" style="font-size: 14px; color: #475569;">Inward Total Valuation:</td>
                             <td class="text-end py-3">
@@ -290,13 +294,13 @@ $(document).ready(function(){
                 <td class="pack-qty-cell" style="display:none;"><input type="number" name="items[${idx}][packing_qty]" class="fi packing-qty"></td>
                 <td class="item-per-piece-cell" style="display:none;"><input type="number" name="items[${idx}][item_per_piece]" class="fi item-per-piece"></td>
                 <td class="loose-pcs-cell" style="display:none;"><input type="number" name="items[${idx}][loose_piece]" class="fi loose-piece"></td>
-                <td>
-                    <input type="number" step="0.01" name="items[${idx}][unit_price]" class="fi text-end unit_price" value="${preData ? (preData.unit_price || 0) : 0}" min="0">
+                <td class="unit-price-cell">
+                    <input type="number" step="0.01" name="items[${idx}][unit_price]" class="fi text-end unit_price" value="${preData ? (preData[0].unit_price || 0) : 0}" min="0">
                 </td>
                 <td>
-                    <input type="number" name="items[${idx}][received_qty]" class="fi text-center received-qty" min="0" step="0.01" value="${preData ? (preData.qty || 0) : 0}" required>
+                    <input type="number" name="items[${idx}][received_qty]" class="fi text-center received-qty" min="0" step="0.01" value="${preData ? (preData[0].qty || 0) : 0}" required>
                 </td>
-                <td>
+                <td class="line-total-cell">
                     <input type="text" name="items[${idx}][line_total]" class="fi text-end line_total fw-bold" readonly value="0.00" style="background: #f8fafc;">
                 </td>
                 <td class="text-center"><button type="button" class="btn-del-row remove-row">✕</button></td>
@@ -335,6 +339,7 @@ $(document).ready(function(){
             $tr.find('.packing-qty').val(first.packing_qty);
             $tr.find('.item-per-piece').val(first.item_per_piece);
             $tr.find('.loose-piece').val(first.loose_piece);
+            $tr.find('.unit_price').val(first.unit_price || 0);
             
             // Handle breakdown
             let hasColors = false;

@@ -594,6 +594,8 @@ class PurchaseController extends Controller
                     'vendor_id'        => $vendorId,
                     'branch_id'        => $branchId,
                     'admin_or_user_id' => auth()->id(),
+                    'transaction_type' => 'purchase',
+                    'reference_id'     => $purchase->id,
                     'transaction_date' => $purchase->purchase_date ?? now(),
                     'description'      => "Purchase Invoice #{$purchase->invoice_no}" . ($isLocal ? " (Local: {$request->vendor_name})" : ""),
                     'opening_balance'  => $vendorCurrentBalance,
@@ -642,6 +644,8 @@ class PurchaseController extends Controller
                                 'vendor_id'        => $vendorId,
                                 'branch_id'        => $branchId,
                                 'admin_or_user_id' => auth()->id(),
+                                'transaction_type' => 'payment',
+                                'reference_id'     => $purchase->id,
                                 'transaction_date' => now(),
                                 'description'      => "Payment for Purchase #{$purchase->invoice_no} (via {$sourceAccount->title})",
                                 'opening_balance'  => $latestVendorBalance,
@@ -1071,7 +1075,36 @@ class PurchaseController extends Controller
             ->get()
             ->keyBy('product_id');  // Index by product_id for easy lookup
 
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'Branch', 'vendorRemaining', 'isSuperAdmin'));
+        // ✅ NEW: Fetch bank accounts and pre-fill payment information
+        $branchId = $purchase->branch_id;
+        $bankAccountsQuery = \App\Models\Account::with('head')
+            ->where('status', 'active')
+            ->where('branch_id', $branchId)
+            ->whereHas('head', function ($q) {
+                $q->whereIn('title', ['Bank', 'Cash', 'Asset']);
+            });
+        $bankAccounts = $bankAccountsQuery->get();
+        if ($bankAccounts->isEmpty()) {
+            $bankAccounts = \App\Models\Account::with('head')
+                ->where('status', 'active')
+                ->where('branch_id', $branchId)
+                ->get();
+        }
+
+        $voucher = \App\Models\PaymentVoucher::where('reference_no', 'LIKE', '%' . $purchase->invoice_no . '%')->first();
+        $prefilledPayments = [];
+        if ($voucher) {
+            $rowAccountIds = json_decode($voucher->row_account_id, true) ?? [];
+            $amounts = json_decode($voucher->amount, true) ?? [];
+            foreach ($rowAccountIds as $index => $accId) {
+                $prefilledPayments[] = [
+                    'account_id' => $accId,
+                    'amount' => $amounts[$index] ?? 0,
+                ];
+            }
+        }
+
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'Branch', 'vendorRemaining', 'isSuperAdmin', 'bankAccounts', 'prefilledPayments'));
     }
 
 
@@ -1103,6 +1136,13 @@ class PurchaseController extends Controller
             // ✅ ERP STANDARD: Per-line warehouse assignment (REQUIRED)
             'line_warehouse_id'   => 'required|array',
             'line_warehouse_id.*' => 'nullable',
+
+            // ✅ NEW: Payment fields (Arrays for multiple accounts)
+            'payment_type'        => 'nullable|in:pay_now,pay_later',
+            'payment_account_id'  => 'nullable|required_if:payment_type,pay_now|array',
+            'payment_account_id.*'=> 'nullable|exists:accounts,id',
+            'payment_amount'      => 'nullable|array',
+            'payment_amount.*'    => 'nullable|numeric|min:0',
         ]);
 
         DB::transaction(function () use ($validated, $request, $id) {
@@ -1122,8 +1162,27 @@ class PurchaseController extends Controller
                     ->keyBy('product_id');
             }
 
-            // Map old totals per product
-            $oldMap = $purchase->items->groupBy('product_id')->map(fn($g) => (float)$g->sum('qty'));
+            // --- 1. ROLLBACK OLD STOCKS (if not linked to gatepass) ---
+            if (!$isLinkedToGatepass) {
+                $oldBranchId = $purchase->branch_id;
+                foreach ($purchase->items as $oldItem) {
+                    $oldItemWarehouse = $oldItem->warehouse_id ?: $purchase->warehouse_id;
+                    if ($oldItemWarehouse) {
+                        $this->upsertStocks((int)$oldItem->product_id, -$oldItem->qty, $oldBranchId, $oldItemWarehouse);
+                        
+                        DB::table('stock_movements')->insert([
+                            'product_id' => (int)$oldItem->product_id,
+                            'type'       => 'out',
+                            'qty'        => $oldItem->qty,
+                            'ref_type'   => 'PURCHASE_EDIT_REMOVE',
+                            'ref_id'     => $purchase->id,
+                            'note'       => 'Rollback old stock during purchase edit',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
 
             // Rebuild items
             $purchase->items()->delete();
@@ -1169,13 +1228,29 @@ class PurchaseController extends Controller
                 PurchaseItem::create([
                     'purchase_id'   => $purchase->id,
                     'product_id'    => $pid,
-                    'warehouse_id'  => $itemWarehouse,  // ✅ NEW: Store per-line warehouse
+                    'warehouse_id'  => $itemWarehouse ?: null,  // Store per-line warehouse
                     'unit'          => $unit,
                     'price'         => $price,
                     'item_discount' => $disc,
                     'qty'           => $qty,
                     'line_total'    => $lineTotal,
                 ]);
+
+                // --- 2. APPLY NEW STOCKS (if not linked to gatepass) ---
+                if (!$isLinkedToGatepass && $itemWarehouse) {
+                    $this->upsertStocks((int)$pid, +$qty, $branchId, $itemWarehouse);
+                    
+                    DB::table('stock_movements')->insert([
+                        'product_id' => (int)$pid,
+                        'type'       => 'in',
+                        'qty'        => $qty,
+                        'ref_type'   => 'PURCHASE_EDIT_ADD',
+                        'ref_id'     => $purchase->id,
+                        'note'       => 'Reapply new stock during purchase edit',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
 
                 $subtotal += $lineTotal;
                 $newMap[$pid] = ($newMap[$pid] ?? 0) + $qty;
@@ -1197,13 +1272,133 @@ class PurchaseController extends Controller
             $extraCost = (float)($request->extra_cost ?? 0);
             $netAmount = ($subtotal - $discount) + $extraCost;
 
+            // ✅ Payment handling (Multiple Accounts)
+            $paymentType = $validated['payment_type'] ?? 'pay_later';
+            
+            // Extract arrays and filter out empty values
+            $paymentAccountIds = [];
+            $paymentAmounts = [];
+            $paidAmount = 0;
+
+            if ($paymentType === 'pay_now' && !empty($validated['payment_account_id']) && !empty($validated['payment_amount'])) {
+                foreach ($validated['payment_account_id'] as $index => $accId) {
+                    $amt = (float)($validated['payment_amount'][$index] ?? 0);
+                    if ($accId && $amt > 0) {
+                        $paymentAccountIds[] = $accId;
+                        $paymentAmounts[] = $amt;
+                        $paidAmount += $amt;
+                    }
+                }
+            }
+
+            // ⚠️ Validation
+            if ($paymentType === 'pay_now' && $paidAmount <= 0) {
+                return back()->with('error', 'When paying now, please enter valid payment amounts.');
+            }
+            if ($paidAmount > $netAmount) {
+                return back()->with('error', "Total payment amount ({$paidAmount}) cannot exceed purchase amount ({$netAmount}).");
+            }
+
+            // --- 2. ROLLBACK OLD PAYMENTS (Refund Bank/Cash accounts & delete old ledger/voucher entries) ---
+            $oldVoucher = \App\Models\PaymentVoucher::where('reference_no', 'LIKE', '%' . $purchase->invoice_no . '%')->first();
+            if ($oldVoucher) {
+                $oldAccountIds = json_decode($oldVoucher->row_account_id, true) ?? [];
+                $oldAmounts = json_decode($oldVoucher->amount, true) ?? [];
+                foreach ($oldAccountIds as $index => $oldAccId) {
+                    $oldAmt = (float)($oldAmounts[$index] ?? 0);
+                    $oldAccount = \App\Models\Account::find($oldAccId);
+                    if ($oldAccount && $oldAmt > 0) {
+                        $oldAccount->opening_balance += $oldAmt; // Refund
+                        $oldAccount->save();
+                    }
+                }
+                // Delete old account ledger entries
+                \App\Models\AccountLedgerEntry::where('voucher_no', $oldVoucher->pvid)->delete();
+                
+                // Delete old vendor ledger entries for payment
+                \App\Models\VendorLedger::where('reference_id', $purchase->id)
+                    ->where('transaction_type', 'payment')
+                    ->delete();
+
+                // Delete the old voucher record
+                $oldVoucher->delete();
+            }
+
+            $dueAmount = $netAmount - $paidAmount;
+
             $purchase->update([
                 'subtotal'    => $subtotal,
                 'discount'    => $discount,
                 'extra_cost'  => $extraCost,
                 'net_amount'  => $netAmount,
-                'due_amount'  => $netAmount,
+                'paid_amount' => $paidAmount,
+                'due_amount'  => $dueAmount,
             ]);
+
+            // --- 3. POST NEW PAYMENTS (if Pay Now is active) ---
+            if ($paymentType === 'pay_now' && !empty($paymentAccountIds) && $paidAmount > 0) {
+                $rowAccountHeads = [];
+                $pvid = \App\Models\PaymentVoucher::generateInvoiceNo();
+
+                foreach ($paymentAccountIds as $index => $accId) {
+                    $amt = $paymentAmounts[$index];
+                    $sourceAccount = \App\Models\Account::find($accId);
+                    if ($sourceAccount) {
+                        // Deduct from account
+                        $sourceAccount->opening_balance -= $amt;
+                        $sourceAccount->save();
+                        
+                        $rowAccountHeads[] = $sourceAccount->head_id ?? 1;
+
+                        // Post to account ledger
+                        $this->postLedgerEntry(
+                            $accId, 
+                            'payment', 
+                            $pvid, 
+                            null, 
+                            $purchase->purchase_date ?? now()->toDateString(), 
+                            'Payment for Purchase Invoice: ' . $purchase->invoice_no, 
+                            0, 
+                            $amt
+                         );
+
+                        // Post to vendor ledger for payment (temporary running balance, recalculated below)
+                        if ($purchase->vendor_id) {
+                            \App\Models\VendorLedger::create([
+                                'vendor_id'        => $purchase->vendor_id,
+                                'branch_id'        => $branchId,
+                                'admin_or_user_id' => auth()->id(),
+                                'transaction_type' => 'payment',
+                                'reference_id'     => $purchase->id,
+                                'transaction_date' => $purchase->purchase_date ?? now(),
+                                'description'      => "Payment for Purchase #{$purchase->invoice_no} (via {$sourceAccount->title})",
+                                'opening_balance'  => 0,
+                                'previous_balance' => 0,
+                                'debit_amount'     => $amt,
+                                'closing_balance'  => 0,
+                            ]);
+                        }
+                    }
+                }
+
+                // Create new payment voucher
+                $discountsArray = array_fill(0, count($paymentAccountIds), 0);
+                \App\Models\PaymentVoucher::create([
+                    'pvid'                => $pvid,
+                    'receipt_date'        => $purchase->purchase_date ?? now()->format('Y-m-d'),
+                    'entry_date'          => now()->format('Y-m-d'),
+                    'type'                => 'vendor',
+                    'party_id'            => $purchase->vendor_id,
+                    'remarks'             => 'Payment for Purchase Invoice: ' . $purchase->invoice_no,
+                    'narration_id'        => json_encode(['1']),
+                    'reference_no'        => json_encode([$purchase->invoice_no]),
+                    'row_account_head'    => json_encode($rowAccountHeads),
+                    'row_account_id'      => json_encode($paymentAccountIds),
+                    'discount_value'      => json_encode($discountsArray),
+                    'amount'              => json_encode($paymentAmounts),
+                    'total_amount'        => $paidAmount,
+                ]);
+            }
 
             // ✅ CRITICAL: Update vendor_remaining if qty changed
             // When purchase qty changes, remaining_qty must be recalculated
@@ -1234,54 +1429,60 @@ class PurchaseController extends Controller
                 }
             }
 
-            // If this purchase is linked to a gatepass => NO stock changes here
-            $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
+            // --- 3. SYNC VENDOR LEDGER & RECALCULATE RUNNING BALANCES ---
+            $newVendorId = $validated['vendor_id'] ?? null;
+            
+            // Find if there is an existing VendorLedger entry for this purchase
+            $ledgerEntry = \App\Models\VendorLedger::where('reference_id', $purchase->id)
+                ->where('transaction_type', 'purchase')
+                ->first();
 
-            if (!$isLinkedToGatepass) {
-                // deltas for movements + stocks
-                $movs = [];
-                $now = now();
-                $all = $oldMap->keys()->merge($newMap->keys())->unique();
-                foreach ($all as $pid) {
-                    $oldQ = (float)($oldMap[$pid] ?? 0);
-                    $newQ = (float)($newMap[$pid] ?? 0);
-                    $delta = $newQ - $oldQ;
-                    if ($delta == 0) continue;
-
-                    $type = $delta > 0 ? 'in' : 'out';
-                    $qty  = abs($delta);
-
-                    $movs[] = [
-                        'product_id' => (int)$pid,
-                        'type'       => $type,
-                        'qty'        => $qty,
-                        'ref_type'   => 'PURCHASE_EDIT',
-                        'ref_id'     => $purchase->id,
-                        'note'       => 'Purchase edit delta',
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
-
-                    $this->upsertStocks((int)$pid, ($type === 'in' ? +$qty : -$qty), $branchId, $warehouseId);
-                }
-                if (!empty($movs)) {
-                    DB::table('stock_movements')->insert($movs);
-                }
+            if (!$ledgerEntry) {
+                // Fallback to searching by vendor and description containing the invoice number
+                $ledgerEntry = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)
+                    ->where('description', 'LIKE', "%#{$purchase->invoice_no}%")
+                    ->orderBy('id', 'desc')
+                    ->first();
             }
 
-            // Vendor ledger (simple overwrite pattern)
-            $prevClosing = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)
-                ->value('closing_balance') ?? 0;
-            \App\Models\VendorLedger::updateOrCreate(
-                ['vendor_id' => $purchase->vendor_id],
-                [
-                    'vendor_id'         => $purchase->vendor_id,
-                    'admin_or_user_id'  => auth()->id(),
-                    'previous_balance'  => $prevClosing,
-                    'opening_balance'   => $prevClosing,
-                    'closing_balance'   => $prevClosing + $netAmount,
-                ]
-            );
+            if ($newVendorId) {
+                if ($ledgerEntry) {
+                    $oldVendorId = $ledgerEntry->vendor_id;
+                    
+                    // Update existing entry
+                    $ledgerEntry->vendor_id = $newVendorId;
+                    $ledgerEntry->branch_id = $branchId;
+                    $ledgerEntry->credit_amount = $netAmount;
+                    $ledgerEntry->debit_amount = 0;
+                    $ledgerEntry->description = "Purchase Invoice #{$purchase->invoice_no}";
+                    $ledgerEntry->transaction_date = $purchase->purchase_date ?? now();
+                    $ledgerEntry->save();
+
+                    // Recalculate for the old vendor if the vendor changed
+                    if ($oldVendorId != $newVendorId) {
+                        $this->recalculateLedgerBalances($oldVendorId);
+                    }
+                    
+                    // Recalculate for the current/new vendor
+                    $this->recalculateLedgerBalances($newVendorId);
+                } else {
+                    // Create a new ledger entry if it didn't exist
+                    \App\Services\VendorLedgerService::recordPurchase(
+                        vendorId: $newVendorId,
+                        amount: $netAmount,
+                        purchaseId: $purchase->id,
+                        description: "Purchase Invoice #{$purchase->invoice_no}"
+                    );
+                    $this->recalculateLedgerBalances($newVendorId);
+                }
+            } else {
+                // No new vendor (e.g. Local Market purchase). Delete ledger entry if exists.
+                if ($ledgerEntry) {
+                    $oldVendorId = $ledgerEntry->vendor_id;
+                    $ledgerEntry->delete();
+                    $this->recalculateLedgerBalances($oldVendorId);
+                }
+            }
         });
 
         return redirect()->route('Purchase.home')->with('success', 'Purchase updated successfully!');
@@ -1307,6 +1508,7 @@ class PurchaseController extends Controller
                 foreach ($purchase->items as $it) {
                     $pid = (int)$it->product_id;
                     $qty = (float)$it->qty;
+                    $itemWarehouse = $it->warehouse_id ?: $warehouseId;
 
                     $movs[] = [
                         'product_id' => $pid,
@@ -1320,12 +1522,27 @@ class PurchaseController extends Controller
                     ];
 
                     // stocks rollback
-                    $this->upsertStocks($pid, -$qty, $branchId, $warehouseId);
+                    if ($itemWarehouse) {
+                        $this->upsertStocks($pid, -$qty, $branchId, $itemWarehouse);
+                    }
                 }
 
                 if (!empty($movs)) {
                     DB::table('stock_movements')->insert($movs);
                 }
+            }
+
+            // Sync Vendor Ledger: delete entries and recalculate
+            $ledgerEntries = \App\Models\VendorLedger::where('reference_id', $purchase->id)->get();
+            $affectedVendorIds = [];
+            foreach ($ledgerEntries as $le) {
+                $affectedVendorIds[] = $le->vendor_id;
+                $le->delete();
+            }
+            
+            // Recalculate balances for all affected vendors
+            foreach (array_unique($affectedVendorIds) as $vId) {
+                $this->recalculateLedgerBalances($vId);
             }
 
             $purchase->items()->delete();
@@ -1375,7 +1592,16 @@ class PurchaseController extends Controller
             })->get();
         }
 
-        return view('admin_panel.purchase.purchase_return.create', compact('purchase', 'Vendor', 'Warehouse'));
+        // Fetch already returned quantities for this purchase's products
+        $alreadyReturned = \App\Models\PurchaseReturnItem::whereHas('purchaseReturn', function($q) use ($id) {
+            $q->where('purchase_id', $id);
+        })
+        ->select('product_id', \DB::raw('SUM(qty) as total_returned'))
+        ->groupBy('product_id')
+        ->pluck('total_returned', 'product_id')
+        ->toArray();
+
+        return view('admin_panel.purchase.purchase_return.create', compact('purchase', 'Vendor', 'Warehouse', 'alreadyReturned'));
     }
 
     // store return
@@ -1383,6 +1609,7 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'vendor_id'        => 'required|exists:vendors,id',
+            'purchase_id'      => 'required|exists:purchases,id',
             'warehouse_id'     => 'required|exists:warehouses,id',
             'return_date'      => 'required|date',
             'return_reason'    => 'nullable|string|max:255',
@@ -1390,43 +1617,93 @@ class PurchaseController extends Controller
             'product_id'       => 'required|array',
             'product_id.*'     => 'required|exists:products,id',
             'qty'              => 'required|array',
-            'qty.*'            => 'required|numeric|min:1',
+            'qty.*'            => 'required|numeric|min:0',
             'price'            => 'required|array',
             'price.*'          => 'required|numeric|min:0',
             'unit'             => 'required|array',
             'unit.*'           => 'required|string',
             'item_disc'        => 'nullable|array',
             'item_disc.*'      => 'nullable|numeric|min:0',
+            'discount'         => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated) {
+        $purchase = Purchase::with('items')->findOrFail($validated['purchase_id']);
+
+        // Check if there are any products to return
+        $hasReturn = false;
+        foreach ($validated['qty'] as $qty) {
+            if ((float)$qty > 0) {
+                $hasReturn = true;
+                break;
+            }
+        }
+        if (!$hasReturn) {
+            return redirect()->back()->withErrors(['error' => 'Please enter a quantity greater than 0 for at least one item.'])->withInput();
+        }
+
+        // Calculate already returned quantities
+        $alreadyReturned = \App\Models\PurchaseReturnItem::whereHas('purchaseReturn', function($q) use ($purchase) {
+            $q->where('purchase_id', $purchase->id);
+        })
+        ->select('product_id', \DB::raw('SUM(qty) as total_returned'))
+        ->groupBy('product_id')
+        ->pluck('total_returned', 'product_id')
+        ->toArray();
+
+        // Calculate purchased quantities
+        $purchasedQty = $purchase->items->groupBy('product_id')->map(function($group) {
+            return $group->sum('qty');
+        })->toArray();
+
+        // Validate quantities against limits
+        foreach ($validated['product_id'] as $index => $productId) {
+            $qty = (float)$validated['qty'][$index];
+            if ($qty <= 0) continue;
+
+            $origQty = (float)($purchasedQty[$productId] ?? 0);
+            $returnedQty = (float)($alreadyReturned[$productId] ?? 0);
+            $remainingQty = $origQty - $returnedQty;
+
+            if ($qty > $remainingQty) {
+                return redirect()->back()->withErrors(['error' => "Cannot return more than the remaining quantity for product ID: {$productId}. Remaining: {$remainingQty}, Attempted: {$qty}"])->withInput();
+            }
+        }
+
+        \DB::transaction(function () use ($validated, $purchase, $alreadyReturned, $purchasedQty) {
             // Generate Return Invoice #
             $lastReturn = \App\Models\PurchaseReturn::latest()->first();
-            $nextInvoice = 'RTN-' . str_pad(optional($lastReturn)->id + 1 ?? 1, 5, '0', STR_PAD_LEFT);
+            $nextInvoice = 'RTN-' . str_pad(($lastReturn ? $lastReturn->id : 0) + 1, 5, '0', STR_PAD_LEFT);
 
             // Create main return record
             $return = \App\Models\PurchaseReturn::create([
                 'vendor_id'     => $validated['vendor_id'],
+                'purchase_id'   => $purchase->id,
                 'warehouse_id'  => $validated['warehouse_id'],
                 'return_invoice' => $nextInvoice,
                 'return_date'   => $validated['return_date'],
                 'return_reason' => $validated['return_reason'] ?? null,
                 'bill_amount'   => 0, // calculated below
                 'item_discount' => 0,
-                'extra_discount' => 0,
+                'extra_discount' => $validated['discount'] ?? 0,
                 'net_amount'    => 0,
                 'paid'          => 0,
                 'balance'       => 0,
                 'remarks'       => $validated['remarks'] ?? null,
             ]);
 
-            $subtotal = 0;
+            $subtotal = 0; // Gross subtotal before item discount
+            $totalItemDiscount = 0;
+            $branchId = (int)($purchase->branch_id ?? 1);
+            $warehouseId = (int)$validated['warehouse_id'];
 
             foreach ($validated['product_id'] as $index => $productId) {
-                $qty   = $validated['qty'][$index];
-                $price = $validated['price'][$index];
-                $disc  = $validated['item_disc'][$index] ?? 0;
+                $qty   = (float)$validated['qty'][$index];
+                if ($qty <= 0) continue;
+
+                $price = (float)$validated['price'][$index];
+                $disc  = (float)($validated['item_disc'][$index] ?? 0);
                 $unit  = $validated['unit'][$index];
+                
                 $lineTotal = ($price * $qty) - $disc;
 
                 \App\Models\PurchaseReturnItem::create([
@@ -1440,45 +1717,45 @@ class PurchaseController extends Controller
                 ]);
 
                 // Update stock (deduct)
-                $stock = \App\Models\Stock::where('branch_id', auth()->id())
-                    ->where('warehouse_id', $validated['warehouse_id'])
-                    ->where('product_id', $productId)
-                    ->first();
+                $this->upsertStocks((int)$productId, -$qty, $branchId, $warehouseId);
 
-                if ($stock) {
-                    $stock->qty -= $qty;
-                    $stock->save();
-                }
+                // Add Stock Movement
+                \DB::table('stock_movements')->insert([
+                    'product_id' => (int)$productId,
+                    'branch_id'  => $branchId,
+                    'type'       => 'out',
+                    'qty'        => $qty,
+                    'ref_type'   => 'PURCHASE_RETURN',
+                    'ref_id'     => $return->id,
+                    'note'       => "Purchase Return Invoice #{$nextInvoice} against Purchase Invoice #{$purchase->invoice_no}",
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
-                $subtotal += $lineTotal;
+                $subtotal += ($price * $qty);
+                $totalItemDiscount += $disc;
             }
 
-            $discount    = $validated['item_disc'] ? array_sum($validated['item_disc']) : 0;
-            $extraDisc   = $request->extra_discount ?? 0;
-            $netAmount   = ($subtotal - $discount) - $extraDisc;
+            $extraDisc = (float)($validated['discount'] ?? 0);
+            $netAmount = ($subtotal - $totalItemDiscount) - $extraDisc;
 
             $return->update([
                 'bill_amount'   => $subtotal,
-                'item_discount' => $discount,
-                'extra_discount' => $extraDisc,
+                'item_discount' => $totalItemDiscount,
                 'net_amount'    => $netAmount,
                 'balance'       => $netAmount,
             ]);
 
-            // Update Vendor Ledger (subtract amount)
-            $ledger = \App\Models\VendorLedger::where('vendor_id', $validated['vendor_id'])->first();
-            $openingBalance = $ledger ? $ledger->closing_balance : 0;
-            $closingBalance = $openingBalance - $netAmount;
-
-            \App\Models\VendorLedger::updateOrCreate(
-                ['vendor_id' => $validated['vendor_id']],
-                [
-                    'admin_or_user_id' => auth()->id(),
-                    'opening_balance'  => $openingBalance,
-                    'closing_balance'  => $closingBalance,
-                    'previous_balance' => $openingBalance,
-                ]
+            // Update Vendor Ledger (via ERP standard Credit Note)
+            \App\Services\VendorLedgerService::recordCreditNote(
+                vendorId: $validated['vendor_id'],
+                amount: $netAmount,
+                referenceId: $return->id,
+                description: "Purchase Return Invoice #{$nextInvoice} against Purchase Invoice #{$purchase->invoice_no}"
             );
+
+            // Recalculate Vendor Ledger balances
+            $this->recalculateLedgerBalances($validated['vendor_id']);
         });
 
         return redirect()->route('purchase.return.index')->with('success', 'Purchase return successfully created.');
@@ -1769,5 +2046,31 @@ class PurchaseController extends Controller
             'running_balance'   => $newBalance,
             'created_by'        => auth()->id(),
         ]);
+    }
+
+    /**
+     * Recalculate running balances for all ledger transactions of a given vendor
+     * 
+     * @param int $vendorId
+     * @return void
+     */
+    private function recalculateLedgerBalances(int $vendorId): void
+    {
+        $entries = VendorLedger::where('vendor_id', $vendorId)
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $runningBalance = 0;
+        foreach ($entries as $entry) {
+            $entry->opening_balance = $runningBalance;
+            $entry->previous_balance = $runningBalance;
+            
+            $runningBalance += (float)($entry->credit_amount ?? 0) - (float)($entry->debit_amount ?? 0);
+            
+            $entry->closing_balance = $runningBalance;
+            $entry->running_balance = $runningBalance;
+            $entry->save();
+        }
     }
 }

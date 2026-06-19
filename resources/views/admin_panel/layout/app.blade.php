@@ -528,6 +528,16 @@
                             </a>
                         </li>
 
+                        {{-- ✅ Complaints --}}
+                        @can('complaint.view')
+                        <li class="nav-item">
+                            <a href="{{ route('complaints.index') }}" class="nav-link">
+                                <i class="menu_icon fas fa-exclamation-circle" style="color:#e67e22;"></i>
+                                <span class="menu-title">Complaints</span>
+                            </a>
+                        </li>
+                        @endcan
+
                         {{-- ✅ Find Document --}}
                         <li class="nav-item">
                             <a href="{{ route('find.index') }}" class="nav-link">

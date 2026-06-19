@@ -16,5 +16,15 @@ class PurchaseReturnItem extends Model
         'unit',
         'line_total',
     ];
+
+    public function product()
+    {
+        return $this->belongsTo(\App\Models\Product::class);
+    }
+
+    public function purchaseReturn()
+    {
+        return $this->belongsTo(\App\Models\PurchaseReturn::class);
+    }
 }
 

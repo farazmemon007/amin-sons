@@ -1,797 +1,369 @@
-{{-- Item Row Autocomplete + Add/Remove --}}
-<!-- Make sure jQuery and Bootstrap Typeahead are included -->
 @extends('admin_panel.layout.app')
-<style>
-    .searchResults {
-        position: absolute;
-        z-index: 9999;
-        width: 100%;
-        max-height: 200px;
-        overflow-y: auto;
-        background: #fff;
-        /* border: 1px solid #ddd; */
-    }
 
-    .search-result-item.active {
-        background: #007bff;
-        color: white;
-    }
-</style>
 @section('content')
 @can('purchase.return.create')
-    <div class="main-content">
-        <div class="main-content-inner">
-            <div class="container">
-                <div class="row">
-                    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
-                        rel="stylesheet">
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        --accent-color: #f59e0b;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
 
-                    <style>
-                        .table-scroll tbody {
-                            display: block;
-                            max-height: calc(60px * 5);
-                            /* Assuming each row is ~40px tall */
-                            overflow-y: auto;
-                        }
+    .main-content { background-color: #f8fafc; min-height: 100vh; padding: 1.5rem 0.75rem; }
+    .premium-card { border: none; border-radius: 1.5rem; box-shadow: var(--card-shadow); background: white; overflow: hidden; margin-bottom: 2rem; width: 100%; }
+    .card-header-gradient { background: var(--primary-gradient); padding: 1.5rem 2rem; border: none; }
+    .card-title-premium { color: white; font-weight: 800; font-size: 1.5rem; margin: 0; display: flex; align-items: center; gap: 0.75rem; }
+    
+    .section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.5rem; display: block; }
+    .fi { width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; transition: all 0.2s; background-color: #f8fafc; }
+    .fi:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); background-color: white; }
+    .fi[readonly] { background-color: #f1f5f9; color: #475569; cursor: not-allowed; }
 
-                        .table-scroll thead,
-                        .table-scroll tbody tr {
-                            display: table;
-                            width: 100%;
-                            table-layout: fixed;
-                        }
+    .table-premium { border-collapse: separate; border-spacing: 0 0.5rem; width: 100% !important; }
+    .table-premium thead th { background: #f1f5f9; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; padding: 0.75rem 0.5rem; border: none; }
+    .table-premium tbody tr { transition: transform 0.2s, box-shadow 0.2s; }
+    .table-premium tbody td { padding: 0.75rem 0.5rem; vertical-align: middle; background: white; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; }
+    .table-premium tbody td:first-child { border-left: 1px solid #f1f5f9; border-top-left-radius: 0.75rem; border-bottom-left-radius: 0.75rem; }
+    .table-premium tbody td:last-child { border-right: 1px solid #f1f5f9; border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; }
 
-                        /* Optional: Hide scrollbar width impact */
-                        .table-scroll thead {
-                            width: calc(100% - 1em);
-                        }
+    .summary-card { background: #f8fafc; border-radius: 1rem; padding: 1.5rem; border: 1.5px dashed #cbd5e1; }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .summary-label { font-weight: 600; color: #64748b; }
+    .summary-value { font-weight: 800; color: #1e293b; font-size: 1.1rem; }
+    .summary-total { margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #e2e8f0; }
+    .summary-total .summary-value { font-size: 1.5rem; color: #4f46e5; }
 
-                        .table-scroll .icon-col {
-                            width: 51px;
-                            /* Ya jitni chhoti chahiye */
-                            min-width: 51px;
-                            max-width: 40px;
-                        }
+    .btn-premium { padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: 700; transition: all 0.2s; border: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-submit { background: var(--primary-gradient); color: white; box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39); width: 100%; margin-top: 1.5rem; }
+    .btn-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.23); }
+    .btn-submit:disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; box-shadow: none; }
+    .fi-table { padding: 0.5rem 0.6rem !important; font-size: 0.85rem !important; }
+    
+    .validation-badge { font-size: 0.7rem; font-weight: 700; border-radius: 0.25rem; padding: 0.2rem 0.5rem; margin-top: 0.25rem; display: none; }
+    .validation-badge.error { background: #fee2e2; color: #ef4444; }
+</style>
 
-                        .table-scroll {
-                            max-height: none !important;
-                            overflow-y: visible !important;
-                        }
+<div class="main-content">
+    <div class="container-fluid px-2">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-0">Create Purchase Return</h4>
+                <small class="text-muted">Return products back to vendors and decrease payables</small>
+            </div>
+            <a href="{{ route('Purchase.home') }}" class="btn btn-outline-secondary px-4 fw-bold">
+                <i class="fa fa-arrow-left me-2"></i> Back to Purchases
+            </a>
+        </div>
 
+        <form action="{{ route('purchase.return.store') }}" method="POST" id="returnForm">
+            @csrf
+            <input type="hidden" name="purchase_id" value="{{ $purchase->id }}">
+            <input type="hidden" name="vendor_id" value="{{ $purchase->vendor_id }}">
+            <input type="hidden" name="warehouse_id" value="{{ $purchase->warehouse_id }}">
 
-                        .disabled-row input {
-                            background-color: #f8f9fa;
-                            pointer-events: none;
-                        }
-                    </style>
+            @if ($errors->any())
+                <div class="alert alert-danger border-0 shadow-sm mb-4">
+                    <ul class="mb-0">
+                        @foreach ($errors->all() as $error)
+                            <li><strong><i class="fa fa-exclamation-circle me-2"></i></strong>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-                    <body>
-                        <!-- page-wrapper start -->
-
-                        <div class="body-wrapper">
-                            <div class="bodywrapper__inner">
-                                <div
-                                    class="d-flex justify-content-between align-items-center mb-3 flex-nowrap overflow-auto">
-                                    <!-- Title on the left -->
-                                    <div class="flex-grow-1">
-                                        <h6 class="page-title m-0">INWARDS GATE PASSES</h6>
-                                    </div>
-
-                                    <!-- Buttons on the right -->
-                                    <div class="d-flex gap-4 justify-content-end flex-wrap">
-                                        <button type="button" class="btn btn-outline-primary " style="margin-right: 5px"
-                                            data-bs-toggle="modal" data-bs-target="#supplierModal">
-                                            <i class="la la-truck-loading"></i> Add New Vendor
-                                        </button>
-
-                                        <button type="button" class="btn btn-outline-success " style="margin-right: 5px"
-                                            data-bs-toggle="modal" data-bs-target="#transportModal">
-                                            <i class="la la-truck"></i> Add New Transport
-                                        </button>
-
-                                        <button type="button" class="btn btn-outline-warning text-dark "
-                                            style="margin-right: 5px" data-bs-toggle="modal"
-                                            data-bs-target="#warehouseModal">
-                                            <i class="la la-warehouse"></i> Add New Warehouse
-                                        </button>
-
-                                        <a href="#" class="btn btn-outline-info " style="margin-right: 5px">
-                                            <i class="la la-plus"></i> Add Product
-                                        </a>
-
-                                        {{-- <button type="button" class="btn btn-outline-danger " id="cancelBtn">
-            Cancel
-        </button> --}}
-                                        <a href="{{ route('Purchase.home') }}" class="btn btn-danger">Back </a>
-                                    </div>
-
-
-
-                                </div>
-
-
-
-                                <div class="row gy-3">
-                                    <div class="col-lg-12 col-md-12 mb-30">
-                                        <div class="card">
-                                            <div class="card-body">
-                                                {{-- <form action="{{ route('store-Purchase') }}" method="POST"> --}}
-                                                @if ($errors->any())
-                                                    <div class="alert alert-danger">
-                                                        <ul>
-                                                            @foreach ($errors->all() as $error)
-                                                                <li>{{ $error }}</li>
-                                                            @endforeach
-                                                        </ul>
-                                                    </div>
-                                                @endif
-                                                @if (session('success'))
-                                                    <div class="alert alert-success alert-dismissible fade show"
-                                                        role="alert">
-                                                        <strong>Success!</strong> {{ session('success') }}
-                                                        <button type="button" class="btn-close" data-bs-dismiss="alert"
-                                                            aria-label="Close"></button>
-                                                    </div>
-                                                @endif
-
-                                                <form action="{{ route('purchase.return.store') }}" method="POST">
-                                                    @csrf
-                                                    @php
-                                                        $isReturn = isset($purchase);
-                                                    @endphp
-
-                                                    <div class="row mb-3 g-3 mt-4">
-                                                        <div class="col-xl-12">
-                                                            <div class="row g-3">
-                                                                <!-- Purchase Date -->
-                                                                <div class="col-xl-3 col-sm-6 mt-3">
-                                                                    <label><i
-                                                                            class="bi bi-calendar-date text-primary me-1"></i>
-                                                                        Purchase Date</label>
-                                                                    <input name="purchase_date" type="date"
-                                                                        class="form-control"
-                                                                        value="{{ $purchase->created_at ?? date('Y-m-d') }}">
-                                                                </div>
-
-                                                                <!-- Return Date -->
-                                                                <div class="col-xl-3 col-sm-6 mt-3">
-                                                                    <label><i
-                                                                            class="bi bi-calendar-date text-primary me-1"></i>
-                                                                        Return Date</label>
-                                                                    <input name="return_date" type="date"
-                                                                        class="form-control" value="{{ date('Y-m-d') }}">
-                                                                </div>
-
-
-                                                                <div class="col-xl-3 col-sm-6 mt-3">
-                                                                    <label><i class="bi bi-receipt text-primary me-1"></i>
-                                                                        Companies/Vendors</label>
-                                                                    {{-- <input name="challan_no" type="text" class="form-control"> --}}
-                                                                    <select name="vendor_id" class="form-control">
-                                                                        <option disabled selected>Select One</option>
-                                                                        @foreach ($Vendor as $item)
-                                                                            <option value="{{ $item->id }}"
-                                                                                {{ $isReturn && $purchase->vendor_id == $item->id ? 'selected' : '' }}>
-                                                                                {{ $item->name }}
-                                                                            </option>
-                                                                        @endforeach
-                                                                    </select>
-
-                                                                </div>
-                                                                <div class="col-xl-3 col-sm-6 mt-3">
-                                                                    <label><i
-                                                                            class="bi bi-file-earmark-text text-primary me-1"></i>
-                                                                        Company Inv #</label>
-                                                                    <input name="purchase_order_no" type="text"
-                                                                        class="form-control"
-                                                                        value="{{ $isReturn ? $purchase->invoice_no : '' }}">
-
-                                                                </div>
-                                                                <div class="col-xl-3 col-sm-6 mt-3">
-                                                                    <label>
-                                                                        <i class="bi bi-building text-primary me-1"></i>
-                                                                        Warehouse
-                                                                    </label>
-                                                                    <select name="warehouse_id" class="form-control">
-                                                                        <option disabled selected>Select One</option>
-                                                                        @foreach ($Warehouse as $item)
-                                                                            <option value="{{ $item->id }}"
-                                                                                {{ $isReturn && $purchase->warehouse_id == $item->id ? 'selected' : '' }}>
-                                                                                {{ $item->warehouse_name }}
-                                                                            </option>
-                                                                        @endforeach
-                                                                    </select>
-
-                                                                </div>
-
-
-                                                                <div class="col-xl-6 col-sm-6 mt-3">
-                                                                    <label><i class="bi bi-card-text text-primary me-1"></i>
-                                                                        Job No & Description</label>
-                                                                    <input name="note" type="text"
-                                                                        class="form-control"
-                                                                        value="{{ $isReturn ? $purchase->note : '' }}">
-                                                                </div>
-
-                                                                <div class="col-xl-6 col-sm-6 mt-3">
-                                                                    <label><i class="bi bi-card-text text-primary me-1"></i>
-                                                                        Transport Name</label>
-                                                                    <input name="job_description" type="text"
-                                                                        class="form-control"
-                                                                        value="{{ $isReturn ? $purchase->job_description : '' }}">
-                                                                </div>
-
-                                                            </div>
-
-                                                            <!-- Supplier Info Row -->
-                                                            <div class="row mt-4">
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-
-
-                                                    <!-- Item Code Table -->
-
-                                                    <div style="max-height: 300px; overflow-y: scroll; ">
-                                                        <table class="table mt-3 table-bordered">
-                                                            <thead>
-                                                                <tr class="text-center">
-                                                                    <th>product</th>
-                                                                    <th>Item Code</th>
-
-                                                                    <th>Brand</th>
-                                                                    <th>Unit</th>
-                                                                    <th>Price</th>
-                                                                    <th>Discount</th>
-                                                                    <th>Qty</th>
-                                                                    <th>Total</th>
-                                                                    <th>Action</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody id="purchaseItems">
-                                                                @if ($isReturn)
-                                                                    @foreach ($purchase->items as $item)
-                                                                        <tr>
-                                                                            <td>
-                                                                                <input type="hidden" name="product_id[]"
-                                                                                    class="product_id"
-                                                                                    value="{{ $item->product_id }}">
-                                                                                <input type="text" class="form-control"
-                                                                                    value="{{ $item->product->name ?? '' }}"
-                                                                                    readonly>
-                                                                            </td>
-                                                                            <td><input type="text" name="item_code[]"
-                                                                                    class="form-control"
-                                                                                    value="{{ $item->product->item_code ?? '' }}"
-                                                                                    readonly></td>
-                                                                            <td><input type="text" name="uom[]"
-                                                                                    class="form-control"
-                                                                                    value="{{ $item->product->uom ?? '' }}"
-                                                                                    readonly></td>
-                                                                            <td><input type="text" name="unit[]"
-                                                                                    class="form-control"
-                                                                                    value="{{ $item->unit }}" readonly>
-                                                                            </td>
-                                                                            <td><input type="number" name="price[]"
-                                                                                    class="form-control price"
-                                                                                    value="{{ $item->price }}"></td>
-                                                                            <td><input type="number" name="item_disc[]"
-                                                                                    class="form-control item_disc"
-                                                                                    value="{{ $item->item_discount }}">
-                                                                            </td>
-                                                                            <td><input type="number" name="qty[]"
-                                                                                    class="form-control quantity"
-                                                                                    value="{{ $item->qty }}"></td>
-                                                                            <td><input type="text" name="total[]"
-                                                                                    class="form-control row-total"
-                                                                                    value="{{ $item->line_total }}"
-                                                                                    readonly></td>
-                                                                            <td><button type="button"
-                                                                                    class="btn btn-sm btn-danger remove-row">X</button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    @endforeach
-                                                                @else
-                                                                    <!-- Empty row for normal purchase entry -->
-                                                                @endif
-                                                            </tbody>
-
-
-
-                                                        </table>
-                                                    </div>
-
-                                                    <div class="row g-3 mt-3">
-                                                        <div class="col-md-3">
-                                                            <label>Subtotal</label>
-                                                            <input type="text" name="subtotal"
-                                                                value="{{ $isReturn ? $purchase->subtotal : 0 }}" readonly
-                                                                class="form-control">
-
-                                                        </div>
-
-                                                        <div class="col-md-3">
-                                                            <label>Discount (Overall)</label>
-                                                            <input type="number" step="0.01" id="overallDiscount"
-                                                                class="form-control" name="discount" value="0">
-                                                        </div>
-
-                                                        <div class="col-md-3">
-                                                            <label>Extra Cost</label>
-                                                            <input type="number" step="0.01" id="extraCost"
-                                                                class="form-control" name="extra_cost" value="0">
-                                                        </div>
-
-                                                        <div class="col-md-3">
-                                                            <label>Net Amount</label>
-                                                            <input type="text" id="netAmount" name="net_amount"
-                                                                class="form-control fw-bold" value="0" readonly>
-                                                        </div>
-                                                    </div>
-                                                    <!-- =========================== -->
-
-                                                    <!-- ===== END SUMMARY ===== -->
-
-
-
-                                                    {{-- 
-                                                    <button type="submit" class="btn btn-primary w-100 mt-4">Submit
-                                                        Purchase</button> --}}
-                                                    <button type="submit" class="btn btn-primary mt-4">Submit
-                                                        Return</button>
-
-
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div><!-- bodywrapper__inner end -->
-                        </div><!-- body-wrapper end -->
+            <div class="premium-card">
+                <div class="card-header-gradient d-flex justify-content-between align-items-center">
+                    <h2 class="card-title-premium">
+                        <i class="bi bi-arrow-counterclockwise"></i> Purchase Return Details
+                    </h2>
+                    <div class="text-white opacity-75 fw-bold">Ref Purchase Invoice: {{ $purchase->invoice_no }}</div>
                 </div>
 
-                <!-- Warehouse Modal -->
-                <div class="modal fade" id="warehouseModal">
-                    <div class="modal-dialog" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Add New Warehouse</h5>
-                                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                    <i class="las la-times"></i>
-                                </button>
-                            </div>
-
-                            <form action="" method="POST">
-                                @csrf
-                                <div class="modal-body">
-                                    <div class="form-group">
-                                        <label>Branch</label>
-                                        <select name="branch_id" class="form-control select2">
-                                            <option disabled selected>Select Branch</option>
-                                            <option value="0">Main Super Admin</option>
-                                            {{-- @foreach ($branches as $branch)
-                                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                                    @endforeach --}}
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Name</label>
-                                        <input type="text" name="name" class="form-control">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Address</label>
-                                        <input type="text" class="form-control" name="address">
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="submit" class="btn btn--primary w-100 h-45">Submit</button>
-                                </div>
-                            </form>
+                <div class="card-body p-3 p-lg-4">
+                    <!-- Header Purchase Info (Read-only) -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="section-label">Vendor / Supplier</label>
+                            <input type="text" class="fi" value="{{ $purchase->vendor->name ?? $purchase->vendor_name ?? 'N/A' }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="section-label">Warehouse</label>
+                            <input type="text" class="fi" value="{{ $purchase->warehouse->warehouse_name ?? 'N/A' }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="section-label">Branch</label>
+                            <input type="text" class="fi" value="{{ $purchase->branch->name ?? 'N/A' }}" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="section-label">Return Date</label>
+                            <input type="date" name="return_date" class="fi" value="{{ date('Y-m-d') }}" required>
                         </div>
                     </div>
-                </div>
 
-                <!-- Transport Modal -->
-                <div class="modal fade" id="transportModal">
-                    <div class="modal-dialog modal-lg" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Add New Transport</h5>
-                                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                    <i class="las la-times"></i>
-                                </button>
+                    <!-- Transport Details -->
+                    <div class="card bg-light border-0 rounded-4 p-3 mb-4">
+                        <h6 class="fw-bold mb-3 text-secondary"><i class="fa fa-truck me-2 text-primary"></i>Transport Information</h6>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="section-label">Transport Name</label>
+                                <input type="text" name="transport" class="fi" placeholder="Courier/Transport Name" value="{{ $purchase->job_description ?? '' }}">
                             </div>
-
-                            <form action="" method="POST">
-                                @csrf
-                                <div class="modal-body">
-                                    <div class="row">
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label>Company Name</label>
-                                                <input type="text" name="company_name" class="form-control"
-                                                    autocomplete="off">
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label>Name</label>
-                                                <input type="text" name="name" class="form-control"
-                                                    autocomplete="off">
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label>Email</label>
-                                                <input type="email" class="form-control" name="email">
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label>Mobile</label>
-                                                <input type="number" name="mobile" class="form-control">
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-12">
-                                            <div class="form-group">
-                                                <label>Address</label>
-                                                <input type="text" name="address" class="form-control">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="modal-footer">
-                                    <button type="submit" class="btn btn--primary w-100 h-45">Submit</button>
-                                </div>
-                            </form>
+                            <div class="col-md-3">
+                                <label class="section-label">Vehicle No</label>
+                                <input type="text" name="vehicle_no" class="fi" placeholder="e.g. KAR-1234">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="section-label">Driver Name</label>
+                                <input type="text" name="driver_name" class="fi" placeholder="Driver Name">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="section-label">Delivery Person</label>
+                                <input type="text" name="delivery_person" class="fi" placeholder="Delivery Person">
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Veondor Modal -->
-                <div class="modal fade" id="supplierModal">
-                    <div class="modal-dialog modal-lg" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Add New Supplier</h5>
-                                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                                    <i class="las la-times"></i>
-                                </button>
-                            </div>
-
-                            <form action="" method="POST">
-                                @csrf
-                                <div class="modal-body">
-                                    <div class="row">
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label>Name</label>
-                                                <input type="text" name="name" class="form-control"
-                                                    autocomplete="off">
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label class="form-label">E-Mail</label>
-                                                <input type="email" class="form-control" name="email">
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label class="form-label">
-                                                    Mobile
-                                                    <i class="fa fa-info-circle text--primary"
-                                                        title="Type the mobile number including the country code. Otherwise, SMS won't send to that number."></i>
-                                                </label>
-                                                <input type="number" name="mobile" class="form-control">
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-6">
-                                            <div class="form-group">
-                                                <label>Company</label>
-                                                <input type="text" name="company_name" class="form-control">
-                                            </div>
-                                        </div>
-
-                                        <div class="col-lg-12">
-                                            <div class="form-group">
-                                                <label>Address</label>
-                                                <input type="text" name="address" class="form-control">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="modal-footer">
-                                    <button type="submit" class="btn btn--primary w-100 h-45">Submit</button>
-                                </div>
-                            </form>
+                    <!-- Reason and Notes -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="section-label">Reason for Return</label>
+                            <input type="text" name="return_reason" class="fi" placeholder="e.g. Defective, Wrong item, etc.">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="section-label">Additional Remarks</label>
+                            <input type="text" name="remarks" class="fi" placeholder="Write internal remarks here...">
                         </div>
                     </div>
+
+                    <!-- Items Table -->
+                    <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-list-task me-2 text-primary"></i>Purchase Items for Return</h5>
+                    <div class="table-responsive mb-4" style="overflow: visible !important;">
+                        <table class="table table-premium">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%;">Product Details</th>
+                                    <th style="width: 10%; text-align: center;">UOM</th>
+                                    <th style="width: 10%; text-align: center;">Purchased</th>
+                                    <th style="width: 10%; text-align: center;">Returned</th>
+                                    <th style="width: 10%; text-align: center;">Remaining</th>
+                                    <th style="width: 10%; text-align: right;">Unit Price</th>
+                                    <th style="width: 10%; text-align: right;">Item Disc</th>
+                                    <th style="width: 10%; text-align: center;">Return Qty</th>
+                                    <th style="width: 15%; text-align: right;">Line Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    // Group items by Product and Unit
+                                    $groupedItems = $purchase->items->groupBy(function($item) {
+                                        return $item->product_id . '_' . ($item->unit ?? 'Piece');
+                                    });
+                                @endphp
+
+                                @foreach($groupedItems as $groupKey => $items)
+                                @php
+                                    $first = $items->first();
+                                    $product = $first->product;
+                                    $purchasedQty = $items->sum('qty');
+                                    $returnedQty = $alreadyReturned[$first->product_id] ?? 0;
+                                    $remainingQty = max(0, $purchasedQty - $returnedQty);
+                                    
+                                    $isFullyReturned = $remainingQty <= 0;
+                                @endphp
+                                <tr class="item-row {{ $isFullyReturned ? 'table-light text-muted opacity-75' : '' }}" data-product-id="{{ $first->product_id }}">
+                                    <td>
+                                        <div class="fw-bold text-dark mb-1">{{ $product->item_name }}</div>
+                                        <div class="d-flex align-items-center flex-wrap gap-1">
+                                            <span class="badge bg-light text-muted border px-2 py-0.5" style="font-size: 0.65rem;">
+                                                Code: {{ $product->item_code }}
+                                            </span>
+                                            @if($product->brand)
+                                                <span class="badge text-primary px-2 py-0.5" style="background: #eef2ff; font-size: 0.65rem; border: 1px solid #c7d2fe;">
+                                                    {{ $product->brand->name }}
+                                                </span>
+                                            @endif
+                                            @if($isFullyReturned)
+                                                <span class="badge bg-danger text-white px-2 py-0.5" style="font-size: 0.65rem;">
+                                                    Fully Returned
+                                                </span>
+                                            @endif
+                                        </div>
+                                        
+                                        <!-- Hidden Inputs -->
+                                        <input type="hidden" name="product_id[]" value="{{ $first->product_id }}">
+                                        <input type="hidden" name="unit[]" value="{{ $first->unit ?? 'Piece' }}">
+                                    </td>
+                                    
+                                    <td class="text-center">
+                                        <span class="text-muted small">{{ $first->unit ?? 'Piece' }}</span>
+                                    </td>
+                                    
+                                    <td class="text-center fw-bold">{{ $purchasedQty }}</td>
+                                    <td class="text-center text-danger">{{ $returnedQty }}</td>
+                                    <td class="text-center text-success fw-bold remaining-qty-val">{{ $remainingQty }}</td>
+                                    
+                                    <td class="text-end">
+                                        <input type="number" step="0.01" name="price[]" class="fi fi-table text-end item-price" value="{{ $first->price }}" {{ $isFullyReturned ? 'readonly' : '' }}>
+                                    </td>
+                                    
+                                    <td class="text-end">
+                                        <input type="number" step="0.01" name="item_disc[]" class="fi fi-table text-end item-discount" value="0" {{ $isFullyReturned ? 'readonly' : '' }}>
+                                    </td>
+
+                                    <td class="text-center">
+                                        <input type="number" step="1" name="qty[]" class="fi fi-table text-center return-qty" value="0" min="0" max="{{ $remainingQty }}" {{ $isFullyReturned ? 'readonly' : '' }}>
+                                        <span class="validation-badge error">Exceeds limit</span>
+                                    </td>
+                                    
+                                    <td class="text-end fw-bold text-dark line-total-display">
+                                        0.00
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Summary & Net Aggregations -->
+                    <div class="row">
+                        <div class="col-lg-6 col-md-12">
+                            <!-- Optional Instructions or Notes -->
+                            <div class="alert bg-soft-warning border-0 rounded-4 p-3 mt-2">
+                                <h6 class="fw-bold text-warning mb-2"><i class="fa fa-info-circle me-2"></i>Return Policy & Limits</h6>
+                                <p class="small text-muted mb-0">
+                                    Returns can only be created for the remaining unreturned items. The net refund amount will be credited to the Vendor's account ledger immediately.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="col-lg-6 col-md-12">
+                            <div class="summary-card">
+                                <div class="summary-row">
+                                    <span class="summary-label">Return Subtotal</span>
+                                    <span class="summary-value" id="subtotalDisplay">Rs. 0.00</span>
+                                </div>
+                                <div class="summary-row">
+                                    <span class="summary-label">Overall Discount</span>
+                                    <span class="summary-value text-danger" style="width: 40%;">
+                                        <input type="number" step="0.01" name="discount" id="overallDiscount" class="fi fi-table text-end" value="0" style="padding: 0.35rem 0.5rem !important;">
+                                    </span>
+                                </div>
+                                <div class="summary-row summary-total">
+                                    <span class="summary-label">Net Credit Amount</span>
+                                    <span class="summary-value" id="netAmountDisplay">Rs. 0.00</span>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn-premium btn-submit" id="submitBtn" disabled>
+                                <i class="fa fa-check-circle me-1"></i> Submit Purchase Return
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
             </div>
-        </div>
 
-    @else
-        <div class="container py-4">
-            <div class="alert alert-danger">You do not have permission to create Purchase Returns.</div>
-        </div>
-    @endcan
-    @endsection
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            const form = document.querySelector("form[action='{{ route('store.Purchase') }}']");
-            const submitBtn = document.getElementById("submitBtn");
+        </form>
+    </div>
+</div>
 
-            // Enter key se form submit disable
-            form.addEventListener("keydown", function(e) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                }
-            });
-
-            // Sirf button click pe submit
-            submitBtn.addEventListener("click", function() {
-                form.submit();
-            });
-        });
-    </script>
-
-    {{-- Success & Error Messages --}}
-    @if (session('success'))
-        <script>
-            Swal.fire({
-                icon: 'success',
-                title: 'Success',
-                text: @json(session('success')),
-                confirmButtonColor: '#3085d6',
-            });
-        </script>
-    @endif
-
-
-    @if ($errors->any())
-        <script>
-            Swal.fire({
-                icon: 'error',
-                title: 'Oops...',
-                html: {!! json_encode(implode('<br>', $errors->all())) !!},
-                confirmButtonColor: '#d33',
-            });
-        </script>
-    @endif
-
-    {{-- Cancel Button Confirmation --}}
-    <script>
-        // Prevent Enter key from submitting form in product search
-        $(document).on('keydown', '.productSearch', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault(); // stops form submission
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const cancelBtn = document.getElementById('cancelBtn');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', function() {
-                    Swal.fire({
-                        title: 'Are you sure?',
-                        text: 'This will cancel your changes!',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: 'Yes, go back!'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = '';
-                        }
-                    });
-                });
-            }
-        });
-    </script>
-
-    {{-- Item Row Autocomplete + Add/Remove --}}
-    <!-- Make sure jQuery and Bootstrap Typeahead are included -->
-
-    <script>
-        $(document).ready(function() {
-
-            // ---------- Helpers ----------
-            function num(n) {
-                return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
-            }
-
-            function recalcRow($row) {
-                const qty = num($row.find('.quantity').val());
-                const price = num($row.find('.price').val());
-                const disc = num($row.find('.item_disc').val()); // per-item discount
-                let total = (qty * price) - (qty * disc); // ✅ correct formula
-                if (total < 0) total = 0;
-                $row.find('.row-total').val(total.toFixed(2));
-            }
-
-
-            function recalcSummary() {
-                let sub = 0;
-                $('#purchaseItems .row-total').each(function() {
-                    sub += num($(this).val());
-                });
-                $('#subtotal').val(sub.toFixed(2));
-
-                const oDisc = num($('#overallDiscount').val());
-                const xCost = num($('#extraCost').val());
-                const net = (sub - oDisc + xCost);
-                $('#netAmount').val(net.toFixed(2));
-            }
-
-            function appendBlankRow() {
-                const newRow = `
-      <tr>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    $(document).ready(function() {
         
-         <td>
-        <input type="hidden" name="product_id[]" class="product_id">
-        <input type="text" class="form-control productSearch" placeholder="Enter product name..." autocomplete="off">
-        <ul class="searchResults list-group mt-1"></ul>
-    </td>
-        <td class="item_code border"><input type="text" name="item_code[]" class="form-control" readonly></td>
-        <td class="uom border"><input type="text" name="uom[]" class="form-control" readonly></td>
-        <td class="unit border"><input type="text" name="unit[]" class="form-control" readonly></td>
-        <td><input type="number" step="0.01" name="price[]" class="form-control price" value="1" ></td>
-        <td><input type="number" step="0.01" name="item_disc[]" class="form-control item_disc" value=""></td>
-        <td class="qty"><input type="number" name="qty[]" class="form-control quantity" value="" min="1"></td>
-        <td class="total border"><input type="text" name="total[]" class="form-control row-total" readonly></td>
-        <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
-      </tr>`;
-                $('#purchaseItems').append(newRow);
+        // Block Enter key from submitting form
+        $('#returnForm').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
             }
-
-            // ---------- Product Search (AJAX) ----------
-            $(document).on('keyup', '.productSearch', function(e) {
-                const $input = $(this);
-                const q = $input.val().trim();
-                const $row = $input.closest('tr');
-                const $box = $row.find('.searchResults');
-
-                // Keyboard navigation (Arrow Up/Down + Enter)
-                const isNavKey = ['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key);
-                if (isNavKey && $box.children('.search-result-item').length) {
-                    const $items = $box.children('.search-result-item');
-                    let idx = $items.index($items.filter('.active'));
-                    if (e.key === 'ArrowDown') {
-                        idx = (idx + 1) % $items.length;
-                        $items.removeClass('active');
-                        $items.eq(idx).addClass('active');
-                        e.preventDefault();
-                        return;
-                    }
-                    if (e.key === 'ArrowUp') {
-                        idx = (idx <= 0 ? $items.length - 1 : idx - 1);
-                        $items.removeClass('active');
-                        $items.eq(idx).addClass('active');
-                        e.preventDefault();
-                        return;
-                    }
-                    if (e.key === 'Enter') {
-                        if (idx >= 0) {
-                            $items.eq(idx).trigger('click');
-                        } else if ($items.length === 1) {
-                            $items.eq(0).trigger('click');
-                        }
-                        e.preventDefault();
-                        return;
-                    }
-                }
-
-                // Normal fetch
-                if (q.length === 0) {
-                    $box.empty();
-                    return;
-                }
-
-                $.ajax({
-                    url: "{{ route('search-products') }}",
-                    type: 'GET',
-                    data: {
-                        q: q,
-                        vendor_id: $('select[name="vendor_id"]').val()
-                    },
-                    success: function(data) {
-                        let html = '';
-                        (data || []).forEach(p => {
-                            const brand = (p.brand && p.brand.name) ? p.brand.name : '';
-                            const unit = (p.unit_id ?? '');
-                            const price = (p.wholesale_price ?? 0);
-                            const code = (p.item_code ?? '');
-                            const name = (p.item_name ?? '');
-                            const id = (p.id ?? '');
-                            html += `
-                            <li class="list-group-item search-result-item"
-                                tabindex="0"
-                                data-product-id="${id}"
-                                data-product-name="${name}"
-                                data-product-uom="${brand}"
-                                data-product-unit="${unit}"
-                                data-product-code="${code}"
-                                data-price="${price}">
-                                ${name} - ${code} - Rs. ${price}
-                            </li>`;
-                        });
-                        $box.html(html);
-
-                        // first item active for quick Enter
-                        $box.children('.search-result-item').first().addClass('active');
-                    },
-                    error: function() {
-                        $box.empty();
-                    }
-                });
-            });
-
-            // Click/Enter on suggestion
-            $(document).on('click', '.search-result-item', function() {
-                const $li = $(this);
-                const $row = $li.closest('tr');
-
-                $row.find('.productSearch').val($li.data('product-name'));
-                $row.find('.item_code input').val($li.data('product-code'));
-                $row.find('.uom input').val($li.data('product-uom'));
-                $row.find('.unit input').val($li.data('product-unit'));
-                $row.find('.price').val($li.data('price'));
-
-                $row.find('.product_id').val($li.data('product-id'));
-
-                // reset qty & discount for fresh calc
-                $row.find('.quantity').val(1);
-                $row.find('.item_disc').val(0);
-
-                recalcRow($row);
-                recalcSummary();
-
-                // clear results
-                $row.find('.searchResults').empty();
-
-                // append new blank row and focus its search
-                appendBlankRow();
-                $('#purchaseItems tr:last .productSearch').focus();
-            });
-
-            // Also allow keyboard Enter selection when list focused
-            $(document).on('keydown', '.searchResults .search-result-item', function(e) {
-                if (e.key === 'Enter') {
-                    $(this).trigger('click');
-                }
-            });
-
-            // Row calculations
-            $('#purchaseItems').on('input', '.quantity, .price, .item_disc', function() {
-                const $row = $(this).closest('tr');
-                recalcRow($row);
-                recalcSummary();
-            });
-
-            // Remove row
-            $('#purchaseItems').on('click', '.remove-row', function() {
-                $(this).closest('tr').remove();
-                recalcSummary();
-            });
-
-            // Summary inputs
-            $('#overallDiscount, #extraCost').on('input', function() {
-                recalcSummary();
-            });
-
-            // init first row values
-            recalcRow($('#purchaseItems tr:first'));
-            recalcSummary();
         });
-    </script>
+
+        function num(n) {
+            return isNaN(parseFloat(n)) ? 0 : parseFloat(n);
+        }
+
+        function calculateTotals() {
+            let subtotal = 0;
+            let hasValidReturn = false;
+            let hasValidationError = false;
+
+            $('.item-row').each(function() {
+                const $row = $(this);
+                const price = num($row.find('.item-price').val());
+                const discount = num($row.find('.item-discount').val());
+                const returnQty = num($row.find('.return-qty').val());
+                const remainingQty = num($row.find('.remaining-qty-val').text());
+
+                // Validation check
+                if (returnQty > remainingQty) {
+                    $row.find('.return-qty').addClass('is-invalid');
+                    $row.find('.validation-badge').show();
+                    hasValidationError = true;
+                } else {
+                    $row.find('.return-qty').removeClass('is-invalid');
+                    $row.find('.validation-badge').hide();
+                }
+
+                if (returnQty > 0) {
+                    hasValidReturn = true;
+                }
+
+                const lineTotal = Math.max(0, (price * returnQty) - discount);
+                $row.find('.line-total-display').text(lineTotal.toFixed(2));
+
+                subtotal += lineTotal;
+            });
+
+            $('#subtotalDisplay').text('Rs. ' + subtotal.toFixed(2));
+
+            const overallDiscount = num($('#overallDiscount').val());
+            const netAmount = Math.max(0, subtotal - overallDiscount);
+
+            $('#netAmountDisplay').text('Rs. ' + netAmount.toFixed(2));
+
+            // Enable or disable submit button
+            if (hasValidReturn && !hasValidationError) {
+                $('#submitBtn').prop('disabled', false);
+            } else {
+                $('#submitBtn').prop('disabled', true);
+            }
+        }
+
+        // Event listeners
+        $(document).on('input', '.return-qty, .item-price, .item-discount, #overallDiscount', function() {
+            calculateTotals();
+        });
+
+        // Submit confirmation
+        $('#returnForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            Swal.fire({
+                title: 'Are you sure?',
+                text: 'This will deduct stock and record a credit note on the vendor ledger!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#4f46e5',
+                cancelButtonColor: '#ef4444',
+                confirmButtonText: 'Yes, Submit Return!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    this.submit();
+                }
+            });
+        });
+
+        // Trigger initial calculation
+        calculateTotals();
+    });
+</script>
+@else
+    <div class="container py-5 text-center">
+        <div class="alert alert-danger shadow">Access Denied: You do not have 'purchase.return.create' permission.</div>
+    </div>
+@endcan
+@endsection

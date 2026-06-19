@@ -43,6 +43,7 @@ use App\Http\Controllers\StockRequestController;
 use App\Http\Controllers\BranchLedgerController;
 use App\Http\Controllers\VoucherInterBranchController;
 use App\Http\Controllers\FindController;
+use App\Http\Controllers\ComplaintController;
 
 
 
@@ -71,6 +72,27 @@ use App\Http\Controllers\FindController;
             Route::middleware('auth')->group(function () {
 
                 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+    // ─── Complaint Management System ──────────────────────────────
+    Route::prefix('complaints')->name('complaints.')->group(function () {
+        Route::get('/',               [ComplaintController::class, 'index'])->middleware('permission:complaint.view')->name('index');
+        Route::get('/create',         [ComplaintController::class, 'create'])->middleware('permission:complaint.create')->name('create');
+        Route::post('/store',         [ComplaintController::class, 'store'])->middleware('permission:complaint.create')->name('store');
+        Route::get('/{id}',           [ComplaintController::class, 'show'])->middleware('permission:complaint.view')->name('show');
+        Route::get('/{id}/edit',      [ComplaintController::class, 'edit'])->middleware('permission:complaint.edit')->name('edit');
+        Route::put('/{id}',           [ComplaintController::class, 'update'])->middleware('permission:complaint.edit')->name('update');
+        Route::delete('/{id}',        [ComplaintController::class, 'destroy'])->middleware('permission:complaint.delete')->name('destroy');
+        Route::get('/{id}/print-slip',[ComplaintController::class, 'printSlip'])->middleware('permission:complaint.print')->name('print-slip');
+        Route::get('/{id}/print-tag', [ComplaintController::class, 'printTag'])->middleware('permission:complaint.print')->name('print-tag');
+        Route::post('/{id}/status',   [ComplaintController::class, 'changeStatus'])->middleware('permission:complaint.edit')->name('change-status');
+        Route::get('/{id}/whatsapp',  [ComplaintController::class, 'whatsappShare'])->middleware('permission:complaint.view')->name('whatsapp-share');
+        // Home Service
+        Route::post('/{id}/home-service',        [ComplaintController::class, 'storeHomeService'])->middleware('permission:complaint.home_service')->name('home-service.store');
+        Route::post('/home-service/{id}/update', [ComplaintController::class, 'updateHomeService'])->middleware('permission:complaint.home_service')->name('home-service.update');
+        // AJAX
+        Route::get('/search/customers',          [ComplaintController::class, 'searchCustomers'])->middleware('permission:complaint.view')->name('search-customers');
+    });
+    // ─── End Complaint Management System ─────────────────────────
 
     // ✅ Find Document
     Route::get('/find', [FindController::class, 'index'])->name('find.index');

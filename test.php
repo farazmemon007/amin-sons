@@ -1,0 +1,1 @@
+<?php require 'vendor/autoload.php'; require 'bootstrap/app.php'; $app = app(); $app->make('Illuminate\Contracts\Console\Kernel')->bootstrap(); $sale = \App\Models\Sale::with('saleItems')->find(1); echo json_encode($sale->toArray(), JSON_PRETTY_PRINT);

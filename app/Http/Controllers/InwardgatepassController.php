@@ -413,6 +413,8 @@ class InwardgatepassController extends Controller
                 'received_qty'  => $newReceivedQty,
                 'remaining_qty' => max(0, $newRemainingQty),
                 'status'        => $newStatus,
+                'warehouse_id'  => $warehouseId,
+                'vendor_id'     => $vendorId,
             ]);
         } else {
             // Create new record
@@ -462,7 +464,27 @@ class InwardgatepassController extends Controller
     // EDIT FORM
     public function edit($id)
     {
-        $gatepass   = InwardGatepass::with('items')->findOrFail($id);
+        $gatepass   = InwardGatepass::with(['items.product.brand', 'items.product.unit'])->findOrFail($id);
+        
+        // Map purchase items prices to gatepass items if a purchase is linked
+        $purchase = null;
+        $purchaseItemsMap = collect();
+        if ($gatepass->purchase_id) {
+            $purchase = Purchase::with('items')->find($gatepass->purchase_id);
+            if ($purchase) {
+                $purchaseItemsMap = $purchase->items->groupBy(fn($i) => $i->product_id . '_' . ($i->color ?? ''));
+            }
+        }
+
+        foreach ($gatepass->items as $item) {
+            $key = $item->product_id . '_' . ($item->color ?? '');
+            if ($purchase && $purchaseItemsMap->has($key)) {
+                $item->unit_price = (float)$purchaseItemsMap->get($key)->first()->price;
+            } else {
+                $item->unit_price = (float)($item->product->wholesale_price ?? 0);
+            }
+        }
+
         $branches   = Branch::orderBy('name')->get();
         $isSuperAdmin = Auth::user()->hasRole('super admin');
         
@@ -473,7 +495,6 @@ class InwardgatepassController extends Controller
         $vendors    = Vendor::orderBy('name')->get();
         $allUnits = Unit::orderBy('name')->get();
         $po = null;
-        $purchase = null;
         $existingColors = $this->getExistingColors();
         $allProducts = Product::with(['brand', 'unit'])->orderBy('item_name')->get();
 
@@ -587,32 +608,54 @@ class InwardgatepassController extends Controller
                 $newQ  = (float)$newData['qty'];
                 
                 $delta = $newQ - $oldQ;
-                if ($delta == 0) continue;
 
-                $type = $delta > 0 ? 'in' : 'out';
-                $qty  = abs($delta);
+                // ═══════════════════════════════════════════════════════════
+                // STEP 1: Rollback old stock from old branch & warehouse
+                // ═══════════════════════════════════════════════════════════
+                if ($oldQ > 0) {
+                    DB::table('stock_movements')->insert([
+                        'product_id' => $pid,
+                        'branch_id'  => $oldBranch,
+                        'type'       => 'out',
+                        'qty'        => $oldQ,
+                        'ref_type'   => 'INWARD_EDIT_REMOVE',
+                        'ref_id'     => $gatepass->id,
+                        'note'       => 'Deduct old inward gatepass stock',
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
 
-                DB::table('stock_movements')->insert([
-                    'product_id' => (int)$pid,
-                    'branch_id'  => (int)$request->branch_id,
-                    'type'       => $type,
-                    'qty'        => $qty,
-                    'ref_type'   => 'INWARD_EDIT',
-                    'ref_id'     => $gatepass->id,
-                    'note'       => 'Inward edit delta',
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
+                    $this->upsertStocks($pid, -$oldQ, $oldBranch, $oldWh);
+                }
 
-                $this->upsertStocks((int)$pid, ($type==='in' ? +$qty : -$qty), (int)$request->branch_id, (int)$request->warehouse_id);
+                // ═══════════════════════════════════════════════════════════
+                // STEP 2: Apply new stock to new branch & warehouse
+                // ═══════════════════════════════════════════════════════════
+                if ($newQ > 0) {
+                    DB::table('stock_movements')->insert([
+                        'product_id' => $pid,
+                        'branch_id'  => (int)$request->branch_id,
+                        'type'       => 'in',
+                        'qty'        => $newQ,
+                        'ref_type'   => 'INWARD_EDIT_ADD',
+                        'ref_id'     => $gatepass->id,
+                        'note'       => 'Add new inward gatepass stock',
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
 
-                if ($gatepass->purchase_id) {
-                    $this->handleVendorRemaining((int)$gatepass->purchase_id, (int)$pid, $delta, (int)$request->vendor_id, (int)$request->warehouse_id);
+                    $this->upsertStocks($pid, +$newQ, (int)$request->branch_id, (int)$request->warehouse_id);
+                }
+
+                // ═══════════════════════════════════════════════════════════
+                // STEP 3: Handle tracking delta for Vendor/PO
+                // ═══════════════════════════════════════════════════════════
+                if ($gatepass->purchase_id && $delta != 0) {
+                    $this->handleVendorRemaining((int)$gatepass->purchase_id, $pid, $delta, (int)$request->vendor_id, (int)$request->warehouse_id);
                 }
                 
-                // If PO was linked, we should technically sync PO received_qty too
-                if ($gatepass->purchase_order_id) {
-                    $this->handlePOReceipt((int)$gatepass->purchase_order_id, (int)$pid, $delta, $color);
+                if ($gatepass->purchase_order_id && $delta != 0) {
+                    $this->handlePOReceipt((int)$gatepass->purchase_order_id, $pid, $delta, $color);
                 }
             }
 
@@ -842,6 +885,11 @@ class InwardgatepassController extends Controller
         $purchase = Purchase::with('items')->find($gatepass->purchase_id);
         if (!$purchase) return;
 
+        // Sync header parameters if changed
+        $purchase->branch_id = $gatepass->branch_id;
+        $purchase->warehouse_id = $gatepass->warehouse_id;
+        $purchase->vendor_id = $gatepass->vendor_id;
+
         // Get gatepass items grouped by product + color
         $gpItems = InwardGatepassItem::where('inward_gatepass_id', $gatepass->id)
             ->get()
@@ -863,17 +911,20 @@ class InwardgatepassController extends Controller
             if ($existingPurchaseItems->has($key)) {
                 $pItem = $existingPurchaseItems->get($key);
                 $pItem->qty = $qty;
+                $pItem->warehouse_id = $purchase->warehouse_id;
                 $pItem->line_total = ($pItem->price * $qty) - ($pItem->item_discount ?? 0);
                 $pItem->save();
 
-                // Sync tracking for existing item (Note: VendorRemaining currently only tracks product level, which is fine for totals)
+                // Sync tracking for existing item
                 \App\Models\VendorRemaining::updateOrCreate(
                     ['purchase_id' => $purchase->id, 'product_id' => $pid],
                     [
                         'ordered_qty'   => $qty,
                         'received_qty'  => $qty,
                         'remaining_qty' => 0,
-                        'status'        => 'completed'
+                        'status'        => 'completed',
+                        'warehouse_id'  => $purchase->warehouse_id,
+                        'vendor_id'     => $purchase->vendor_id
                     ]
                 );
             } else {
@@ -909,6 +960,7 @@ class InwardgatepassController extends Controller
         // 2. Remove items from Purchase that are no longer in Gatepass
         foreach ($existingPurchaseItems as $key => $pItem) {
             if (!$gpItems->has($key)) {
+                $pid = $pItem->product_id;
                 // Delete tracking record first
                 \App\Models\VendorRemaining::where('purchase_id', $purchase->id)
                     ->where('product_id', $pid)
@@ -922,46 +974,76 @@ class InwardgatepassController extends Controller
         $purchase->load('items'); // reload to get updated items
         $subtotal = (float)$purchase->items->sum('line_total');
         
-        $oldNetAmount = (float)$purchase->net_amount;
         $purchase->subtotal = $subtotal;
         $purchase->net_amount = $subtotal + (float)$purchase->extra_cost - (float)$purchase->discount;
         $purchase->due_amount = $purchase->net_amount - (float)$purchase->paid_amount;
         $purchase->save();
 
-        // 4. ✅ ERP STANDARD: Update Vendor Ledger to maintain financial integrity
-        // Search for the ledger entry associated with this purchase invoice
-        $ledgerEntry = VendorLedger::where('vendor_id', $purchase->vendor_id)
-            ->where('branch_id', $purchase->branch_id)
-            ->where('description', 'LIKE', "%#{$purchase->invoice_no}%")
-            ->orderBy('id', 'desc') // Get the most recent if multiple (should be one)
+        // 4. ✅ ERP STANDARD: Sync Vendor Ledger
+        $ledgerEntry = VendorLedger::where('reference_id', $purchase->id)
+            ->where('transaction_type', 'purchase')
             ->first();
 
+        if (!$ledgerEntry) {
+            $ledgerEntry = VendorLedger::where('vendor_id', $purchase->vendor_id)
+                ->where('description', 'LIKE', "%#{$purchase->invoice_no}%")
+                ->orderBy('id', 'desc')
+                ->first();
+        }
+
         if ($ledgerEntry) {
-            $newNetAmount = (float)$purchase->net_amount;
-            $diff = $newNetAmount - $oldNetAmount;
+            $oldVendorId = $ledgerEntry->vendor_id;
+            $newVendorId = $purchase->vendor_id;
+            
+            $ledgerEntry->vendor_id = $newVendorId;
+            $ledgerEntry->branch_id = $purchase->branch_id;
+            $ledgerEntry->credit_amount = $purchase->net_amount;
+            $ledgerEntry->description = "Purchase Invoice #{$purchase->invoice_no}";
+            $ledgerEntry->save();
 
-            if (abs($diff) > 0.001) { // Only if there is a significant change
-                $ledgerEntry->credit_amount = $newNetAmount;
-                $ledgerEntry->closing_balance = (float)$ledgerEntry->closing_balance + $diff;
-                $ledgerEntry->save();
-
-                // 🔥 CRITICAL: Recalculate ALL subsequent ledger entries for this vendor/branch
-                // This prevents "ghost" balances where one edit breaks all future totals
-                $subsequentEntries = VendorLedger::where('vendor_id', $purchase->vendor_id)
-                    ->where('branch_id', $purchase->branch_id)
-                    ->where('id', '>', $ledgerEntry->id)
-                    ->orderBy('id', 'asc')
-                    ->get();
-
-                foreach ($subsequentEntries as $entry) {
-                    $entry->opening_balance = (float)$entry->opening_balance + $diff;
-                    $entry->previous_balance = (float)$entry->previous_balance + $diff;
-                    $entry->closing_balance = (float)$entry->closing_balance + $diff;
-                    $entry->save();
-                }
-
-                \Log::info("Synced Purchase Ledger for {$purchase->invoice_no}. Delta: {$diff}");
+            // Recalculate for the old vendor if the vendor changed
+            if ($oldVendorId != $newVendorId) {
+                $this->recalculateLedgerBalances($oldVendorId);
             }
+            
+            // Recalculate for the current/new vendor
+            $this->recalculateLedgerBalances($newVendorId);
+
+            \Log::info("Synced Purchase Ledger for {$purchase->invoice_no}.");
+        } else {
+            // Create a new ledger entry if somehow it didn't exist
+            \App\Services\VendorLedgerService::recordPurchase(
+                vendorId: $purchase->vendor_id,
+                amount: $purchase->net_amount,
+                purchaseId: $purchase->id,
+                description: "Purchase Invoice #{$purchase->invoice_no}"
+            );
+        }
+    }
+
+    /**
+     * Recalculate running balances for all ledger transactions of a given vendor
+     * 
+     * @param int $vendorId
+     * @return void
+     */
+    private function recalculateLedgerBalances(int $vendorId): void
+    {
+        $entries = VendorLedger::where('vendor_id', $vendorId)
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
+
+        $runningBalance = 0;
+        foreach ($entries as $entry) {
+            $entry->opening_balance = $runningBalance;
+            $entry->previous_balance = $runningBalance;
+            
+            $runningBalance += (float)($entry->credit_amount ?? 0) - (float)($entry->debit_amount ?? 0);
+            
+            $entry->closing_balance = $runningBalance;
+            $entry->running_balance = $runningBalance;
+            $entry->save();
         }
     }
 }

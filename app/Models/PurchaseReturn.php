@@ -8,6 +8,7 @@ class PurchaseReturn extends Model
 {
     protected $fillable = [
     'vendor_id',
+    'purchase_id',
     'warehouse_id',
     'return_invoice',
     'return_date',
@@ -24,9 +25,15 @@ class PurchaseReturn extends Model
     'balance',
     'remarks',
 ];
- public function vendor()
+
+    public function vendor()
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
     }
 
     // ✅ Warehouse Relationship

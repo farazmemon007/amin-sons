@@ -89,8 +89,8 @@
       @csrf
       <input type="hidden" name="sale_id" value="{{ $sale->id }}">
       <input type="hidden" name="customer_id" value="{{ $sale->customer_id }}">
-      <input type="hidden" id="branch_id" name="branch_id" value="1">
-      <input type="hidden" id="warehouse_id" name="warehouse_id" value="1">
+      <input type="hidden" id="branch_id" name="branch_id" value="{{ $sale->branch_id }}">
+      <input type="hidden" id="warehouse_id" name="warehouse_id" value="{{ $sale->saleItems->first()->warehouse_id ?? 1 }}">
 
       {{-- HEADER --}}
       <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
@@ -151,7 +151,7 @@
             <thead>
               <tr class="table-light">
                 <th style="width: 35%">Product</th>
-                <th style="width: 12%">Stock</th>
+                <th style="width: 12%">Remaining Qty</th>
                 <th style="width: 12%">Return Qty</th>
                 <th style="width: 12%">Price</th>
                 <th style="width: 12%">Discount</th>
@@ -185,13 +185,16 @@
             <div id="cashRefundSection" style="display: none;" class="mt-3 p-3 border rounded-2 bg-light">
               <div class="section-title mb-2">Cash Distribution</div>
               <div id="accountRefundWrapper" class="mb-2">
-                <div class="d-flex gap-2 align-items-center mb-2 account-row">
-                  <select class="form-select refund-account" name="refund_account_id[]" style="max-width: 300px">
-                    <option value="">Select Account</option>
-                    @foreach ($accounts as $acc)
-                      <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-                    @endforeach
-                  </select>
+                <div class="d-flex gap-2 align-items-start mb-3 account-row">
+                  <div class="d-flex flex-column" style="max-width: 300px; width: 100%;">
+                    <select class="form-select refund-account" name="refund_account_id[]">
+                      <option value="" data-balance="0">Select Account</option>
+                      @foreach ($accounts as $acc)
+                        <option value="{{ $acc->id }}" data-balance="{{ $acc->opening_balance }}">{{ $acc->title }}</option>
+                      @endforeach
+                    </select>
+                    <small class="text-muted account-balance-label mt-1" style="display: none; font-size: 0.75rem;">Balance: Rs. <span class="account-balance-val">0.00</span></small>
+                  </div>
                   <input type="text" class="form-control text-end refund-amount"
                     name="refund_amount[]" placeholder="0.00" style="max-width: 150px">
                   <button type="button" class="btn btn-outline-danger btn-sm btnRemoveAccount">&times;</button>
@@ -319,6 +322,13 @@ function addNewReturnRow(itemData = null) {
           <option value="">Search product...</option>
         </select>
         <input type="hidden" name="warehouse_id[]" class="warehouse-id-field">
+        <input type="hidden" name="product[]" class="product-name-field">
+        <input type="hidden" name="item_code[]" class="product-code-field">
+        <input type="hidden" name="uom[]" class="product-brand-field">
+        <input type="hidden" name="unit[]" class="product-unit-field">
+        <input type="hidden" name="total[]" class="product-total-field">
+        <input type="hidden" name="color[]" class="product-color-field">
+        <input type="hidden" class="remaining-qty-field">
       </td>
       <td class="text-center">
         <input type="text" class="form-control text-center input-readonly stock-return" readonly>
@@ -330,7 +340,7 @@ function addNewReturnRow(itemData = null) {
         <input type="text" class="form-control text-end input-readonly retail-price-return" value="0" readonly name="price[]">
       </td>
       <td class="text-end">
-        <input type="text" class="form-control text-end input-readonly discount-return" value="0" readonly name="discount[]">
+        <input type="text" class="form-control text-end input-readonly discount-return" value="0" readonly name="item_disc[]">
       </td>
       <td class="text-end">
         <input type="text" class="form-control text-end input-readonly line-total-return" value="Rs. 0.00" readonly>
@@ -350,19 +360,26 @@ function addNewReturnRow(itemData = null) {
     $selectBox.append(option).trigger('change');
 
     // Pre-fill all fields
-    $lastRow.find('.stock-return').val(itemData.qty);
-    $lastRow.find('input[name="qty[]"]').val(itemData.qty);  // Pre-fill return qty with original qty
+    $lastRow.find('.stock-return').val(itemData.remaining_qty);
+    $lastRow.find('.remaining-qty-field').val(itemData.remaining_qty);
+    $lastRow.find('input[name="qty[]"]').val(itemData.remaining_qty);  // Pre-fill return qty with original qty
     $lastRow.find('input[name="price[]"]').val(parseFloat(itemData.price).toFixed(2));
     $lastRow.find('.retail-price-return').val(parseFloat(itemData.price).toFixed(2));
-    $lastRow.find('input[name="discount[]"]').val(parseFloat(itemData.discount).toFixed(2));
+    $lastRow.find('input[name="item_disc[]"]').val(parseFloat(itemData.discount).toFixed(2));
     $lastRow.find('.discount-return').val(parseFloat(itemData.discount).toFixed(2));
 
-    // Set warehouse_id in hidden field
+    // Hidden meta fields for legacy SalesReturn format
     $lastRow.find('.warehouse-id-field').val(itemData.warehouse_id);
+    $lastRow.find('.product-name-field').val(itemData.item_name);
+    $lastRow.find('.product-code-field').val(itemData.item_code);
+    $lastRow.find('.product-brand-field').val(itemData.brand);
+    $lastRow.find('.product-unit-field').val(itemData.unit);
+    $lastRow.find('.product-color-field').val(JSON.stringify(itemData.color || []));
 
     // Calculate and set line total
     const lineTotal = (itemData.qty * itemData.price) - itemData.discount;
     $lastRow.find('.line-total-return').val('Rs. ' + lineTotal.toFixed(2));
+    $lastRow.find('.product-total-field').val(lineTotal.toFixed(2));
   }
 
   initProductSelect2Return('#returnItemsBody tr:last-child .product-select-return');
@@ -444,13 +461,30 @@ $(document).ready(function() {
   // Calculate line total when qty changes
   $(document).on('input', '.return-qty', function() {
     const $row = $(this).closest('tr');
-    const qty = parseFloat($(this).val()) || 0;
+    const returnQtyInput = $(this);
+    const qty = parseFloat(returnQtyInput.val()) || 0;
+    const remainingQty = parseFloat($row.find('.remaining-qty-field').val()) || 0;
+    
+    // Validation
+    if (qty > remainingQty) {
+      returnQtyInput.addClass('invalid-input');
+      showAlert('danger', 'Return quantity cannot exceed remaining quantity (' + remainingQty + ')');
+      $('#btnSubmit').prop('disabled', true);
+    } else {
+      returnQtyInput.removeClass('invalid-input');
+      // Re-enable if no other invalid inputs
+      if ($('.invalid-input').length === 0) {
+        $('#btnSubmit').prop('disabled', false);
+      }
+    }
+
     const price = parseFloat($row.find('input[name="price[]"]').val()) || 0;
-    const discount = parseFloat($row.find('input[name="discount[]"]').val()) || 0;
+    const discount = parseFloat($row.find('input[name="item_disc[]"]').val()) || 0;
 
     const lineTotal = (price * qty) - discount;
 
     $row.find('.line-total-return').val('Rs. ' + lineTotal.toFixed(2));
+    $row.find('.product-total-field').val(lineTotal.toFixed(2));
 
     updateGrandTotal();
   });
@@ -479,7 +513,7 @@ $(document).ready(function() {
     $('#returnItemsBody tr').each(function() {
       const qty = parseFloat($(this).find('.return-qty').val()) || 0;
       const price = parseFloat($(this).find('input[name="price[]"]').val()) || 0;
-      const discount = parseFloat($(this).find('input[name="discount[]"]').val()) || 0;
+      const discount = parseFloat($(this).find('input[name="item_disc[]"]').val()) || 0;
 
       totalQty += qty;
       totalSubtotal += (price * qty);
@@ -509,19 +543,39 @@ $(document).ready(function() {
   // Add refund account row
   $('#btnAddRefundAccount').on('click', function() {
     const newRow = `
-      <div class="d-flex gap-2 align-items-center mb-2 account-row">
-        <select class="form-select refund-account" name="refund_account_id[]" style="max-width: 300px">
-          <option value="">Select Account</option>
-          @foreach ($accounts as $acc)
-            <option value="{{ $acc->id }}">{{ $acc->title }}</option>
-          @endforeach
-        </select>
+      <div class="d-flex gap-2 align-items-start mb-3 account-row">
+        <div class="d-flex flex-column" style="max-width: 300px; width: 100%;">
+          <select class="form-select refund-account" name="refund_account_id[]">
+            <option value="" data-balance="0">Select Account</option>
+            @foreach ($accounts as $acc)
+              <option value="{{ $acc->id }}" data-balance="{{ $acc->opening_balance }}">{{ $acc->title }}</option>
+            @endforeach
+          </select>
+          <small class="text-muted account-balance-label mt-1" style="display: none; font-size: 0.75rem;">Balance: Rs. <span class="account-balance-val">0.00</span></small>
+        </div>
         <input type="text" class="form-control text-end refund-amount"
           name="refund_amount[]" placeholder="0.00" style="max-width: 150px">
         <button type="button" class="btn btn-outline-danger btn-sm btnRemoveAccount">&times;</button>
       </div>
     `;
     $('#accountRefundWrapper').append(newRow);
+  });
+
+  // Update account balance display on select change
+  $(document).on('change', '.refund-account', function() {
+    const $row = $(this).closest('.account-row');
+    const selectedOption = $(this).find('option:selected');
+    const balance = parseFloat(selectedOption.data('balance')) || 0;
+    
+    const $balanceLabel = $row.find('.account-balance-label');
+    const $balanceVal = $row.find('.account-balance-val');
+    
+    if ($(this).val()) {
+      $balanceVal.text(balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      $balanceLabel.show();
+    } else {
+      $balanceLabel.hide();
+    }
   });
 
   // Remove refund account row

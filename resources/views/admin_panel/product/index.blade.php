@@ -41,6 +41,10 @@
     .custom-compact-table .btn-sm { font-size: 12px; padding: 4px 8px; }
     .min-w-100 { min-width: 100px; }
     .min-w-150 { min-width: 150px; }
+    .dropdown-appended {
+        display: none;
+        position: absolute;
+    }
 </style>
 
 @php $isSuperAdmin = isset($isSuperAdmin) ? $isSuperAdmin : false; @endphp
@@ -168,7 +172,7 @@
                                 👁 View
                             </button>
                             <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-toggle="dropdown">More</button>
+                                <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-toggle="dropdown" data-boundary="window" aria-expanded="false">More</button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow custom-dropdown">
                                     @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
                                         <li><a class="dropdown-item" href="{{ route('products.edit', $product->id) }}">📋 Edit Profile</a></li>
@@ -380,6 +384,77 @@ $(document).ready(function () {
     // ===== Select All =====
     $('#selectAll').on('click', function () {
         $('.selectProduct').prop('checked', this.checked);
+    });
+
+    // --- DROPDOWN CLIPPING FIX ---
+    var closeTimer;
+
+    function openDropdown($el) {
+        var $dropdown = $el.data('dropdown-menu');
+        if (!$dropdown || $dropdown.length === 0) {
+            $dropdown = $el.closest('.btn-group').find('.dropdown-menu');
+            $el.data('dropdown-menu', $dropdown);
+        }
+        if (!$dropdown || $dropdown.length === 0) return;
+
+        $('.dropdown-appended').not($dropdown).hide();
+
+        if (!$dropdown.hasClass('dropdown-appended')) {
+            $('body').append($dropdown);
+            $dropdown.addClass('dropdown-appended');
+        }
+        
+        $dropdown.show();
+        var offset = $el.offset();
+        var leftPos = offset.left - ($dropdown.outerWidth() - $el.outerWidth());
+        if (leftPos < 0) leftPos = 10;
+
+        $dropdown.css({
+            'position': 'absolute',
+            'top': offset.top + $el.outerHeight(),
+            'left': leftPos,
+            'z-index': 10500
+        });
+    }
+
+    // Open on Hover
+    $(document).on('mouseenter', '.dropdown-toggle', function() {
+        clearTimeout(closeTimer);
+        openDropdown($(this));
+    });
+
+    // Open on Click
+    $(document).on('click', '.dropdown-toggle', function (e) {
+        e.stopPropagation();
+        openDropdown($(this));
+    });
+
+    // Close when clicking outside
+    $(document).on('click', function (e) {
+        if (!$(e.target).closest('.dropdown-toggle').length && !$(e.target).closest('.dropdown-menu').length) {
+            $('.dropdown-appended').hide();
+        }
+    });
+
+    // Small delay to move from button to menu
+    $(document).on('mouseleave', '.dropdown-toggle', function() {
+        var $el = $(this);
+        var $dropdown = $el.data('dropdown-menu');
+        if ($dropdown && $dropdown.is(':visible')) {
+            closeTimer = setTimeout(function() {
+                $dropdown.hide();
+            }, 150); 
+        }
+    });
+
+    // Keep open if moving into menu
+    $(document).on('mouseenter', '.dropdown-appended', function() {
+        clearTimeout(closeTimer);
+    });
+
+    // Close when leaving menu
+    $(document).on('mouseleave', '.dropdown-appended', function() {
+        $(this).hide();
     });
 
 });
