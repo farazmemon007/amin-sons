@@ -1441,8 +1441,9 @@ public function getOpeningBalance($type, $id)
         };
 
         $branch = null;
-        if (Auth::check() && Auth::user()->branch_id) {
-            $branch = DB::table('branches')->where('id', $jv->branch_id ?? Auth::user()->branch_id)->first();
+        $branchIdForPrint = $jv->branch_id ?? (Auth::check() ? Auth::user()->branch_id : null);
+        if ($branchIdForPrint) {
+            $branch = DB::table('branches')->where('id', $branchIdForPrint)->first();
         }
 
         return view('admin_panel.vochers.journal_vouchers.print', compact(
