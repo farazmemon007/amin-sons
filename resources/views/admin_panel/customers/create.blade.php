@@ -4,14 +4,12 @@
         <div class="main-content-inner">
             <div class="container">
                 <h3>Add New Customer</h3>
-                <form action="{{ route('customers.store') }}" method="POST">
+                <form id="customerForm" action="{{ route('customers.store') }}" method="POST">
                     @csrf
 
                     @php
                         $branchesList = $branches ?? \App\Models\Branch::all();
                     @endphp
-
-
 
                     <div class="row mb-1">
                         <div class="col-md-2 mb-3">
@@ -20,9 +18,9 @@
                         </div>
                         <div class="col-md-2">
                             <label><strong>Customer Type :</strong></label>
-                            <select class="form-control" name="customer_type">
-                                <option>Credit</option>
-                                <option>Cash</option>
+                            <select class="form-control" name="customer_type" id="customer_type_select">
+                                <option value="credit">Credit</option>
+                                <option value="cash">Cash</option>
                             </select>
                         </div>
 
@@ -47,12 +45,9 @@
                         <div class="col-md-2">
                             <label>NTN / CNIC no:</label>
                             <input type="text" class="form-control" name="cnic" value="{{ old('cnic') }}">
-
                         </div>
 
-
                         <div class="row mb-2">
-
                             <div class="col-md-3 ">
                                 <label>Filer Type:</label>
                                 <select class="form-control" name="filer_type">
@@ -64,34 +59,22 @@
 
                             <div class="col-md-3 ">
                                 <label>Mobile:</label>
-                                <input type="text" class="form-control" name="mobile" value="{{ old('mobile_2') }}">
+                                <input type="text" class="form-control" name="mobile" value="{{ old('mobile') }}">
                             </div>
 
                              <div class="col-md-3 mb-4">
                             <label>Address:</label>
                             <textarea rows="1" class="form-control" name="address">{{ old('address') }}</textarea>
                         </div>
-
-
                         </div>
-
-
-
-
 
                         <div class="row mb-4">
-
-                            {{--  <div class="col-md-6">
-                <label>Credit (Cr):</label>
-                <input type="number" class="form-control" name="credit" value="{{ old('credit') }}">
-            </div>  --}}
                         </div>
-
-
 
                         <div class="text-center">
                             <button class="btn btn-success" type="button" id="saveCustomerBtn">Save Customer</button>
                         </div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -138,22 +121,37 @@
             </div>
         </div>
     </div>
-    </div>
 
+@endsection
+
+@section('js')
     <script>
         $(document).ready(function() {
             // Get references
-            const mainForm = $('form[method="POST"]');
+            const mainForm = $('#customerForm');
             const balanceForm = $('#balanceForm');
             const modal = $('#openingBalanceModal');
-            const customerTypeSelect = $('select[name="customer_type"]');
+            const customerTypeSelect = $('#customer_type_select');
+
+            // Handle branch selection change to load next customer ID
+            $('#branch_id_select').on('change', function() {
+                const branchId = $(this).val();
+                const inputId = $('input[name="customer_id"]');
+                if (branchId) {
+                    $.getJSON('{{ route("customers.nextId") }}', { branch_id: branchId }, function(data) {
+                        inputId.val(data.customer_id);
+                    });
+                } else {
+                    inputId.val('');
+                }
+            });
 
             // Save Customer button click
             $('#saveCustomerBtn').click(function(e) {
                 e.preventDefault();
 
                 // Validate main form
-                if (!mainForm[0].checkValidity()) {
+                if (mainForm.length && !mainForm[0].checkValidity()) {
                     e.stopPropagation();
                     mainForm.addClass('was-validated');
                     return;
@@ -164,7 +162,7 @@
                 console.log('Customer Type:', customerType);
 
                 // ✅ IF Cash: Skip modal and submit directly
-                if (customerType === 'Cash') {
+                if (customerType === 'cash') {
                     console.log('✅ Cash - Skipping balance/credit modal');
 
                     // Add default values for walking customers
@@ -186,7 +184,7 @@
                 }
 
                 // ✅ IF MAIN CUSTOMER: Show modal for balance/credit setup
-                console.log('📋 Main Customer - Showing balance modal');
+                console.log('📋 Credit Customer - Showing balance modal');
                 modal.modal('show');
             });
 

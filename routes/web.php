@@ -235,6 +235,7 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     // Cutomer create
     Route::get('/customers', [CustomerController::class, 'index'])->middleware('permission:customer.view')->name('customers.index');
     Route::get('/customers/create', [CustomerController::class, 'create'])->middleware('permission:customer.create')->name('customers.create');
+    Route::get('/get-next-customer-id', [CustomerController::class, 'getNextCustomerId'])->name('customers.nextId');
     Route::post('/customers/store', [CustomerController::class, 'store'])->middleware('permission:customer.create|customer.edit')->name('customers.store');
     Route::get('/customers/edit/{id}', [CustomerController::class, 'edit'])->middleware('permission:customer.edit')->name('customers.edit');
     Route::post('/customers/update/{id}', [CustomerController::class, 'update'])->middleware('permission:customer.edit')->name('customers.update');
@@ -615,7 +616,15 @@ Route::get('/Payment-voucher/print/{id}', [VoucherController::class, 'Paymentpri
 Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->middleware('permission:expense.voucher.view')->name('expense-vochers');
 route::post('/expense/vochers/stote', [VoucherController::class, 'store_expense_vochers'])->middleware('permission:expense.voucher.create')->name('expense.vochers.store');
 Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expenseprint'])->middleware('permission:expense.voucher.print')->name('expenseVoucher.print');
+    ////// journal voucher
+    Route::get('/journal-vouchers',         [VoucherController::class, 'journal_vouchers_index'])->middleware('permission:journal.voucher.view')->name('journal.vouchers.index');
+    Route::get('/journal-vouchers/create',  [VoucherController::class, 'journal_voucher_create'])->middleware('permission:journal.voucher.create')->name('journal.vouchers.create');
+    Route::post('/journal-vouchers/store',  [VoucherController::class, 'journal_voucher_store'])->middleware('permission:journal.voucher.create')->name('journal.vouchers.store');
+    Route::get('/journal-vouchers/{id}/print',  [VoucherController::class, 'journal_voucher_print'])->middleware('permission:journal.voucher.view')->name('journal.vouchers.print');
+    Route::delete('/journal-vouchers/{id}', [VoucherController::class, 'journal_voucher_destroy'])->middleware('permission:journal.voucher.delete')->name('journal.vouchers.destroy');
+    Route::get('/get-journal-party-list',   [VoucherController::class, 'getJournalPartyList'])->name('journal.party.list');
     // reporting routes
+
 
     Route::get('/report/item-stock', [ReportingController::class, 'item_stock_report'])->middleware('permission:report.item.stock.view')->name('report.item_stock');
     Route::post('/report/item-stock-fetch', [ReportingController::class, 'fetchItemStock'])->middleware('permission:report.item.stock.view')->name('report.item_stock.fetch');

@@ -13,6 +13,7 @@ use App\Models\PaymentVoucher;
 use App\Models\ReceiptsVoucher;
 use App\Models\Vendor;
 use App\Models\VendorLedger;
+use App\Models\JournalVoucher;
 use App\Models\Voucher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -1198,4 +1199,306 @@ public function getOpeningBalance($type, $id)
             'text' => $narration->narration
         ]);
     }
+
+    /* =====================================================================
+     * ██╗ ██╗ ██╗ ██╗ ██╗██╗    ██╗   ██╗ ██████╗ ██╗   ██╗ ██████╗██╗  ██╗███████╗██████╗
+     * ██║██╔╝██╔╝██╔╝██╔╝██║    ██║   ██║██╔═══██╗██║   ██║██╔════╝██║  ██║██╔════╝██╔══██╗
+     * JOURNAL VOUCHER (JV) — Double Entry: Customer Credit → Vendor Debit
+     * ===================================================================== */
+
+    /**
+     * Show Journal Voucher creation form.
+     */
+    public function journal_voucher_create()
+    {
+        $narrations    = \App\Models\Narration::where('expense_head', 'Journal Voucher')->pluck('narration', 'id');
+        $AccountHeads  = AccountHead::get();
+        $isSuperAdmin  = Auth::user()->hasRole('super admin');
+        $currentBranch = Auth::user()->branch_id;
+        $Branch        = \App\Models\Branch::all();
+
+        $lastId    = (int) JournalVoucher::withTrashed()->max('id');
+        $nextJVID  = 'JVID-' . str_pad($lastId + 1, 5, '0', STR_PAD_LEFT);
+
+        return view('admin_panel.vochers.journal_vouchers.create', compact(
+            'narrations', 'AccountHeads', 'nextJVID', 'isSuperAdmin', 'currentBranch', 'Branch'
+        ));
+    }
+
+    /**
+     * Store Journal Voucher — posts double-entry to Customer & Vendor ledgers.
+     */
+    public function journal_voucher_store(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'voucher_date'       => 'required|date',
+            'debit_party_type'   => 'required|string',
+            'debit_party_id'     => 'required',
+            'credit_party_type'  => 'required|string',
+            'credit_party_id'    => 'required',
+            'amount'             => 'required|numeric|min:0.01',
+            'remarks'            => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $jvid   = JournalVoucher::generateJVID();
+            $amount = (float) $request->amount;
+
+            // Determine branch
+            $branchId = (Auth::user()->hasRole('super admin') && $request->filled('branch_id'))
+                ? $request->branch_id
+                : (Auth::user()->branch_id ?? 0);
+
+            // Handle narration
+            $narrationIds = [];
+            if ($request->has('narration_id')) {
+                foreach ($request->narration_id as $idx => $narrId) {
+                    $manualText = $request->narration_text[$idx] ?? null;
+                    if (empty($narrId) && !empty($manualText)) {
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => 'Journal Voucher',
+                            'narration'    => $manualText,
+                        ]);
+                        $narrationIds[] = (string) $new->id;
+                    } else {
+                        $narrationIds[] = (string) $narrId;
+                    }
+                }
+            }
+
+            // Save Journal Voucher header
+            $jv = JournalVoucher::create([
+                'jvid'              => $jvid,
+                'voucher_date'      => $request->voucher_date,
+                'entry_date'        => now()->toDateString(),
+                'remarks'           => $request->remarks,
+                'branch_id'         => $branchId,
+                'created_by'        => Auth::id(),
+                'debit_party_type'  => $request->debit_party_type,
+                'debit_party_id'    => $request->debit_party_id,
+                'credit_party_type' => $request->credit_party_type,
+                'credit_party_id'   => $request->credit_party_id,
+                'amount'            => $amount,
+                'narration_id'      => json_encode($narrationIds),
+                'reference_no'      => json_encode($request->reference_no ?? []),
+                'status'            => 'posted',
+            ]);
+
+            // ─────────────────────────────────────────────────────────────
+            // DEBIT SIDE — typically the VENDOR (we are paying/reducing payable)
+            // ─────────────────────────────────────────────────────────────
+            if ($request->debit_party_type === 'vendor') {
+                $lastLedger = VendorLedger::where('vendor_id', $request->debit_party_id)
+                    ->where('branch_id', $branchId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $vendor          = \App\Models\Vendor::find($request->debit_party_id);
+                $previousBalance = $lastLedger
+                    ? (float) $lastLedger->closing_balance
+                    : (float) ($vendor->opening_balance ?? 0);
+
+                VendorLedger::create([
+                    'vendor_id'        => $request->debit_party_id,
+                    'branch_id'        => $branchId,
+                    'admin_or_user_id' => Auth::id(),
+                    'transaction_date' => $request->voucher_date,
+                    'description'      => "Journal Voucher #$jvid — Debit",
+                    'opening_balance'  => $vendor->opening_balance ?? 0,
+                    'previous_balance' => $previousBalance,
+                    'debit_amount'     => $amount,   // Debit = Vendor payable reduced
+                    'credit_amount'    => 0,
+                    'closing_balance'  => $previousBalance - $amount,
+                ]);
+
+            } elseif ($request->debit_party_type === 'customer') {
+                $lastLedger = CustomerLedger::where('customer_id', $request->debit_party_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $customer        = \App\Models\Customer::find($request->debit_party_id);
+                $previousBalance = $lastLedger
+                    ? (float) $lastLedger->closing_balance
+                    : (float) ($customer->opening_balance ?? 0);
+
+                CustomerLedger::create([
+                    'customer_id'      => $request->debit_party_id,
+                    'admin_or_user_id' => Auth::id(),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance'  => $customer->opening_balance ?? 0,
+                    'total_debit'      => $amount,
+                    'total_credit'     => 0,
+                    'closing_balance'  => $previousBalance + $amount, // Debit increases what customer owes
+                ]);
+            }
+
+            // ─────────────────────────────────────────────────────────────
+            // CREDIT SIDE — typically the CUSTOMER (reducing their receivable)
+            // ─────────────────────────────────────────────────────────────
+            if ($request->credit_party_type === 'customer') {
+                $lastLedger = CustomerLedger::where('customer_id', $request->credit_party_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $customer        = \App\Models\Customer::find($request->credit_party_id);
+                $previousBalance = $lastLedger
+                    ? (float) $lastLedger->closing_balance
+                    : (float) ($customer->opening_balance ?? 0);
+
+                CustomerLedger::create([
+                    'customer_id'      => $request->credit_party_id,
+                    'admin_or_user_id' => Auth::id(),
+                    'previous_balance' => $previousBalance,
+                    'opening_balance'  => $customer->opening_balance ?? 0,
+                    'total_debit'      => 0,
+                    'total_credit'     => $amount,
+                    'closing_balance'  => $previousBalance - $amount, // Credit reduces receivable
+                ]);
+
+            } elseif ($request->credit_party_type === 'vendor') {
+                $lastLedger = VendorLedger::where('vendor_id', $request->credit_party_id)
+                    ->where('branch_id', $branchId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                $vendor          = \App\Models\Vendor::find($request->credit_party_id);
+                $previousBalance = $lastLedger
+                    ? (float) $lastLedger->closing_balance
+                    : (float) ($vendor->opening_balance ?? 0);
+
+                VendorLedger::create([
+                    'vendor_id'        => $request->credit_party_id,
+                    'branch_id'        => $branchId,
+                    'admin_or_user_id' => Auth::id(),
+                    'transaction_date' => $request->voucher_date,
+                    'description'      => "Journal Voucher #$jvid — Credit",
+                    'opening_balance'  => $vendor->opening_balance ?? 0,
+                    'previous_balance' => $previousBalance,
+                    'debit_amount'     => 0,
+                    'credit_amount'    => $amount,
+                    'closing_balance'  => $previousBalance + $amount,
+                ]);
+            }
+
+            DB::commit();
+            return redirect()->route('journal.vouchers.index')
+                ->with('success', "Journal Voucher #$jvid saved successfully! Both ledgers updated.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("JV Store Error: " . $e->getMessage());
+            return back()->with('error', "Error saving Journal Voucher: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * List all Journal Vouchers.
+     */
+    public function journal_vouchers_index()
+    {
+        $isSuperAdmin = Auth::user()->hasRole('super admin');
+        $branchId     = Auth::user()->branch_id;
+
+        $query = JournalVoucher::latest();
+
+        if (!$isSuperAdmin && $branchId) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $vouchers = $query->get()->map(function ($jv) {
+            $jv->debit_party_name  = JournalVoucher::resolvePartyName($jv->debit_party_type,  $jv->debit_party_id);
+            $jv->credit_party_name = JournalVoucher::resolvePartyName($jv->credit_party_type, $jv->credit_party_id);
+            return $jv;
+        });
+
+        return view('admin_panel.vochers.journal_vouchers.index', compact('vouchers'));
+    }
+
+    /**
+     * Print a single Journal Voucher.
+     */
+    public function journal_voucher_print(int $id)
+    {
+        $jv = JournalVoucher::findOrFail($id);
+
+        $debitPartyName  = JournalVoucher::resolvePartyName($jv->debit_party_type,  $jv->debit_party_id);
+        $creditPartyName = JournalVoucher::resolvePartyName($jv->credit_party_type, $jv->credit_party_id);
+
+        // Fetch phone / code for parties
+        $debitPartyPhone = match ($jv->debit_party_type) {
+            'vendor'   => \App\Models\Vendor::find($jv->debit_party_id)?->phone ?? '—',
+            'customer' => \App\Models\Customer::find($jv->debit_party_id)?->mobile ?? '—',
+            'account'  => \App\Models\Account::find($jv->debit_party_id)?->account_code ?? '—',
+            default    => '—',
+        };
+
+        $creditPartyPhone = match ($jv->credit_party_type) {
+            'vendor'   => \App\Models\Vendor::find($jv->credit_party_id)?->phone ?? '—',
+            'customer' => \App\Models\Customer::find($jv->credit_party_id)?->mobile ?? '—',
+            'account'  => \App\Models\Account::find($jv->credit_party_id)?->account_code ?? '—',
+            default    => '—',
+        };
+
+        $branch = null;
+        if (Auth::check() && Auth::user()->branch_id) {
+            $branch = DB::table('branches')->where('id', $jv->branch_id ?? Auth::user()->branch_id)->first();
+        }
+
+        return view('admin_panel.vochers.journal_vouchers.print', compact(
+            'jv', 'debitPartyName', 'creditPartyName', 'debitPartyPhone', 'creditPartyPhone', 'branch'
+        ));
+    }
+
+    /**
+     * Delete (soft-delete) a Journal Voucher.
+     */
+    public function journal_voucher_destroy(int $id)
+    {
+        $jv = JournalVoucher::findOrFail($id);
+        $jv->delete();
+        return back()->with('success', "Journal Voucher #{$jv->jvid} deleted.");
+    }
+
+    /**
+     * AJAX — Get party list for Journal Voucher (customers + vendors + accounts)
+     */
+    public function getJournalPartyList(\Illuminate\Http\Request $request)
+    {
+        $type     = strtolower($request->query('type', ''));
+        $isSuper  = Auth::check() && Auth::user()->hasRole('super admin');
+        $branchId = ($isSuper && $request->filled('branch_id'))
+            ? $request->branch_id
+            : (Auth::check() ? Auth::user()->branch_id : null);
+
+        if ($type === 'customer') {
+            $query = \App\Models\Customer::with(['ledgers' => fn($q) => $q->latest()])
+                ->whereIn('customer_type', ['credit', 'cash']);
+
+            if (!$isSuper && $branchId) $query->where('branch_id', $branchId);
+            if ($isSuper && $request->filled('branch_id')) $query->where('branch_id', $branchId);
+
+            return response()->json($query->get()->map(function ($c) {
+                $ledger  = $c->ledgers->first();
+                $closing = $ledger ? (float) $ledger->closing_balance : (float) ($c->opening_balance ?? 0);
+                return ['id' => $c->id, 'text' => $c->customer_name, 'mobile' => $c->mobile ?? '', 'closing_balance' => $closing];
+            }));
+
+        } elseif ($type === 'vendor') {
+            $query = \App\Models\Vendor::query();
+            if (!$isSuper && $branchId) $query->where('branch_id', $branchId);
+            if ($isSuper && $request->filled('branch_id')) $query->where('branch_id', $branchId);
+
+            return response()->json($query->get()->map(function ($v) use ($branchId) {
+                $lastLedger = VendorLedger::where('vendor_id', $v->id)
+                    ->where('branch_id', $branchId ?? $v->branch_id)
+                    ->orderByDesc('id')->first();
+                $closing = $lastLedger ? (float) $lastLedger->closing_balance : (float) ($v->opening_balance ?? 0);
+                return ['id' => $v->id, 'text' => $v->name, 'mobile' => $v->phone ?? $v->contact ?? '', 'closing_balance' => $closing];
+            }));
+        }
+
+        return response()->json([]);
+    }
 }
+

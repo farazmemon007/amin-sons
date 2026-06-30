@@ -194,8 +194,50 @@ class CustomerController extends Controller
 
     public function create()
     {
-        $latestId = 'CUST-' . str_pad(Customer::max('id') + 1, 4, '0', STR_PAD_LEFT);
+        $isSuper = auth()->user() && auth()->user()->hasRole('super admin');
+        $branchId = $isSuper ? null : (auth()->user()->branch_id ?? null);
+
+        $latestId = '';
+        if ($branchId) {
+            $prefix = 'CUST-' . str_pad($branchId, 2, '0', STR_PAD_LEFT) . '-';
+            $latestCustomer = Customer::where('branch_id', $branchId)
+                ->where('customer_id', 'like', $prefix . '%')
+                ->get()
+                ->map(function($c) use ($prefix) {
+                    $subStr = substr($c->customer_id, strlen($prefix));
+                    return is_numeric($subStr) ? (int)$subStr : 0;
+                })
+                ->max();
+
+            $nextSeq = ($latestCustomer ?? 0) + 1;
+            $latestId = $prefix . str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
+        }
+
         return view('admin_panel.customers.create', compact('latestId'));
+    }
+
+    public function getNextCustomerId(Request $request)
+    {
+        $branchId = $request->query('branch_id');
+        if (!$branchId) {
+            return response()->json(['customer_id' => '']);
+        }
+
+        $prefix = 'CUST-' . str_pad($branchId, 2, '0', STR_PAD_LEFT) . '-';
+
+        $latestCustomer = Customer::where('branch_id', $branchId)
+            ->where('customer_id', 'like', $prefix . '%')
+            ->get()
+            ->map(function($c) use ($prefix) {
+                $subStr = substr($c->customer_id, strlen($prefix));
+                return is_numeric($subStr) ? (int)$subStr : 0;
+            })
+            ->max();
+
+        $nextSeq = ($latestCustomer ?? 0) + 1;
+        $nextCustomerId = $prefix . str_pad($nextSeq, 4, '0', STR_PAD_LEFT);
+
+        return response()->json(['customer_id' => $nextCustomerId]);
     }
 
     public function store(Request $request)

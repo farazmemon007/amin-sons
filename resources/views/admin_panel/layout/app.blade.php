@@ -572,7 +572,7 @@
                                     <li><a href="{{ route('all-expense-vochers') }}"><i class="fa-solid fa-money-bill-wave"></i> Expense Voucher</a></li>
                                     @endcan
                                     @can('journal.voucher.view')
-                                    <li><a href="{{ route('vouchers.index', 'journal voucher') }}"><i class="fa-solid fa-wallet"></i> Journal Voucher</a></li>
+                                    <li><a href="{{ route('journal.vouchers.index') }}"><i class="fa-solid fa-wallet"></i> Journal Voucher</a></li>
                                     @endcan
                                 </ul>
                             </div>
