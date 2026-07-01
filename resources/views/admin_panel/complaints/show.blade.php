@@ -82,7 +82,7 @@
                         @if($complaint->scenario_type === 'walk_in')
                             <span class="badge-walkin"><i class="fas fa-store mr-1"></i>Walk-in</span>
                         @elseif($complaint->scenario_type === 'remote')
-                            <span class="badge-remote"><i class="fab fa-whatsapp mr-1"></i>Remote</span>
+                            <span class="badge-remote"><i class="fas fa-building mr-1"></i>Company Complaint</span>
                         @else
                             <span class="badge-home"><i class="fas fa-home mr-1"></i>Home Service</span>
                         @endif
@@ -140,6 +140,16 @@
                 <div class="card-body p-0">
                     <table class="table table-sm mb-0">
                         <tr class="info-row"><td>Product</td><td><strong>{{ $complaint->product_name ?? ($complaint->product->item_name ?? '-') }}</strong></td></tr>
+                        <tr class="info-row"><td>Complaint Scope</td><td>
+                            @if($complaint->is_product_part)
+                                <span class="badge badge-warning">Product Part</span>
+                            @else
+                                <span class="badge badge-success">Complete Product</span>
+                            @endif
+                        </td></tr>
+                        @if($complaint->is_product_part && $complaint->product_part_name)
+                        <tr class="info-row"><td>Product Part Name</td><td><strong>{{ $complaint->product_part_name }}</strong></td></tr>
+                        @endif
                         <tr class="info-row"><td>Model</td><td>{{ $complaint->product_model ?? '-' }}</td></tr>
                         <tr class="info-row"><td>Serial / IMEI</td><td>{{ $complaint->product_serial ?? '-' }}</td></tr>
                     </table>

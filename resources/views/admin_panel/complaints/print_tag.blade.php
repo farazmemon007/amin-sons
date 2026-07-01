@@ -90,7 +90,11 @@
             @if($complaint->product_name)
             <tr>
                 <td>Product:</td>
-                <td>{{ Str::limit($complaint->product_name, 20) }}</td>
+                <td>{{ Str::limit($complaint->product_name, 20) }}
+                    @if($complaint->is_product_part && $complaint->product_part_name)
+                        <br><span style="font-size:6pt; color:#666;">(Part: {{ Str::limit($complaint->product_part_name, 15) }})</span>
+                    @endif
+                </td>
             </tr>
             @endif
             @if($complaint->product_serial)

@@ -90,6 +90,8 @@ class ComplaintController extends Controller
             'product_serial'   => 'nullable|string|max:100',
             'product_model'    => 'nullable|string|max:100',
             'photo_path'       => 'nullable|image|max:4096',
+            'is_product_part'   => 'nullable',
+            'product_part_name' => 'nullable|required_if:is_product_part,1|string|max:255',
             // Home service fields
             'technician_name'  => 'nullable|required_if:scenario_type,home_service|string|max:255',
             'visit_date'       => 'nullable|required_if:scenario_type,home_service|date',
@@ -121,6 +123,8 @@ class ComplaintController extends Controller
             'product_name'      => $request->product_name,
             'product_serial'    => $request->product_serial,
             'product_model'     => $request->product_model,
+            'is_product_part'   => $request->has('is_product_part') ? (bool)$request->is_product_part : false,
+            'product_part_name' => $request->product_part_name,
             'issue_description' => $request->issue_description,
             'complaint_date'    => $request->complaint_date,
             'photo_path'        => $photoPath,
@@ -205,6 +209,8 @@ class ComplaintController extends Controller
             'resolution_type'  => 'nullable|in:exchanged,repaired,refunded,pending_stock,none',
             'resolution_notes' => 'nullable|string',
             'resolved_date'    => 'nullable|date',
+            'is_product_part'   => 'nullable',
+            'product_part_name' => 'nullable|required_if:is_product_part,1|string|max:255',
         ]);
 
         $oldStatus = $complaint->status;
@@ -216,6 +222,8 @@ class ComplaintController extends Controller
             'product_name'     => $request->product_name,
             'product_serial'   => $request->product_serial,
             'product_model'    => $request->product_model,
+            'is_product_part'   => $request->has('is_product_part') ? (bool)$request->is_product_part : false,
+            'product_part_name' => $request->product_part_name,
             'issue_description'=> $request->issue_description,
             'status'           => $request->status,
             'resolution_type'  => $request->resolution_type,

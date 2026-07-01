@@ -103,7 +103,7 @@
                     <select name="scenario_type" class="form-control form-control-sm">
                         <option value="">All Scenarios</option>
                         <option value="walk_in" {{ request('scenario_type')=='walk_in'?'selected':'' }}>Walk-in (Shop)</option>
-                        <option value="remote" {{ request('scenario_type')=='remote'?'selected':'' }}>Phone/WhatsApp</option>
+                        <option value="remote" {{ request('scenario_type')=='remote'?'selected':'' }}>Company Complaint</option>
                         <option value="home_service" {{ request('scenario_type')=='home_service'?'selected':'' }}>Home Service</option>
                     </select>
                 </div>
@@ -169,7 +169,7 @@
                                 @if($c->scenario_type === 'walk_in')
                                     <span class="cmp-badge scenario-walkin"><i class="fas fa-store"></i> Walk-in</span>
                                 @elseif($c->scenario_type === 'remote')
-                                    <span class="cmp-badge scenario-remote"><i class="fab fa-whatsapp"></i> Remote</span>
+                                    <span class="cmp-badge scenario-remote"><i class="fas fa-building"></i> Company</span>
                                 @else
                                     <span class="cmp-badge scenario-home"><i class="fas fa-home"></i> Home</span>
                                 @endif

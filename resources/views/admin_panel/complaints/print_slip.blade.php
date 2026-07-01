@@ -117,7 +117,7 @@
     <div style="text-align:center; margin-bottom:6px;">
         <span class="scenario-badge">
             @if($complaint->scenario_type === 'walk_in') 🏪 Walk-in Shop
-            @elseif($complaint->scenario_type === 'remote') 📱 Phone/WhatsApp
+            @elseif($complaint->scenario_type === 'remote') 🏢 Company Complaint
             @else 🏠 Home Service
             @endif
         </span>
@@ -134,7 +134,11 @@
         <tr><td>Customer:</td><td><strong>{{ $complaint->customer_name }}</strong></td></tr>
         <tr><td>Mobile:</td><td>{{ $complaint->customer_mobile ?? '-' }}</td></tr>
         <tr><td>Address:</td><td>{{ $complaint->customer_address ?? '-' }}</td></tr>
-        <tr><td>Product:</td><td>{{ $complaint->product_name ?? '-' }}</td></tr>
+        <tr><td>Product:</td><td>{{ $complaint->product_name ?? '-' }}
+            @if($complaint->is_product_part && $complaint->product_part_name)
+                <br><span style="font-size:7pt; color:#666;">(Part: <strong>{{ $complaint->product_part_name }}</strong>)</span>
+            @endif
+        </td></tr>
         @if($complaint->product_serial)
         <tr><td>Serial:</td><td>{{ $complaint->product_serial }}</td></tr>
         @endif

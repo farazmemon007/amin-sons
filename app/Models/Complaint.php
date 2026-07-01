@@ -60,7 +60,7 @@ class Complaint extends Model
     {
         return match($this->scenario_type) {
             'walk_in'      => 'Walk-in (Shop)',
-            'remote'       => 'Phone/WhatsApp',
+            'remote'       => 'Company Complaint',
             'home_service' => 'Home Service',
             default        => 'Unknown',
         };

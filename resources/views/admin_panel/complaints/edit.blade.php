@@ -68,6 +68,24 @@
                     </div>
                 </div>
 
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label d-block">Complaint Scope</label>
+                        <div class="form-check form-check-inline mt-1">
+                            <input class="form-check-input" type="radio" name="is_product_part" id="scope_complete" value="0" {{ old('is_product_part', $complaint->is_product_part ? '1' : '0') == '0' ? 'checked' : '' }}>
+                            <label class="form-check-label font-weight-normal" for="scope_complete">Complete Product</label>
+                        </div>
+                        <div class="form-check form-check-inline mt-1">
+                            <input class="form-check-input" type="radio" name="is_product_part" id="scope_part" value="1" {{ old('is_product_part', $complaint->is_product_part ? '1' : '0') == '1' ? 'checked' : '' }}>
+                            <label class="form-check-label font-weight-normal" for="scope_part">Product Part</label>
+                        </div>
+                    </div>
+                    <div class="col-md-8 mb-3" id="partNameGroup" style="display: {{ old('is_product_part', $complaint->is_product_part ? '1' : '0') == '1' ? 'block' : 'none' }};">
+                        <label class="form-label">Product Part Name <span class="required-star">*</span></label>
+                        <input type="text" name="product_part_name" id="product_part_name" class="form-control form-control-sm" placeholder="e.g. motor, circuit, blades..." value="{{ old('product_part_name', $complaint->product_part_name) }}" {{ old('is_product_part', $complaint->is_product_part ? '1' : '0') == '1' ? 'required' : '' }}>
+                    </div>
+                </div>
+
                 {{-- Issue --}}
                 <div class="section-title"><i class="fas fa-exclamation-triangle mr-1"></i>Issue & Status</div>
                 <div class="row">
@@ -133,6 +151,16 @@ $(document).ready(function() {
             $('#resTypeBlock').hide();
         }
     }).trigger('change');
+
+    $('input[name="is_product_part"]').on('change', function() {
+        if ($(this).val() === '1') {
+            $('#partNameGroup').slideDown(200);
+            $('#product_part_name').prop('required', true);
+        } else {
+            $('#partNameGroup').slideUp(200);
+            $('#product_part_name').prop('required', false).val('');
+        }
+    });
 });
 </script>
 @endsection
