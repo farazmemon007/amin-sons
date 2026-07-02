@@ -11,6 +11,11 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use App\Models\ComplaintReplacement;
+use App\Models\DamagedStock;
+use App\Models\StockMovement;
+use App\Models\WarehouseStock;
 use Milon\Barcode\DNS1D;
 
 class ComplaintController extends Controller
@@ -22,7 +27,7 @@ class ComplaintController extends Controller
         $user     = Auth::user();
         $isSuperAdmin = $user->hasRole('super admin');
 
-        $query = Complaint::with(['branch', 'customer', 'createdByUser'])
+        $query = Complaint::with(['branch', 'customer', 'createdByUser', 'replacements'])
             ->orderBy('id', 'desc');
 
         // Branch filter for non-super-admins
@@ -165,8 +170,6 @@ class ComplaintController extends Controller
             ->with('success', "Complaint {$complaintNo} registered successfully!");
     }
 
-    // ─── Show ────────────────────────────────────────────────────
-
     public function show($id)
     {
         $complaint = Complaint::with([
@@ -177,9 +180,15 @@ class ComplaintController extends Controller
             'resolvedByUser',
             'homeServices.createdByUser',
             'statusLogs.changedByUser',
+            'replacements.issuedProduct',
+            'replacements.collectedDamagedProduct',
+            'replacements.createdByUser',
         ])->findOrFail($id);
 
-        return view('admin_panel.complaints.show', compact('complaint'));
+        // Also fetch all products for the replacement modal search dropdown
+        $productsList = \App\Models\Product::orderBy('item_name')->get();
+
+        return view('admin_panel.complaints.show', compact('complaint', 'productsList'));
     }
 
     // ─── Edit ────────────────────────────────────────────────────
@@ -208,7 +217,7 @@ class ComplaintController extends Controller
             'status'           => 'required|in:pending,in_progress,resolved,closed',
             'resolution_type'  => 'nullable|in:exchanged,repaired,refunded,pending_stock,none',
             'resolution_notes' => 'nullable|string',
-            'resolved_date'    => 'nullable|date',
+            'repair_price'     => 'nullable|numeric|min:0',
             'is_product_part'   => 'nullable',
             'product_part_name' => 'nullable|required_if:is_product_part,1|string|max:255',
         ]);
@@ -228,6 +237,7 @@ class ComplaintController extends Controller
             'status'           => $request->status,
             'resolution_type'  => $request->resolution_type,
             'resolution_notes' => $request->resolution_notes,
+            'repair_price'     => $request->repair_price ?? 0.00,
             'resolved_date'    => $request->resolved_date,
             'resolved_by'      => in_array($request->status, ['resolved', 'closed']) ? Auth::id() : $complaint->resolved_by,
         ]);
@@ -429,6 +439,148 @@ class ComplaintController extends Controller
             $complaint->update(['barcode_path' => 'complaint-barcodes/' . $filename]);
         } catch (\Exception $e) {
             // Barcode generation failed silently — complaint is still saved
+        }
+    }
+
+    // ─── Resolve Repair Details (Technician Form) ──────────────────
+    public function resolveRepair(Request $request, $id)
+    {
+        \Log::info('resolveRepair HIT', ['id' => $id, 'input' => $request->except('_token')]);
+
+        $complaint = Complaint::with(['branch'])->findOrFail($id);
+        $oldStatus = $complaint->status;
+
+        $validator = \Validator::make($request->all(), [
+            'repair_action'                => 'required|in:repaired,unrepairable',
+            'resolution_notes'             => 'nullable|string',
+            'repair_price'                 => 'nullable|numeric|min:0',
+            'issued_product_id'            => 'required_if:repair_action,unrepairable|nullable|exists:products,id',
+            'quantity'                     => 'required_if:repair_action,unrepairable|nullable|numeric|min:0.001',
+            'is_issued_part'               => 'nullable',
+            'issued_part_name'             => 'nullable|string|max:255',
+            'collect_damaged'              => 'nullable',
+            'collected_damaged_product_id' => 'nullable|exists:products,id',
+            'damaged_qty'                  => 'nullable|numeric|min:0.001',
+            'is_collected_part'            => 'nullable',
+            'collected_part_name'          => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            \Log::error('resolveRepair VALIDATION FAILED', ['errors' => $validator->errors()->toArray()]);
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        try {
+            DB::transaction(function () use ($request, $complaint, $oldStatus) {
+                if ($request->repair_action === 'repaired') {
+                    // Repaired successfully flow
+                    $complaint->update([
+                        'status'           => 'resolved',
+                        'resolution_type'  => 'repaired',
+                        'resolution_notes' => $request->resolution_notes,
+                        'repair_price'     => $request->repair_price ?? 0.00,
+                        'resolved_date'    => now(),
+                        'resolved_by'      => Auth::id(),
+                    ]);
+
+                    ComplaintStatusLog::create([
+                        'complaint_id' => $complaint->id,
+                        'old_status'   => $oldStatus,
+                        'new_status'   => 'resolved',
+                        'notes'        => 'Complaint resolved via repair technical details form. Repair price: ' . ($request->repair_price ?? 0.00),
+                        'changed_by'   => Auth::id(),
+                    ]);
+                } else {
+                    // Unrepairable exchange flow
+                    $branchId  = $complaint->branch_id;
+                    $productId = $request->issued_product_id;
+                    $qty       = (float) $request->quantity;
+
+                    // Generate Slip number
+                    $branchName = $complaint->branch->name ?? 'SH';
+                    $branchCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $branchName), 0, 3));
+                    $year = date('Y');
+                    $rand = str_pad(mt_rand(1, 99999), 5, '0', STR_PAD_LEFT);
+                    $slipNo = "RPL-{$branchCode}-{$year}-{$rand}";
+
+                    // 1. Create Complaint Replacement Log marked as pending
+                    $replacement = ComplaintReplacement::create([
+                        'complaint_id'                 => $complaint->id,
+                        'replacement_slip_no'          => $slipNo,
+                        'issued_product_id'            => $productId,
+                        'quantity'                     => $qty,
+                        'is_issued_part'               => $request->is_issued_part ? 1 : 0,
+                        'issued_part_name'             => $request->is_issued_part ? $request->issued_part_name : null,
+                        'source_location_type'         => null,
+                        'source_warehouse_id'          => null,
+                        'collect_damaged'              => $request->collect_damaged ? 1 : 0,
+                        'collected_damaged_product_id' => $request->collect_damaged ? $request->collected_damaged_product_id : null,
+                        'damaged_qty'                  => $request->collect_damaged ? (float) $request->damaged_qty : 0.0,
+                        'is_collected_part'            => $request->is_collected_part ? 1 : 0,
+                        'collected_part_name'          => $request->is_collected_part ? $request->collected_part_name : null,
+                        'damaged_status'               => $request->collect_damaged ? 'retained_at_shop' : 'none',
+                        'claim_status'                 => 'pending',
+                        'claimed_at'                   => null,
+                        'claimed_by'                   => null,
+                        'created_by'                   => Auth::id(),
+                    ]);
+
+                    // 2. If damaged part is collected, increment shop-retained damaged stock immediately
+                    if ($request->collect_damaged && $request->collected_damaged_product_id) {
+                        $damagedStock = DamagedStock::firstOrCreate([
+                            'branch_id'    => $branchId,
+                            'warehouse_id' => null, // Shop level
+                            'product_id'   => $request->collected_damaged_product_id,
+                            'is_part'      => $request->is_collected_part ? 1 : 0,
+                            'part_name'    => $request->is_collected_part ? $request->collected_part_name : null,
+                        ], [
+                            'quantity' => 0.0
+                        ]);
+
+                        $damagedStock->quantity += (float) $request->damaged_qty;
+                        $damagedStock->save();
+                    }
+
+                    // 3. Update Complaint
+                    $complaint->update([
+                        'status'           => 'resolved',
+                        'resolution_type'  => 'exchanged',
+                        'resolution_notes' => $request->resolution_notes,
+                        'repair_price'     => 0.00,
+                        'resolved_date'    => now(),
+                        'resolved_by'      => Auth::id(),
+                    ]);
+
+                    // 4. Log status
+                    $itemLabel = ($replacement->is_issued_part && $replacement->issued_part_name) 
+                        ? ($replacement->issuedProduct->item_name ?? 'Item') . ' (Part: ' . $replacement->issued_part_name . ')'
+                        : ($replacement->issuedProduct->item_name ?? 'Item');
+
+                    ComplaintStatusLog::create([
+                        'complaint_id' => $complaint->id,
+                        'old_status'   => $oldStatus,
+                        'new_status'   => 'resolved',
+                        'notes'        => 'Complaint resolved via unrepairable exchange. Pending replacement slip generated: ' . $slipNo . ' for: ' . $itemLabel . ' Qty: ' . $qty,
+                        'changed_by'   => Auth::id(),
+                    ]);
+
+                    // Store replacement ID in session to redirect to print after transaction
+                    session(['last_replacement_id' => $replacement->id]);
+                }
+            });
+
+            // If unrepairable exchange — redirect directly to print slip
+            if ($request->repair_action === 'unrepairable') {
+                $replacementId = session('last_replacement_id');
+                return redirect()->route('complaints.replacements.print-slip', $replacementId)
+                    ->with('success', '✅ Replacement slip generated! Please print and give to customer.');
+            }
+
+            return redirect()->route('complaints.show', $complaint->id)
+                ->with('success', '✅ Complaint successfully marked as RESOLVED and processed!');
+        } catch (\Exception $e) {
+            \Log::error('resolveRepair ERROR', ['msg' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile()]);
+            return redirect()->back()->with('error', '❌ ' . $e->getMessage())->withInput();
         }
     }
 }

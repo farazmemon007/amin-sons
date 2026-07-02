@@ -531,10 +531,19 @@
                         {{-- ✅ Complaints --}}
                         @can('complaint.view')
                         <li class="nav-item">
-                            <a href="{{ route('complaints.index') }}" class="nav-link">
+                            <a href="#" class="nav-link">
                                 <i class="menu_icon fas fa-exclamation-circle" style="color:#e67e22;"></i>
                                 <span class="menu-title">Complaints</span>
+                                <i class="menu-arrow"></i>
                             </a>
+                            <div class="submenu">
+                                <ul class="submenu-item">
+                                    <li><a href="{{ route('complaints.index') }}"><i class="fas fa-list"></i> Complaints List</a></li>
+                                    @can('warehouse.stock.view')
+                                    <li><a href="{{ route('complaints.damaged-stock.index') }}"><i class="fas fa-dumpster"></i> Damaged Stock</a></li>
+                                    @endcan
+                                </ul>
+                            </div>
                         </li>
                         @endcan
 

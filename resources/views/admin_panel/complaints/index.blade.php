@@ -194,6 +194,11 @@
                                 <a href="{{ route('complaints.print-slip', $c->id) }}" target="_blank" class="btn btn-secondary action-btn" title="Print Slip"><i class="fas fa-print"></i></a>
                                 <a href="{{ route('complaints.print-tag', $c->id) }}" target="_blank" class="btn btn-dark action-btn" title="Print Tag"><i class="fas fa-tag"></i></a>
                                 @endcan
+                                @if($c->replacements->isNotEmpty())
+                                <a href="{{ route('complaints.replacements.print-slip', $c->replacements->first()->id) }}" target="_blank" class="btn btn-danger action-btn" title="Reclaim Slip / Print Bill" style="background-color: #d9534f; border-color: #d43f3a; font-weight: bold;">
+                                    <i class="fas fa-file-invoice"></i> Slip
+                                </a>
+                                @endif
                                 <a href="#" class="btn btn-success action-btn whatsapp-btn" data-id="{{ $c->id }}" title="WhatsApp"><i class="fab fa-whatsapp"></i></a>
                                 @can('complaint.delete')
                                 <form action="{{ route('complaints.destroy', $c->id) }}" method="POST" class="d-inline delete-form">

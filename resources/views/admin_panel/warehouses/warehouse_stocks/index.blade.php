@@ -357,6 +357,9 @@
                 <button type="button" class="btn btn-outline-secondary" id="btnWarehouseView" onclick="switchView('warehouse')">
                     <i class="fas fa-warehouse me-2"></i> Warehouse View
                 </button>
+                <button type="button" class="btn btn-outline-danger" id="btnDamagedView" onclick="switchView('damaged')">
+                    <i class="fas fa-dumpster me-2"></i> Damaged Stock View
+                </button>
             </div>
             <div class="d-flex gap-2 align-items-center flex-wrap">
                 <!-- ✅ ERP STOCK FILTERS -->
@@ -520,6 +523,70 @@
             @endforelse
         </div>
         </div>
+
+        <!-- DAMAGED STOCK VIEW (ERP STANDARD) -->
+        <div id="damagedViewSection" style="display:none;">
+            <div class="card shadow-sm" style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table mb-0" style="font-size: 0.9rem;">
+                            <thead style="background: linear-gradient(135deg, #c0392b, #d35400); color: white;">
+                                <tr>
+                                    <th style="padding: 14px 24px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Branch</th>
+                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Location Status</th>
+                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Defective Item</th>
+                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Item Code</th>
+                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; text-align: right;">Quantity</th>
+                                    <th style="padding: 14px 24px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; text-align: right;">Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($damagedStocksList as $stock)
+                                @if((float)$stock->quantity > 0)
+                                <tr class="damaged-stock-row" data-product-name="{{ strtolower($stock->product->item_name ?? '') }}" data-product-code="{{ strtolower($stock->product->item_code ?? '') }}" data-part-name="{{ strtolower($stock->part_name ?? '') }}" data-branch-name="{{ strtolower($stock->branch->name ?? '') }}" data-warehouse-name="{{ strtolower($stock->warehouse->warehouse_name ?? '') }}" style="transition: background 0.2s;" onmouseover="this.style.background='var(--light)'" onmouseout="this.style.background=''">
+                                    <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border); font-weight: bold;">
+                                        {{ $stock->branch->name ?? 'Head Office' }}
+                                    </td>
+                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border);">
+                                        @if($stock->warehouse_id === null)
+                                            <span class="badge badge-warning py-1 px-3" style="border-radius: 20px; font-weight: 700; font-size: 0.8rem;"><i class="fas fa-store mr-1"></i>Held at Shop</span>
+                                        @else
+                                            <span class="badge badge-danger py-1 px-3" style="border-radius: 20px; font-weight: 700; font-size: 0.8rem; background-color: #c0392b;"><i class="fas fa-warehouse mr-1"></i>Warehouse: {{ $stock->warehouse->warehouse_name ?? '-' }}</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border);">
+                                        <strong>{{ $stock->product->item_name ?? 'N/A' }}</strong>
+                                        @if($stock->is_part && $stock->part_name)
+                                            <span class="badge badge-warning d-block mt-1 font-weight-bold text-dark" style="max-width: fit-content;"><i class="fas fa-puzzle-piece mr-1"></i>Part: {{ $stock->part_name }}</span>
+                                        @else
+                                            <span class="badge badge-success d-block mt-1 font-weight-bold text-white" style="max-width: fit-content;"><i class="fas fa-box mr-1"></i>Complete Product</span>
+                                        @endif
+                                    </td>
+                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); color: var(--muted);">
+                                        {{ $stock->product->item_code ?? 'N/A' }}
+                                    </td>
+                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: right;">
+                                        <span style="background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">{{ number_format($stock->quantity, 2) }}</span>
+                                    </td>
+                                    <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: right; color: var(--muted); font-size: 0.8rem;">
+                                        {{ $stock->updated_at->format('d M Y, H:i') }}
+                                    </td>
+                                </tr>
+                                @endif
+                                @empty
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <i class="fas fa-dumpster" style="font-size:40px; opacity:0.3;"></i>
+                                        <div class="mt-2">No damaged stock recorded in these locations.</div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -528,38 +595,82 @@
     function switchView(view) {
         const productSection = document.getElementById('productViewSection');
         const warehouseSection = document.getElementById('warehouseViewSection');
+        const damagedSection = document.getElementById('damagedViewSection');
         const btnProduct = document.getElementById('btnProductView');
         const btnWarehouse = document.getElementById('btnWarehouseView');
+        const btnDamaged = document.getElementById('btnDamagedView');
         const searchBox = document.getElementById('searchProducts');
 
         if (view === 'product') {
             productSection.style.display = '';
             warehouseSection.style.display = 'none';
+            damagedSection.style.display = 'none';
             btnProduct.classList.add('active');
             btnProduct.classList.replace('btn-outline-secondary', 'btn-primary');
+            btnProduct.classList.replace('btn-outline-danger', 'btn-primary');
             btnWarehouse.classList.remove('active');
             btnWarehouse.classList.replace('btn-primary', 'btn-outline-secondary');
+            if (btnDamaged) {
+                btnDamaged.classList.remove('active');
+                btnDamaged.classList.replace('btn-danger', 'btn-outline-danger');
+            }
             searchBox.placeholder = 'Search product or code...';
-        } else {
+        } else if (view === 'warehouse') {
             productSection.style.display = 'none';
             warehouseSection.style.display = '';
+            damagedSection.style.display = 'none';
             btnWarehouse.classList.add('active');
             btnWarehouse.classList.replace('btn-outline-secondary', 'btn-primary');
             btnProduct.classList.remove('active');
             btnProduct.classList.replace('btn-primary', 'btn-outline-secondary');
+            if (btnDamaged) {
+                btnDamaged.classList.remove('active');
+                btnDamaged.classList.replace('btn-danger', 'btn-outline-danger');
+            }
             searchBox.placeholder = 'Search warehouse...';
+        } else {
+            productSection.style.display = 'none';
+            warehouseSection.style.display = 'none';
+            damagedSection.style.display = '';
+            if (btnDamaged) {
+                btnDamaged.classList.add('active');
+                btnDamaged.classList.replace('btn-outline-danger', 'btn-danger');
+            }
+            btnProduct.classList.remove('active');
+            btnProduct.classList.replace('btn-primary', 'btn-outline-secondary');
+            btnWarehouse.classList.remove('active');
+            btnWarehouse.classList.replace('btn-primary', 'btn-outline-secondary');
+            searchBox.placeholder = 'Search damaged stock...';
         }
         localStorage.setItem('whStockView', view);
     }
 
-    // Product search
+    // Product & Damaged Stock search
     document.getElementById('searchProducts').addEventListener('input', function(e) {
         const query = e.target.value.toLowerCase();
+        
+        // Filter Product Cards
         const cards = document.querySelectorAll('.product-card');
         cards.forEach(card => {
-            const name = card.dataset.productName;
-            const code = card.dataset.productCode;
+            const name = card.dataset.productName || '';
+            const code = card.dataset.productCode || '';
             card.style.display = (name.includes(query) || code.includes(query)) ? '' : 'none';
+        });
+
+        // Filter Damaged Stock Table Rows
+        const damagedRows = document.querySelectorAll('.damaged-stock-row');
+        damagedRows.forEach(row => {
+            const prodName = row.dataset.productName || '';
+            const prodCode = row.dataset.productCode || '';
+            const partName = row.dataset.partName || '';
+            const branchName = row.dataset.branchName || '';
+            const whName = row.dataset.warehouseName || '';
+            const matches = prodName.includes(query) || 
+                            prodCode.includes(query) || 
+                            partName.includes(query) || 
+                            branchName.includes(query) || 
+                            whName.includes(query);
+            row.style.display = matches ? '' : 'none';
         });
     });
 

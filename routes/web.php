@@ -78,6 +78,21 @@ use App\Http\Controllers\ComplaintController;
         Route::get('/',               [ComplaintController::class, 'index'])->middleware('permission:complaint.view')->name('index');
         Route::get('/create',         [ComplaintController::class, 'create'])->middleware('permission:complaint.create')->name('create');
         Route::post('/store',         [ComplaintController::class, 'store'])->middleware('permission:complaint.create')->name('store');
+        
+        // Replacement & Damaged Stock Routes (placed before wildcard {id} to avoid 404 conflict)
+        Route::get('/damaged-stock', [App\Http\Controllers\ComplaintReplacementController::class, 'damagedIndex'])
+            ->middleware('permission:warehouse.stock.view')->name('damaged-stock.index');
+        Route::post('/damaged-stock/transfer', [App\Http\Controllers\ComplaintReplacementController::class, 'transferDamaged'])
+            ->middleware('permission:stock.transfer.create')->name('damaged-stock.transfer');
+        Route::get('/replacements/locations-stock', [App\Http\Controllers\ComplaintReplacementController::class, 'getProductLocationsStock'])
+            ->middleware('permission:complaint.view')->name('replacements.locations-stock');
+        Route::post('/replacements', [App\Http\Controllers\ComplaintReplacementController::class, 'store'])
+            ->middleware('permission:complaint.edit')->name('replacements.store');
+        Route::post('/replacements/{id}/claim', [App\Http\Controllers\ComplaintReplacementController::class, 'claimReplacement'])
+            ->middleware('permission:complaint.edit')->name('replacements.claim');
+        Route::get('/replacements/{id}/print-slip', [App\Http\Controllers\ComplaintReplacementController::class, 'printReplacementSlip'])
+            ->middleware('permission:complaint.view')->name('replacements.print-slip');
+
         Route::get('/{id}',           [ComplaintController::class, 'show'])->middleware('permission:complaint.view')->name('show');
         Route::get('/{id}/edit',      [ComplaintController::class, 'edit'])->middleware('permission:complaint.edit')->name('edit');
         Route::put('/{id}',           [ComplaintController::class, 'update'])->middleware('permission:complaint.edit')->name('update');
@@ -85,6 +100,7 @@ use App\Http\Controllers\ComplaintController;
         Route::get('/{id}/print-slip',[ComplaintController::class, 'printSlip'])->middleware('permission:complaint.print')->name('print-slip');
         Route::get('/{id}/print-tag', [ComplaintController::class, 'printTag'])->middleware('permission:complaint.print')->name('print-tag');
         Route::post('/{id}/status',   [ComplaintController::class, 'changeStatus'])->middleware('permission:complaint.edit')->name('change-status');
+        Route::post('/{id}/resolve-repair', [ComplaintController::class, 'resolveRepair'])->middleware('permission:complaint.edit')->name('resolve-repair');
         Route::get('/{id}/whatsapp',  [ComplaintController::class, 'whatsappShare'])->middleware('permission:complaint.view')->name('whatsapp-share');
         // Home Service
         Route::post('/{id}/home-service',        [ComplaintController::class, 'storeHomeService'])->middleware('permission:complaint.home_service')->name('home-service.store');
@@ -93,6 +109,7 @@ use App\Http\Controllers\ComplaintController;
         Route::get('/search/customers',          [ComplaintController::class, 'searchCustomers'])->middleware('permission:complaint.view')->name('search-customers');
     });
     // ─── End Complaint Management System ─────────────────────────
+    // ─── End Complaint Replacement & Damaged Stock Routes ─────────────────
 
     // ✅ Find Document
     Route::get('/find', [FindController::class, 'index'])->name('find.index');

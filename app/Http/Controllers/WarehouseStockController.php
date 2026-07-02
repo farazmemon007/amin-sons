@@ -236,11 +236,28 @@ class WarehouseStockController extends Controller
             $hasDirectStock = WarehouseStock::when($filterBranchId, function($q) use ($filterBranchId) {
                 return $q->where('branch_id', $filterBranchId);
             })->whereNull('warehouse_id')->exists();
+
+            // ✅ DAMAGED STOCKS VIEW DATA (ERP STANDARD)
+            $damagedStocksQuery = \App\Models\DamagedStock::with(['branch', 'warehouse', 'product'])
+                ->whereIn('branch_id', $allowedBranchIds);
+
+            if ($selectedBranchId) {
+                $damagedStocksQuery->where('branch_id', $selectedBranchId);
+            }
+            if ($selectedWarehouseId !== null) {
+                if ($selectedWarehouseId === 'shop') {
+                    $damagedStocksQuery->whereNull('warehouse_id');
+                } else {
+                    $damagedStocksQuery->where('warehouse_id', $selectedWarehouseId);
+                }
+            }
+            $damagedStocksList = $damagedStocksQuery->orderByDesc('updated_at')->get();
         }
 
         return view('admin_panel.warehouses.warehouse_stocks.index', compact(
             'products', 'stats', 'allowedBranchIds', 'isSuperAdmin', 'warehouseGroups', 
-            'branches', 'warehouses', 'selectedBranchId', 'selectedWarehouseId', 'hasDirectStock'
+            'branches', 'warehouses', 'selectedBranchId', 'selectedWarehouseId', 'hasDirectStock',
+            'damagedStocksList'
         ));
     }
 

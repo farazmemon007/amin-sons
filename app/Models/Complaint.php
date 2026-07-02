@@ -54,6 +54,11 @@ class Complaint extends Model
         return $this->hasMany(ComplaintStatusLog::class)->orderBy('created_at', 'desc');
     }
 
+    public function replacements()
+    {
+        return $this->hasMany(ComplaintReplacement::class)->orderBy('created_at', 'desc');
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────
 
     public function getScenarioLabelAttribute(): string
