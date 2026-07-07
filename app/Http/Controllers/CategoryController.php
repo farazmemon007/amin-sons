@@ -27,8 +27,12 @@ class CategoryController extends Controller
             ], 422);
         }
 
-        // Check if category already exists
-        $exists = Category::where('name', $request->name)->exists();
+        // Check if category already exists (excluding the current category being edited)
+        $query = Category::where('name', $request->name);
+        if ($request->filled('edit_id')) {
+            $query->where('id', '!=', $request->edit_id);
+        }
+        $exists = $query->exists();
         
         if ($exists) {
             return response()->json([
@@ -36,13 +40,21 @@ class CategoryController extends Controller
             ], 409);
         }
 
-        // Create new category
-        $category = new Category();
+        // Create or Update category
+        if ($request->filled('edit_id')) {
+            $category = Category::findOrFail($request->edit_id);
+            $message = 'Category Updated Successfully';
+        } else {
+            $category = new Category();
+            $message = 'Category Inserted Successfully';
+        }
+
         $category->name = $request->name;
         $category->save();
 
         return response()->json([
-            'success' => 'Category Inserted Successfully'
+            'success' => $message,
+            'reload' => true
         ]);
     }
 

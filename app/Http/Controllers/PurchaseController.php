@@ -1104,7 +1104,18 @@ class PurchaseController extends Controller
             }
         }
 
-        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'Branch', 'vendorRemaining', 'isSuperAdmin', 'bankAccounts', 'prefilledPayments'));
+        $Products = \App\Models\Product::with('unit')->get();
+        foreach ($Products as $product) {
+            $lastPurchaseItem = \App\Models\PurchaseItem::where('product_id', $product->id)
+                ->orderBy('id', 'desc')
+                ->first();
+
+            $product->last_purchase_price = $lastPurchaseItem
+                ? (float)$lastPurchaseItem->price
+                : (float)($product->wholesale_price ?? 0);
+        }
+
+        return view('admin_panel.purchase.edit', compact('purchase', 'Vendor', 'Warehouse', 'Branch', 'vendorRemaining', 'isSuperAdmin', 'bankAccounts', 'prefilledPayments', 'Products'));
     }
 
 
@@ -1145,347 +1156,381 @@ class PurchaseController extends Controller
             'payment_amount.*'    => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($validated, $request, $id) {
-            $purchase = Purchase::with('items')->findOrFail($id);
+        try {
+            DB::transaction(function () use ($validated, $request, $id) {
+                $purchase = Purchase::with('items')->findOrFail($id);
 
-            $branchId    = (int)($validated['branch_id'] ?? $purchase->branch_id ?? 1);
-            $warehouseId = (int)($validated['warehouse_id'] ?? $purchase->warehouse_id);
+                $branchId    = (int)($validated['branch_id'] ?? $purchase->branch_id ?? 1);
+                $warehouseId = (int)($validated['warehouse_id'] ?? $purchase->warehouse_id);
 
-            // ✅ CRITICAL: If purchase is linked to gatepass, validate qty restrictions
-            // User cannot decrease qty below what's already been received
-            $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
-            $vendorRemainings = collect();
-            
-            if ($isLinkedToGatepass) {
-                $vendorRemainings = \App\Models\VendorRemaining::where('purchase_id', $purchase->id)
-                    ->get()
-                    ->keyBy('product_id');
-            }
-
-            // --- 1. ROLLBACK OLD STOCKS (if not linked to gatepass) ---
-            if (!$isLinkedToGatepass) {
-                $oldBranchId = $purchase->branch_id;
-                foreach ($purchase->items as $oldItem) {
-                    $oldItemWarehouse = $oldItem->warehouse_id ?: $purchase->warehouse_id;
-                    if ($oldItemWarehouse) {
-                        $this->upsertStocks((int)$oldItem->product_id, -$oldItem->qty, $oldBranchId, $oldItemWarehouse);
-                        
-                        DB::table('stock_movements')->insert([
-                            'product_id' => (int)$oldItem->product_id,
-                            'type'       => 'out',
-                            'qty'        => $oldItem->qty,
-                            'ref_type'   => 'PURCHASE_EDIT_REMOVE',
-                            'ref_id'     => $purchase->id,
-                            'note'       => 'Rollback old stock during purchase edit',
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-            }
-
-            // Rebuild items
-            $purchase->items()->delete();
-
-            $subtotal = 0;
-            $newMap = collect();
-
-            $pids = $validated['product_id'] ?? [];
-            $qtys = $validated['qty'] ?? [];
-            $prices = $validated['price'] ?? [];
-            $units = $validated['unit'] ?? [];
-            $itemDiscs = $validated['item_discount'] ?? [];
-            $lineWarehouseIds = $validated['line_warehouse_id'] ?? [];  // ✅ NEW: Per-line warehouse
-
-            foreach ($pids as $i => $pid) {
-                $pid = (int)($pid ?? 0);
-                $qty = (float)($qtys[$i] ?? 0);
-                $price = (float)($prices[$i] ?? 0);
-                if (!$pid || $qty <= 0 || $price < 0) continue;
-
-                // ✅ ERP STANDARD: Validate qty against received qty
-                if ($isLinkedToGatepass && $vendorRemainings->has($pid)) {
-                    $remaining = $vendorRemainings[$pid];
-                    // New qty cannot be less than what's already received
-                    if ($qty < $remaining->received_qty) {
-                        \Log::warning('Purchase edit: Qty reduction blocked', [
-                            'product_id' => $pid,
-                            'new_qty' => $qty,
-                            'already_received' => $remaining->received_qty
-                        ]);
-                        return; // Skip this product or throw validation error
-                    }
-                }
-
-                $disc = (float)($itemDiscs[$i] ?? 0);
-                $unit = $units[$i] ?? null;
-                $lineTotal = ($price * $qty) - $disc;
+                // ✅ CRITICAL: If purchase is linked to gatepass, validate qty restrictions
+                // User cannot decrease qty below what's already been received
+                $isLinkedToGatepass = \App\Models\InwardGatepass::where('purchase_id', $purchase->id)->exists();
+                $vendorRemainings = collect();
                 
-                // ✅ ERP STANDARD: Per-line warehouse assignment
-                $lineWarehouse = (int)($lineWarehouseIds[$i] ?? 0);
-                $itemWarehouse = ($lineWarehouse > 0) ? $lineWarehouse : $warehouseId;
-
-                PurchaseItem::create([
-                    'purchase_id'   => $purchase->id,
-                    'product_id'    => $pid,
-                    'warehouse_id'  => $itemWarehouse ?: null,  // Store per-line warehouse
-                    'unit'          => $unit,
-                    'price'         => $price,
-                    'item_discount' => $disc,
-                    'qty'           => $qty,
-                    'line_total'    => $lineTotal,
-                ]);
-
-                // --- 2. APPLY NEW STOCKS (if not linked to gatepass) ---
-                if (!$isLinkedToGatepass && $itemWarehouse) {
-                    $this->upsertStocks((int)$pid, +$qty, $branchId, $itemWarehouse);
-                    
-                    DB::table('stock_movements')->insert([
-                        'product_id' => (int)$pid,
-                        'type'       => 'in',
-                        'qty'        => $qty,
-                        'ref_type'   => 'PURCHASE_EDIT_ADD',
-                        'ref_id'     => $purchase->id,
-                        'note'       => 'Reapply new stock during purchase edit',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+                if ($isLinkedToGatepass) {
+                    $vendorRemainings = \App\Models\VendorRemaining::where('purchase_id', $purchase->id)
+                        ->get()
+                        ->keyBy('product_id');
                 }
 
-                $subtotal += $lineTotal;
-                $newMap[$pid] = ($newMap[$pid] ?? 0) + $qty;
-            }
-
-            // header update
-            $purchase->update([
-                'vendor_id'     => $validated['vendor_id'] ?? $purchase->vendor_id,
-                'branch_id'     => $branchId,
-                'warehouse_id'  => $warehouseId,
-                'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,
-                'invoice_no'    => $validated['invoice_no'] ?? $purchase->invoice_no,
-                'note'          => $validated['note'] ?? $purchase->note,
-                'transport_name'=> $validated['transport_name'] ?? $purchase->transport_name,  // ✅ NEW
-            ]);
-
-            // totals
-            $discount  = (float)($request->discount ?? 0);
-            $extraCost = (float)($request->extra_cost ?? 0);
-            $netAmount = ($subtotal - $discount) + $extraCost;
-
-            // ✅ Payment handling (Multiple Accounts)
-            $paymentType = $validated['payment_type'] ?? 'pay_later';
-            
-            // Extract arrays and filter out empty values
-            $paymentAccountIds = [];
-            $paymentAmounts = [];
-            $paidAmount = 0;
-
-            if ($paymentType === 'pay_now' && !empty($validated['payment_account_id']) && !empty($validated['payment_amount'])) {
-                foreach ($validated['payment_account_id'] as $index => $accId) {
-                    $amt = (float)($validated['payment_amount'][$index] ?? 0);
-                    if ($accId && $amt > 0) {
-                        $paymentAccountIds[] = $accId;
-                        $paymentAmounts[] = $amt;
-                        $paidAmount += $amt;
+                // Validate that we are not removing items that have already been received
+                $submittedPids = array_map('intval', $validated['product_id'] ?? []);
+                if ($isLinkedToGatepass) {
+                    foreach ($vendorRemainings as $vr) {
+                        if (!in_array((int)$vr->product_id, $submittedPids)) {
+                            if ($vr->received_qty > 0) {
+                                throw new \Exception("Cannot remove Product: " . ($vr->product->item_name ?? 'Item') . " because it has already been received.");
+                            }
+                        }
                     }
                 }
-            }
 
-            // ⚠️ Validation
-            if ($paymentType === 'pay_now' && $paidAmount <= 0) {
-                return back()->with('error', 'When paying now, please enter valid payment amounts.');
-            }
-            if ($paidAmount > $netAmount) {
-                return back()->with('error', "Total payment amount ({$paidAmount}) cannot exceed purchase amount ({$netAmount}).");
-            }
+                $shouldUpdateStock = ($purchase->purchase_type === 'local');
 
-            // --- 2. ROLLBACK OLD PAYMENTS (Refund Bank/Cash accounts & delete old ledger/voucher entries) ---
-            $oldVoucher = \App\Models\PaymentVoucher::where('reference_no', 'LIKE', '%' . $purchase->invoice_no . '%')->first();
-            if ($oldVoucher) {
-                $oldAccountIds = json_decode($oldVoucher->row_account_id, true) ?? [];
-                $oldAmounts = json_decode($oldVoucher->amount, true) ?? [];
-                foreach ($oldAccountIds as $index => $oldAccId) {
-                    $oldAmt = (float)($oldAmounts[$index] ?? 0);
-                    $oldAccount = \App\Models\Account::find($oldAccId);
-                    if ($oldAccount && $oldAmt > 0) {
-                        $oldAccount->opening_balance += $oldAmt; // Refund
-                        $oldAccount->save();
-                    }
-                }
-                // Delete old account ledger entries
-                \App\Models\AccountLedgerEntry::where('voucher_no', $oldVoucher->pvid)->delete();
-                
-                // Delete old vendor ledger entries for payment
-                \App\Models\VendorLedger::where('reference_id', $purchase->id)
-                    ->where('transaction_type', 'payment')
-                    ->delete();
-
-                // Delete the old voucher record
-                $oldVoucher->delete();
-            }
-
-            $dueAmount = $netAmount - $paidAmount;
-
-            $purchase->update([
-                'subtotal'    => $subtotal,
-                'discount'    => $discount,
-                'extra_cost'  => $extraCost,
-                'net_amount'  => $netAmount,
-                'paid_amount' => $paidAmount,
-                'due_amount'  => $dueAmount,
-            ]);
-
-            // --- 3. POST NEW PAYMENTS (if Pay Now is active) ---
-            if ($paymentType === 'pay_now' && !empty($paymentAccountIds) && $paidAmount > 0) {
-                $rowAccountHeads = [];
-                $pvid = \App\Models\PaymentVoucher::generateInvoiceNo();
-
-                foreach ($paymentAccountIds as $index => $accId) {
-                    $amt = $paymentAmounts[$index];
-                    $sourceAccount = \App\Models\Account::find($accId);
-                    if ($sourceAccount) {
-                        // Deduct from account
-                        $sourceAccount->opening_balance -= $amt;
-                        $sourceAccount->save();
-                        
-                        $rowAccountHeads[] = $sourceAccount->head_id ?? 1;
-
-                        // Post to account ledger
-                        $this->postLedgerEntry(
-                            $accId, 
-                            'payment', 
-                            $pvid, 
-                            null, 
-                            $purchase->purchase_date ?? now()->toDateString(), 
-                            'Payment for Purchase Invoice: ' . $purchase->invoice_no, 
-                            0, 
-                            $amt
-                         );
-
-                        // Post to vendor ledger for payment (temporary running balance, recalculated below)
-                        if ($purchase->vendor_id) {
-                            \App\Models\VendorLedger::create([
-                                'vendor_id'        => $purchase->vendor_id,
-                                'branch_id'        => $branchId,
-                                'admin_or_user_id' => auth()->id(),
-                                'transaction_type' => 'payment',
-                                'reference_id'     => $purchase->id,
-                                'transaction_date' => $purchase->purchase_date ?? now(),
-                                'description'      => "Payment for Purchase #{$purchase->invoice_no} (via {$sourceAccount->title})",
-                                'opening_balance'  => 0,
-                                'previous_balance' => 0,
-                                'debit_amount'     => $amt,
-                                'closing_balance'  => 0,
+                // --- 1. ROLLBACK OLD STOCKS (for local purchases) ---
+                if ($shouldUpdateStock) {
+                    $oldBranchId = $purchase->branch_id;
+                    foreach ($purchase->items as $oldItem) {
+                        $oldItemWarehouse = $oldItem->warehouse_id ?: $purchase->warehouse_id;
+                        if ($oldItemWarehouse) {
+                            $this->upsertStocks((int)$oldItem->product_id, -$oldItem->qty, $oldBranchId, $oldItemWarehouse);
+                            
+                            DB::table('stock_movements')->insert([
+                                'product_id' => (int)$oldItem->product_id,
+                                'type'       => 'out',
+                                'qty'        => $oldItem->qty,
+                                'ref_type'   => 'PURCHASE_EDIT_REMOVE',
+                                'ref_id'     => $purchase->id,
+                                'note'       => 'Rollback old stock during purchase edit',
+                                'created_at' => now(),
+                                'updated_at' => now(),
                             ]);
                         }
                     }
                 }
 
-                // Create new payment voucher
-                $discountsArray = array_fill(0, count($paymentAccountIds), 0);
-                \App\Models\PaymentVoucher::create([
-                    'pvid'                => $pvid,
-                    'receipt_date'        => $purchase->purchase_date ?? now()->format('Y-m-d'),
-                    'entry_date'          => now()->format('Y-m-d'),
-                    'type'                => 'vendor',
-                    'party_id'            => $purchase->vendor_id,
-                    'remarks'             => 'Payment for Purchase Invoice: ' . $purchase->invoice_no,
-                    'narration_id'        => json_encode(['1']),
-                    'reference_no'        => json_encode([$purchase->invoice_no]),
-                    'row_account_head'    => json_encode($rowAccountHeads),
-                    'row_account_id'      => json_encode($paymentAccountIds),
-                    'discount_value'      => json_encode($discountsArray),
-                    'amount'              => json_encode($paymentAmounts),
-                    'total_amount'        => $paidAmount,
-                ]);
-            }
+                // Rebuild items
+                $purchase->items()->delete();
 
-            // ✅ CRITICAL: Update vendor_remaining if qty changed
-            // When purchase qty changes, remaining_qty must be recalculated
-            $vendorRemainingsForUpdate = \App\Models\VendorRemaining::where('purchase_id', $purchase->id)->get();
-            foreach ($vendorRemainingsForUpdate as $vr) {
-                $pid = (int)$vr->product_id;
-                $newQty = (int)($newMap[$pid] ?? 0);
-                $receivedQty = (int)$vr->received_qty;
-                
-                if ($newQty !== (int)$vr->ordered_qty) {
-                    // Qty changed! Update ordered_qty and recalculate remaining_qty
-                    $newRemaining = $newQty - $receivedQty;
+                $subtotal = 0;
+                $newMap = collect();
+
+                $pids = $validated['product_id'] ?? [];
+                $qtys = $validated['qty'] ?? [];
+                $prices = $validated['price'] ?? [];
+                $units = $validated['unit'] ?? [];
+                $colors = $request->color ?? []; // ✅ Get colors from request
+                $itemDiscs = $validated['item_discount'] ?? [];
+                $lineWarehouseIds = $validated['line_warehouse_id'] ?? [];
+
+                // Extract packing fields from request
+                $packingTypes   = $request->packing_type ?? [];
+                $packingQtys    = $request->packing_qty ?? [];
+                $itemsPerPieces = $request->item_per_piece ?? [];
+                $loosePieces    = $request->loose_piece ?? [];
+
+                foreach ($pids as $i => $pid) {
+                    $pid = (int)($pid ?? 0);
+                    $qty = (float)($qtys[$i] ?? 0);
+                    $price = (float)($prices[$i] ?? 0);
+                    if (!$pid || $qty <= 0 || $price < 0) continue;
+
+                    // ✅ ERP STANDARD: Validate qty against received qty
+                    if ($isLinkedToGatepass && $vendorRemainings->has($pid)) {
+                        $remaining = $vendorRemainings[$pid];
+                        if ($qty < $remaining->received_qty) {
+                            throw new \Exception("Quantity for " . ($remaining->product->item_name ?? 'Item') . " cannot be less than the received quantity (" . $remaining->received_qty . ").");
+                        }
+                    }
+
+                    $disc = (float)($itemDiscs[$i] ?? 0);
+                    $unit = $units[$i] ?? null;
+                    $color = $colors[$i] ?? null;
+                    $lineTotal = ($price * $qty) - $disc;
                     
-                    $vr->update([
-                        'ordered_qty'  => $newQty,
-                        'remaining_qty' => max(0, $newRemaining),  // Never negative
-                        // ✅ Auto-update status based on new qty
-                        'status' => ($newRemaining <= 0) ? 'completed' : (($receivedQty > 0) ? 'partial' : 'pending'),
+                    // ✅ ERP STANDARD: Per-line warehouse assignment
+                    $lineWarehouse = (int)($lineWarehouseIds[$i] ?? 0);
+                    $itemWarehouse = ($lineWarehouse > 0) ? $lineWarehouse : $warehouseId;
+
+                    PurchaseItem::create([
+                        'purchase_id'   => $purchase->id,
+                        'product_id'    => $pid,
+                        'color'         => $color, // ✅ Save color
+                        'warehouse_id'  => $itemWarehouse ?: null,
+                        'unit'          => $unit,
+                        'price'         => $price,
+                        'item_discount' => $disc,
+                        'qty'           => $qty,
+                        'line_total'    => $lineTotal,
+                        // Store Packing Details
+                        'packing_type'  => $packingTypes[$i] ?? null,
+                        'packing_qty'   => $packingQtys[$i] ?? null,
+                        'item_per_piece'=> $itemsPerPieces[$i] ?? null,
+                        'loose_piece'   => $loosePieces[$i] ?? null,
                     ]);
+
+                    // --- 2. APPLY NEW STOCKS (for local purchases) ---
+                    if ($shouldUpdateStock && $itemWarehouse) {
+                        $this->upsertStocks((int)$pid, +$qty, $branchId, $itemWarehouse);
+                        
+                        DB::table('stock_movements')->insert([
+                            'product_id' => (int)$pid,
+                            'type'       => 'in',
+                            'qty'        => $qty,
+                            'ref_type'   => 'PURCHASE_EDIT_ADD',
+                            'ref_id'     => $purchase->id,
+                            'note'       => 'Reapply new stock during purchase edit',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
+                    $subtotal += $lineTotal;
+                    $newMap[$pid] = ($newMap[$pid] ?? 0) + $qty;
+                }
+
+                // header update
+                $purchase->update([
+                    'vendor_id'     => $validated['vendor_id'] ?? $purchase->vendor_id,
+                    'branch_id'     => $branchId,
+                    'warehouse_id'  => $warehouseId,
+                    'purchase_date' => $validated['purchase_date'] ?? $purchase->purchase_date,
+                    'invoice_no'    => $validated['invoice_no'] ?? $purchase->invoice_no,
+                    'note'          => $validated['note'] ?? $purchase->note,
+                    'transport_name'=> $validated['transport_name'] ?? $purchase->transport_name,
+                ]);
+
+                // totals
+                $discount  = (float)($request->discount ?? 0);
+                $extraCost = (float)($request->extra_cost ?? 0);
+                $netAmount = ($subtotal - $discount) + $extraCost;
+
+                // ✅ Payment handling (Multiple Accounts)
+                $paymentType = $validated['payment_type'] ?? 'pay_later';
+                
+                // Extract arrays and filter out empty values
+                $paymentAccountIds = [];
+                $paymentAmounts = [];
+                $paidAmount = 0;
+
+                if ($paymentType === 'pay_now' && !empty($validated['payment_account_id']) && !empty($validated['payment_amount'])) {
+                    foreach ($validated['payment_account_id'] as $index => $accId) {
+                        $amt = (float)($validated['payment_amount'][$index] ?? 0);
+                        if ($accId && $amt > 0) {
+                            $paymentAccountIds[] = $accId;
+                            $paymentAmounts[] = $amt;
+                            $paidAmount += $amt;
+                        }
+                    }
+                }
+
+                // ⚠️ Validation
+                if ($paymentType === 'pay_now' && $paidAmount <= 0) {
+                    throw new \Exception('When paying now, please enter valid payment amounts.');
+                }
+                if ($paidAmount > $netAmount) {
+                    throw new \Exception("Total payment amount ({$paidAmount}) cannot exceed purchase amount ({$netAmount}).");
+                }
+
+                // --- 2. ROLLBACK OLD PAYMENTS (Refund Bank/Cash accounts & delete old ledger/voucher entries) ---
+                $oldVoucher = \App\Models\PaymentVoucher::where('reference_no', 'LIKE', '%' . $purchase->invoice_no . '%')->first();
+                if ($oldVoucher) {
+                    $oldAccountIds = json_decode($oldVoucher->row_account_id, true) ?? [];
+                    $oldAmounts = json_decode($oldVoucher->amount, true) ?? [];
+                    foreach ($oldAccountIds as $index => $oldAccId) {
+                        $oldAmt = (float)($oldAmounts[$index] ?? 0);
+                        $oldAccount = \App\Models\Account::find($oldAccId);
+                        if ($oldAccount && $oldAmt > 0) {
+                            $oldAccount->opening_balance += $oldAmt; // Refund
+                            $oldAccount->save();
+                        }
+                    }
+                    // Delete old account ledger entries
+                    \App\Models\AccountLedgerEntry::where('voucher_no', $oldVoucher->pvid)->delete();
                     
-                    \Log::info('Purchase edit: Updated vendor_remaining', [
-                        'product_id' => $pid,
-                        'old_ordered_qty' => $vr->ordered_qty,
-                        'new_ordered_qty' => $newQty,
-                        'received_qty' => $receivedQty,
-                        'new_remaining' => $newRemaining,
+                    // Delete old vendor ledger entries for payment
+                    \App\Models\VendorLedger::where('reference_id', $purchase->id)
+                        ->where('transaction_type', 'payment')
+                        ->delete();
+
+                    // Delete the old voucher record
+                    $oldVoucher->delete();
+                }
+
+                $dueAmount = $netAmount - $paidAmount;
+
+                $purchase->update([
+                    'subtotal'    => $subtotal,
+                    'discount'    => $discount,
+                    'extra_cost'  => $extraCost,
+                    'net_amount'  => $netAmount,
+                    'paid_amount' => $paidAmount,
+                    'due_amount'  => $dueAmount,
+                ]);
+
+                // --- 3. POST NEW PAYMENTS (if Pay Now is active) ---
+                if ($paymentType === 'pay_now' && !empty($paymentAccountIds) && $paidAmount > 0) {
+                    $rowAccountHeads = [];
+                    $pvid = \App\Models\PaymentVoucher::generateInvoiceNo();
+
+                    foreach ($paymentAccountIds as $index => $accId) {
+                        $amt = $paymentAmounts[$index];
+                        $sourceAccount = \App\Models\Account::find($accId);
+                        if ($sourceAccount) {
+                            // Deduct from account
+                            $sourceAccount->opening_balance -= $amt;
+                            $sourceAccount->save();
+                            
+                            $rowAccountHeads[] = $sourceAccount->head_id ?? 1;
+
+                            // Post to account ledger
+                            $this->postLedgerEntry(
+                                $accId, 
+                                'payment', 
+                                $pvid, 
+                                null, 
+                                $purchase->purchase_date ?? now()->toDateString(), 
+                                'Payment for Purchase Invoice: ' . $purchase->invoice_no, 
+                                0, 
+                                $amt
+                             );
+
+                            // Post to vendor ledger for payment (temporary running balance, recalculated below)
+                            if ($purchase->vendor_id) {
+                                \App\Models\VendorLedger::create([
+                                    'vendor_id'        => $purchase->vendor_id,
+                                    'branch_id'        => $branchId,
+                                    'admin_or_user_id' => auth()->id(),
+                                    'transaction_type' => 'payment',
+                                    'reference_id'     => $purchase->id,
+                                    'transaction_date' => $purchase->purchase_date ?? now(),
+                                    'description'      => "Payment for Purchase #{$purchase->invoice_no} (via {$sourceAccount->title})",
+                                    'opening_balance'  => 0,
+                                    'previous_balance' => 0,
+                                    'debit_amount'     => $amt,
+                                    'closing_balance'  => 0,
+                                ]);
+                            }
+                        }
+                    }
+
+                    // Create new payment voucher
+                    $discountsArray = array_fill(0, count($paymentAccountIds), 0);
+                    \App\Models\PaymentVoucher::create([
+                        'pvid'                => $pvid,
+                        'receipt_date'        => $purchase->purchase_date ?? now()->format('Y-m-d'),
+                        'entry_date'          => now()->format('Y-m-d'),
+                        'type'                => 'vendor',
+                        'party_id'            => $purchase->vendor_id,
+                        'remarks'             => 'Payment for Purchase Invoice: ' . $purchase->invoice_no,
+                        'narration_id'        => json_encode(['1']),
+                        'reference_no'        => json_encode([$purchase->invoice_no]),
+                        'row_account_head'    => json_encode($rowAccountHeads),
+                        'row_account_id'      => json_encode($paymentAccountIds),
+                        'discount_value'      => json_encode($discountsArray),
+                        'amount'              => json_encode($paymentAmounts),
+                        'total_amount'        => $paidAmount,
                     ]);
                 }
-            }
 
-            // --- 3. SYNC VENDOR LEDGER & RECALCULATE RUNNING BALANCES ---
-            $newVendorId = $validated['vendor_id'] ?? null;
-            
-            // Find if there is an existing VendorLedger entry for this purchase
-            $ledgerEntry = \App\Models\VendorLedger::where('reference_id', $purchase->id)
-                ->where('transaction_type', 'purchase')
-                ->first();
+                // Sync VendorRemaining records
+                if ($purchase->vendor_id) {
+                    // Delete VendorRemaining for products that were completely removed
+                    \App\Models\VendorRemaining::where('purchase_id', $purchase->id)
+                        ->whereNotIn('product_id', $submittedPids)
+                        ->delete();
 
-            if (!$ledgerEntry) {
-                // Fallback to searching by vendor and description containing the invoice number
-                $ledgerEntry = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)
-                    ->where('description', 'LIKE', "%#{$purchase->invoice_no}%")
-                    ->orderBy('id', 'desc')
+                    // For existing and new products, upsert VendorRemaining
+                    $isLocal = ($purchase->purchase_type === 'local');
+                    $isReceived = ($isLinkedToGatepass || $isLocal);
+
+                    foreach ($pids as $i => $pid) {
+                        $pid = (int)$pid;
+                        $qty = (float)($qtys[$i] ?? 0);
+                        if (!$pid || $qty <= 0) continue;
+
+                        $existingVR = \App\Models\VendorRemaining::where('purchase_id', $purchase->id)
+                            ->where('product_id', $pid)
+                            ->first();
+
+                        if ($existingVR) {
+                            $newReceived = $existingVR->received_qty;
+                            $newRemaining = $qty - $newReceived;
+                            $existingVR->update([
+                                'ordered_qty'   => $qty,
+                                'remaining_qty' => max(0, $newRemaining),
+                                'status'        => $newRemaining <= 0 ? 'completed' : ($newReceived > 0 ? 'partial' : 'pending'),
+                            ]);
+                        } else {
+                            \App\Models\VendorRemaining::create([
+                                'purchase_id'   => $purchase->id,
+                                'vendor_id'     => $purchase->vendor_id,
+                                'product_id'    => $pid,
+                                'warehouse_id'  => $warehouseId ?: null,
+                                'ordered_qty'   => $qty,
+                                'received_qty'  => $isReceived ? $qty : 0,
+                                'remaining_qty' => $isReceived ? 0 : $qty,
+                                'status'        => $isReceived ? 'completed' : 'pending',
+                            ]);
+                        }
+                    }
+                }
+
+                // --- 3. SYNC VENDOR LEDGER & RECALCULATE RUNNING BALANCES ---
+                $newVendorId = $validated['vendor_id'] ?? null;
+                
+                // Find if there is an existing VendorLedger entry for this purchase
+                $ledgerEntry = \App\Models\VendorLedger::where('reference_id', $purchase->id)
+                    ->where('transaction_type', 'purchase')
                     ->first();
-            }
 
-            if ($newVendorId) {
-                if ($ledgerEntry) {
-                    $oldVendorId = $ledgerEntry->vendor_id;
-                    
-                    // Update existing entry
-                    $ledgerEntry->vendor_id = $newVendorId;
-                    $ledgerEntry->branch_id = $branchId;
-                    $ledgerEntry->credit_amount = $netAmount;
-                    $ledgerEntry->debit_amount = 0;
-                    $ledgerEntry->description = "Purchase Invoice #{$purchase->invoice_no}";
-                    $ledgerEntry->transaction_date = $purchase->purchase_date ?? now();
-                    $ledgerEntry->save();
+                if (!$ledgerEntry) {
+                    $ledgerEntry = \App\Models\VendorLedger::where('vendor_id', $purchase->vendor_id)
+                        ->where('description', 'LIKE', "%#{$purchase->invoice_no}%")
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
 
-                    // Recalculate for the old vendor if the vendor changed
-                    if ($oldVendorId != $newVendorId) {
+                if ($newVendorId) {
+                    if ($ledgerEntry) {
+                        $oldVendorId = $ledgerEntry->vendor_id;
+                        
+                        $ledgerEntry->vendor_id = $newVendorId;
+                        $ledgerEntry->branch_id = $branchId;
+                        $ledgerEntry->credit_amount = $netAmount;
+                        $ledgerEntry->debit_amount = 0;
+                        $ledgerEntry->description = "Purchase Invoice #{$purchase->invoice_no}";
+                        $ledgerEntry->transaction_date = $purchase->purchase_date ?? now();
+                        $ledgerEntry->save();
+
+                        if ($oldVendorId != $newVendorId) {
+                            $this->recalculateLedgerBalances($oldVendorId);
+                        }
+                        
+                        $this->recalculateLedgerBalances($newVendorId);
+                    } else {
+                        \App\Services\VendorLedgerService::recordPurchase(
+                            vendorId: $newVendorId,
+                            amount: $netAmount,
+                            purchaseId: $purchase->id,
+                            description: "Purchase Invoice #{$purchase->invoice_no}"
+                        );
+                        $this->recalculateLedgerBalances($newVendorId);
+                    }
+                } else {
+                    if ($ledgerEntry) {
+                        $oldVendorId = $ledgerEntry->vendor_id;
+                        $ledgerEntry->delete();
                         $this->recalculateLedgerBalances($oldVendorId);
                     }
-                    
-                    // Recalculate for the current/new vendor
-                    $this->recalculateLedgerBalances($newVendorId);
-                } else {
-                    // Create a new ledger entry if it didn't exist
-                    \App\Services\VendorLedgerService::recordPurchase(
-                        vendorId: $newVendorId,
-                        amount: $netAmount,
-                        purchaseId: $purchase->id,
-                        description: "Purchase Invoice #{$purchase->invoice_no}"
-                    );
-                    $this->recalculateLedgerBalances($newVendorId);
                 }
-            } else {
-                // No new vendor (e.g. Local Market purchase). Delete ledger entry if exists.
-                if ($ledgerEntry) {
-                    $oldVendorId = $ledgerEntry->vendor_id;
-                    $ledgerEntry->delete();
-                    $this->recalculateLedgerBalances($oldVendorId);
-                }
-            }
-        });
+            });
 
-        return redirect()->route('Purchase.home')->with('success', 'Purchase updated successfully!');
+            return redirect()->route('Purchase.home')->with('success', 'Purchase updated successfully!');
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
     }
 
 

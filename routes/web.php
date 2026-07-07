@@ -628,6 +628,7 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
 route::post('/Payment/vochers/stote', [VoucherController::class, 'store_Pay_vochers'])->middleware('permission:payment.voucher.create')->name('Payment.vochers.store');
 Route::get('/all-Payment-vochers', [VoucherController::class, 'all_Payment_vochers'])->middleware('permission:payment.voucher.view')->name('all-Payment-vochers');
 Route::get('/Payment-voucher/print/{id}', [VoucherController::class, 'Paymentprint'])->middleware('permission:payment.voucher.print')->name('PaymentVoucher.print');
+Route::post('/payment-vouchers/{id}/upload-proof', [VoucherController::class, 'uploadProof'])->middleware('permission:payment.voucher.create')->name('payment-vouchers.upload-proof');
     ////// expense voucher
     Route::get('/all-expense-vochers', [VoucherController::class, 'all_expense_vochers'])->middleware('permission:expense.voucher.view')->name('all-expense-vochers');
 Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->middleware('permission:expense.voucher.view')->name('expense-vochers');

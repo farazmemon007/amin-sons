@@ -221,7 +221,7 @@
                             <div class="field-row mt-3">
                                 <div class="field-group">
                                     <label class="field-label">HS Code</label>
-                                    <input type="text" name="hs_code" class="custom-input" placeholder="HS Code">
+                                    <input type="text" id="hs_code" name="hs_code" class="custom-input" placeholder="HS Code" required>
                                 </div>
 
                                 <div class="field-group">
@@ -633,8 +633,13 @@
                 e.preventDefault();
                 const name = $('#product_name').val().trim();
                 const cat = $('#category-dropdown').val();
+                const hsCode = $('#hs_code').val() ? $('#hs_code').val().trim() : '';
                 if (!name || !cat) {
                     Swal.fire({ icon: 'warning', title: 'Missing Info', text: 'Product name and category are required.' });
+                    return false;
+                }
+                if (!hsCode) {
+                    Swal.fire({ icon: 'warning', title: 'Missing HS Code', text: 'Product cannot be stored without HS Code.' });
                     return false;
                 }
                 this.submit();

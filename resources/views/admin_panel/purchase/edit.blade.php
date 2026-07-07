@@ -28,6 +28,21 @@
     .table-premium tbody td:first-child { border-left: 1px solid #f1f5f9; border-top-left-radius: 0.75rem; border-bottom-left-radius: 0.75rem; }
     .table-premium tbody td:last-child { border-right: 1px solid #f1f5f9; border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; }
 
+    /* Compact inputs inside premium table */
+    .table-premium .fi { padding: 0.4rem 0.4rem !important; font-size: 0.8rem !important; border-radius: 0.5rem !important; }
+    .table-premium .select2-container--default .select2-selection--single { height: 32px !important; border-radius: 0.5rem !important; }
+    .table-premium .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 30px !important; padding-left: 10px !important; font-size: 0.8rem !important; }
+    .table-premium .select2-container--default .select2-selection--single .select2-selection__arrow { height: 30px !important; }
+    .table-premium .input-group-text { padding: 0.25rem 0.5rem !important; font-size: 0.8rem !important; border-radius: 0.5rem 0 0 0.5rem !important; }
+    .table-premium .btn { padding: 0.25rem 0.5rem !important; font-size: 0.8rem !important; }
+    .table-premium .disc-type-toggle { border-radius: 0 0.5rem 0.5rem 0 !important; height: 32px !important; }
+
+    /* Advanced input-group alignment inside table cells */
+    .table-premium .input-group { flex-wrap: nowrap !important; }
+    .table-premium .input-group .fi { flex: 1 1 auto !important; width: 1% !important; }
+    .table-premium .input-group-text + .fi { border-top-left-radius: 0 !important; border-bottom-left-radius: 0 !important; border-top-right-radius: 0.5rem !important; border-bottom-right-radius: 0.5rem !important; }
+    .table-premium .fi:first-child { border-top-left-radius: 0.5rem !important; border-bottom-left-radius: 0.5rem !important; border-top-right-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+
     .summary-card { background: #f8fafc; border-radius: 1rem; padding: 1.5rem; border: 1.5px dashed #cbd5e1; }
     .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
     .summary-label { font-weight: 600; color: #64748b; }
@@ -38,9 +53,14 @@
     .btn-premium { padding: 1rem 2rem; border-radius: 0.75rem; font-weight: 700; transition: all 0.2s; border: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
     .btn-submit { background: var(--primary-gradient); color: white; box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.39); width: 100%; margin-top: 1.5rem; }
     .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(79, 70, 229, 0.23); }
-    .fi-table { padding: 0.6rem 0.4rem !important; font-size: 0.85rem !important; }
+
     .payment-badge { padding: 0.5rem 1rem; border-radius: 2rem; cursor: pointer; transition: all 0.2s; font-weight: 600; border: 2px solid transparent; background: #f1f5f9; color: #64748b; }
     .payment-badge.active { background: #eef2ff; color: #4f46e5; border-color: #4f46e5; }
+
+    /* Select2 Custom Styling */
+    .select2-container--default .select2-selection--single { height: 45px; border-radius: 0.75rem; border: 1.5px solid #e2e8f0; background: #f8fafc; }
+    .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 43px; padding-left: 15px; }
+    .select2-container--default .select2-selection--single .select2-selection__arrow { height: 43px; }
 </style>
 
 <div class="main-content">
@@ -49,10 +69,41 @@
             @csrf
             @method('PUT')
             
+            @if ($errors->any())
+                <div class="alert alert-danger alert-dismissible fade show mb-4 border-0 shadow-sm" role="alert" style="border-radius: 1rem;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+                        <div>
+                            <h6 class="alert-heading fw-bold mb-1">Please fix the following errors:</h6>
+                            <ul class="mb-0 small">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show mb-4 border-0 shadow-sm" role="alert" style="border-radius: 1rem;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-circle-fill fs-4 me-3"></i>
+                        <div>{{ session('error') }}</div>
+                    </div>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            @endif
+
             <div class="premium-card">
                 <div class="card-header-gradient d-flex justify-content-between align-items-center">
                     <h2 class="card-title-premium">
-                        <i class="bi bi-pencil-square"></i> Edit Purchase Invoice
+                        <i class="fas fa-edit"></i> Edit Purchase Invoice
                     </h2>
                     <div class="text-white opacity-75 fw-bold">Invoice Ref: {{ $purchase->formatted_invoice }}</div>
                 </div>
@@ -61,20 +112,37 @@
                     <!-- Header Info -->
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <label class="section-label">Vendor / Supplier</label>
-                            <input type="text" class="fi" value="{{ $purchase->vendor->name ?? $purchase->vendor_name ?? 'N/A' }}" readonly>
-                            <input type="hidden" name="vendor_id" value="{{ $purchase->vendor_id }}">
-                            <input type="hidden" name="vendor_name" value="{{ $purchase->vendor_name }}">
+                            <label class="section-label">Vendor / Supplier <span class="text-danger">*</span></label>
+                            <select name="vendor_id" id="vendor_id" class="fi select2" required>
+                                <option value="">Select Vendor</option>
+                                @foreach($Vendor as $v)
+                                    <option value="{{ $v->id }}" {{ $v->id == $purchase->vendor_id ? 'selected' : '' }}>{{ $v->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-3">
                             <label class="section-label">Warehouse (Header)</label>
-                            <input type="text" class="fi" value="{{ $purchase->warehouse->warehouse_name ?? 'N/A' }}" readonly>
-                            <input type="hidden" name="warehouse_id" value="{{ $purchase->warehouse_id }}">
+                            <select name="warehouse_id" id="warehouse_id" class="fi select2">
+                                <option value="">🏢 Direct to Shop (Branch Display)</option>
+                                @foreach($Warehouse as $w)
+                                    <option value="{{ $w->id }}" {{ $w->id == $purchase->warehouse_id ? 'selected' : '' }}>
+                                        [{{ $w->branches->first()->name ?? 'Global' }}] - {{ $w->warehouse_name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                         <div class="col-md-3">
-                            <label class="section-label">Branch</label>
-                            <input type="text" class="fi" value="{{ $purchase->branch->name ?? 'N/A' }}" readonly>
-                            <input type="hidden" name="branch_id" value="{{ $purchase->branch_id }}">
+                            <label class="section-label">Branch <span class="text-danger">*</span></label>
+                            @if($isSuperAdmin)
+                                <select name="branch_id" id="branch_id" class="fi select2" required>
+                                    @foreach($Branch as $b)
+                                        <option value="{{ $b->id }}" {{ $b->id == $purchase->branch_id ? 'selected' : '' }}>{{ $b->name }}</option>
+                                    @endforeach
+                                </select>
+                            @else
+                                <input type="text" class="fi" value="{{ $purchase->branch->name ?? 'N/A' }}" readonly>
+                                <input type="hidden" name="branch_id" value="{{ $purchase->branch_id }}">
+                            @endif
                         </div>
                         <div class="col-md-3">
                             <label class="section-label">Invoice Date</label>
@@ -84,148 +152,114 @@
 
                     <!-- Items Table -->
                     <div class="table-responsive mb-4">
-                        <table class="table table-premium">
+                        <table class="table table-premium" id="itemsTable">
                             <thead>
                                 <tr>
-                                    <th style="width: 25%;">Product Details</th>
-                                    <th style="width: 12%;">Packing Type</th>
+                                    <th style="width: 20%;">Product Details <span class="text-danger">*</span></th>
+                                    <th style="width: 10%;">Packing Type</th>
                                     <th style="width: 20%; text-align: center;">Packing Details</th>
-                                    <th style="width: 8%; text-align: center;">Total Qty</th>
-                                    <th style="width: 12%;">Cost Price</th>
+                                    <th style="width: 8%; text-align: center;">Total Qty <span class="text-danger">*</span></th>
+                                    <th style="width: 12%;">Cost Price <span class="text-danger">*</span></th>
                                     <th style="width: 10%;">Disc</th>
-                                    <th style="width: 7%;">Disc Amt</th>
-                                    <th style="width: 15%; text-align: right;">Line Total</th>
+                                    <th style="width: 8%;">Disc Amt</th>
+                                    <th style="width: 13%; text-align: right;">Line Total</th>
+                                    <th style="width: 4%;"></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="itemsList">
+                                @foreach($purchase->items as $item)
                                 @php
-                                    // Group items by Product, Packing Type, and Unit to prevent repetition in UI
-                                    $groupedItems = $purchase->items->groupBy(function($item) {
-                                        return $item->product_id . '_' . ($item->packing_type ?? 'Standard') . '_' . ($item->unit ?? 'Piece');
-                                    });
+                                    $product = $item->product;
+                                    $unitName = $item->unit ?? ($product->unit->name ?? 'Piece');
                                 @endphp
-
-                                @foreach($groupedItems as $groupKey => $items)
-                                @php
-                                    $first = $items->first();
-                                    $totalQty = $items->sum('qty');
-                                    $product = $first->product;
-                                    $groupId = "group_" . $loop->index;
-                                    $groupDiscAmt = (float)$items->sum('item_discount');
-                                @endphp
-                                <tr class="item-group-row" data-group-id="{{ $groupId }}">
+                                <tr class="item-row">
                                     <td>
-                                        <div class="fw-bold text-dark mb-1" style="font-size: 1.1rem; line-height: 1.2;">{{ $product->item_name }}</div>
-                                        <div class="d-flex align-items-center flex-wrap gap-1 mb-2 mt-2">
-                                            <span class="badge bg-white text-muted border px-2 py-1" style="font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                                                <i class="bi bi-qr-code me-1"></i>{{ $product->item_code }}
-                                            </span>
-                                            @if($product->brand)
-                                                <span class="badge text-primary px-2 py-1" style="background: #eef2ff; font-size: 0.65rem; font-weight: 800; border: 1px solid #c7d2fe; text-transform: uppercase;">
-                                                    <i class="bi bi-tag-fill me-1"></i>{{ $product->brand->name }}
-                                                </span>
-                                            @endif
-                                            @if($product->model)
-                                                <span class="badge text-secondary px-2 py-1" style="background: #f8fafc; font-size: 0.65rem; font-weight: 700; border: 1px solid #e2e8f0;">
-                                                    <i class="bi bi-cpu me-1"></i>{{ $product->model }}
-                                                </span>
-                                            @endif
-                                        </div>
-                                        
-                                        <!-- Color Breakdown Badges -->
-                                        <div class="d-flex flex-wrap gap-1 mt-1">
-                                            @foreach($items as $subItem)
-                                                @if($subItem->color)
-                                                    <span class="badge rounded-pill" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-size: 0.7rem; padding: 0.35rem 0.65rem;">
-                                                        <i class="bi bi-circle-fill me-1" style="color: {{ strtolower($subItem->color) == 'white' ? '#cbd5e1' : strtolower($subItem->color) }}"></i>
-                                                        {{ $subItem->color }}: <strong>{{ $subItem->qty }}</strong>
-                                                    </span>
-                                                @endif
+                                        <select name="product_id[]" class="fi select2 product-select" required>
+                                            <option value="">Select Product</option>
+                                            @foreach($Products as $p)
+                                                <option value="{{ $p->id }}" 
+                                                    data-price="{{ $p->last_purchase_price }}" 
+                                                    data-unit="{{ $p->unit->name ?? 'unit' }}"
+                                                    {{ $p->id == $item->product_id ? 'selected' : '' }}>
+                                                    {{ $p->item_name }} ({{ $p->item_code }})
+                                                </option>
                                             @endforeach
+                                        </select>
+                                        <input type="hidden" name="unit[]" class="unit-input" value="{{ $unitName }}">
+                                        <div class="mt-2">
+                                            <input type="text" name="color[]" class="fi color-input" placeholder="Color (optional)" value="{{ $item->color }}" style="height: 30px; font-size: 0.8rem; padding: 4px 8px;">
                                         </div>
-
-                                        <!-- Hidden Inputs for Backend (One set per original item) -->
-                                        @foreach($items as $subItem)
-                                            <div class="hidden-item-inputs" data-item-id="{{ $subItem->id }}">
-                                                <input type="hidden" name="product_id[]" value="{{ $subItem->product_id }}">
-                                                <input type="hidden" name="color[]" value="{{ $subItem->color }}">
-                                                <input type="hidden" name="unit[]" value="{{ $subItem->unit ?? ($product->unit->name ?? 'Piece') }}">
-                                                <input type="hidden" name="qty[]" class="sub-item-qty" value="{{ $subItem->qty }}">
-                                                <input type="hidden" name="packing_type[]" value="{{ $subItem->packing_type }}">
-                                                <input type="hidden" name="packing_qty[]" value="{{ $subItem->packing_qty }}">
-                                                <input type="hidden" name="item_per_piece[]" value="{{ $subItem->item_per_piece }}">
-                                                <input type="hidden" name="loose_piece[]" value="{{ $subItem->loose_piece }}">
-                                                <input type="hidden" name="price[]" class="sub-item-price-hidden" value="{{ $subItem->price }}">
-                                                <input type="hidden" name="item_discount[]" class="sub-item-disc-hidden" value="{{ $subItem->item_discount }}">
-                                                <input type="hidden" name="line_warehouse_id[]" class="sub-item-warehouse-hidden" value="{{ $subItem->warehouse_id }}">
-                                            </div>
-                                        @endforeach
                                     </td>
-
-
                                     
+                                    <!-- PACKING TYPE -->
                                     <td>
-                                        <span class="badge {{ strtolower($first->packing_type ?? 'standard') === 'standard' ? 'bg-light text-primary' : 'bg-light text-warning' }} px-3 py-2 border">
-                                            {{ $first->packing_type ?? 'Standard' }}
-                                        </span>
+                                        <select name="packing_type[]" class="fi packing-type-select">
+                                            <option value="Standard" {{ strtolower($item->packing_type ?? 'standard') === 'standard' ? 'selected' : '' }}>Standard</option>
+                                            <option value="Customize" {{ strtolower($item->packing_type ?? 'standard') === 'customize' ? 'selected' : '' }}>Customize</option>
+                                        </select>
                                     </td>
                                     
-                                    <td class="text-center">
-                                        @if(strtolower($first->packing_type ?? 'standard') === 'customize')
-                                            <div class="d-flex justify-content-center gap-2">
-                                                <div class="text-center">
-                                                    <div class="small text-muted" style="font-size: 0.65rem;">PACKS</div>
-                                                    <div class="fw-bold">{{ $first->packing_qty ?? 0 }}</div>
-                                                </div>
-                                                <div class="vr mx-1"></div>
-                                                <div class="text-center">
-                                                    <div class="small text-muted" style="font-size: 0.65rem;">PCS/PK</div>
-                                                    <div class="fw-bold">{{ $first->item_per_piece ?? 0 }}</div>
-                                                </div>
-                                                <div class="vr mx-1"></div>
-                                                <div class="text-center">
-                                                    <div class="small text-muted" style="font-size: 0.65rem;">LOOSE</div>
-                                                    <div class="fw-bold">{{ $first->loose_piece ?? 0 }}</div>
-                                                </div>
+                                    <!-- PACKING DETAILS -->
+                                    <td>
+                                        <!-- Standard View -->
+                                        <div class="standard-packing-view text-center" style="{{ strtolower($item->packing_type ?? 'standard') === 'standard' ? '' : 'display: none;' }}">
+                                            <input type="text" class="fi text-center" value="{{ $unitName }}" readonly style="background-color: #f1f5f9;">
+                                        </div>
+                                        <!-- Customize View -->
+                                        <div class="customize-packing-view gap-2 {{ strtolower($item->packing_type ?? 'standard') === 'customize' ? 'd-flex' : '' }}" style="{{ strtolower($item->packing_type ?? 'standard') === 'customize' ? '' : 'display: none;' }}">
+                                            <div class="flex-grow-1 text-center" style="width: 33%;">
+                                                <div style="font-size: 0.6rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Packs</div>
+                                                <input type="number" name="packing_qty[]" class="fi text-center pack-qty-input" step="1" min="0" value="{{ $item->packing_qty ?? 0 }}" placeholder="Packs">
                                             </div>
-                                        @else
-                                            <span class="text-muted small">Standard Packing ({{ $first->unit ?? 'Piece' }})</span>
-                                        @endif
+                                            <div class="flex-grow-1 text-center" style="width: 33%;">
+                                                <div style="font-size: 0.6rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Pcs/Pk</div>
+                                                <input type="number" name="item_per_piece[]" class="fi text-center ipp-input" step="1" min="0" value="{{ $item->item_per_piece ?? 0 }}" placeholder="Pcs/Pack">
+                                            </div>
+                                            <div class="flex-grow-1 text-center" style="width: 33%;">
+                                                <div style="font-size: 0.6rem; color: #64748b; font-weight: 700; text-transform: uppercase; margin-bottom: 2px;">Loose</div>
+                                                <input type="number" name="loose_piece[]" class="fi text-center loose-pcs-input" step="1" min="0" value="{{ $item->loose_piece ?? 0 }}" placeholder="Loose">
+                                            </div>
+                                        </div>
                                     </td>
                                     
                                     <td class="text-center">
-                                        <div class="fw-900 text-primary" style="font-size: 1.1rem;">{{ $totalQty }}</div>
-                                        <div class="small text-muted text-uppercase" style="font-size: 0.65rem;">{{ $first->unit ?? 'Piece' }}s</div>
-                                        <input type="hidden" class="group-total-qty" value="{{ $totalQty }}">
+                                        <input type="number" name="qty[]" class="fi text-center qty-input fw-bold text-primary" value="{{ $item->qty }}" min="1" step="0.01" required {{ strtolower($item->packing_type ?? 'standard') === 'customize' ? 'readonly' : '' }} style="{{ strtolower($item->packing_type ?? 'standard') === 'customize' ? 'background-color: #eef2ff;' : '' }}">
                                     </td>
-                                    
                                     <td>
                                         <div class="input-group">
-                                            <span class="input-group-text bg-white border-end-0 px-2"><i class="fas fa-tag text-primary" style="font-size: 0.8rem;"></i></span>
-                                            <input type="number" class="fi fi-table master-price-input border-start-0" style="border-left: none; background:#fff; color:#1e293b; font-weight: 700;" step="0.01" min="0" value="{{ $first->price }}" required>
+                                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-tag text-primary"></i></span>
+                                            <input type="number" name="price[]" class="fi price-input border-start-0" style="border-left: none; background:#fff; color:#1e293b; cursor:text;" step="0.01" min="0" value="{{ $item->price }}" required placeholder="Enter price">
                                         </div>
                                     </td>
-
                                     <td>
                                         <div class="input-group" style="flex-wrap: nowrap;">
-                                            <input type="number" class="fi fi-table master-disc-input-visual" style="border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0;" step="0.01" min="0" value="{{ $groupDiscAmt }}">
-                                            <button class="btn btn-outline-secondary disc-type-toggle px-2" type="button" data-type="amount" style="border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; border: 1.5px solid #e2e8f0; border-left: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; width: 40px; color: #4f46e5; font-size: 0.8rem;">Rs</button>
-                                            <input type="hidden" class="master-disc-type-input" value="amount">
+                                            <input type="number" class="fi form-control disc-input-visual" style="border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0;" step="0.01" min="0" value="{{ $item->item_discount }}">
+                                            <button class="btn btn-outline-secondary disc-type-toggle" type="button" data-type="amount" style="border-top-right-radius: 0.75rem; border-bottom-right-radius: 0.75rem; border: 1.5px solid #e2e8f0; border-left: 1px solid #cbd5e1; background: #f8fafc; font-weight: bold; width: 45px; color: #4f46e5; transition: all 0.2s;">Rs</button>
+                                            <input type="hidden" class="disc-type-input" value="amount">
+                                            <input type="hidden" name="item_discount[]" class="disc-input-hidden" value="{{ $item->item_discount }}">
                                         </div>
                                     </td>
-
                                     <td>
-                                        <input type="text" class="fi fi-table text-end fw-bold group-disc-amt-display" value="{{ number_format($groupDiscAmt, 2, '.', '') }}" readonly style="background:#f8fafc; color:#64748b; font-size:0.9rem;">
+                                        <input type="text" class="fi text-end fw-bold disc-amt-display" value="{{ number_format($item->item_discount, 2, '.', '') }}" readonly style="background:#f8fafc; color:#64748b; font-size:0.85rem;">
                                     </td>
-
                                     <td class="text-end">
-                                        <input type="text" class="fi fi-table text-end fw-900 group-line-total" value="0.00" readonly style="background:#f0fdf4; color:#15803d; font-size:1.1rem; min-width: 120px;">
+                                        <input type="text" class="fi text-end fw-bold line-total" value="{{ number_format($item->line_total, 2, '.', '') }}" readonly style="background:#f0fdf4; color:#15803d; font-size:0.85rem;">
+                                    </td>
+                                    
+                                    <input type="hidden" name="line_warehouse_id[]" class="line-warehouse-input" value="{{ $item->warehouse_id }}">
+                                    
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-row" style="border-radius: 8px; margin-top: 5px;"><i class="fa fa-trash"></i></button>
                                     </td>
                                 </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
+
+                    <button type="button" class="btn btn-outline-primary btn-sm fw-bold mb-5" id="addRow">
+                        <i class="fa fa-plus me-1"></i> ADD ANOTHER ITEM
+                    </button>
 
                     <!-- Footer Section -->
                     <div class="row g-4">
@@ -356,61 +390,142 @@
 $(document).ready(function() {
 
     // --- Select2 Initialization ---
+    function initSelect2() {
+        if($.fn.select2) {
+            $('.product-select').select2({
+                placeholder: "Select Product",
+                width: '100%'
+            });
+        }
+    }
+    
+    // Initial load
+    initSelect2();
     if($.fn.select2) {
-        $('.select2').select2({
+        $('#vendor_id, #warehouse_id, #branch_id').select2({
             width: '100%'
         });
     }
 
-    // --- Recalculation Logic (Grouped) ---
+    // Add Row
+    $('#addRow').click(function() {
+        var newRow = $('.item-row:first').clone();
+        
+        // Reset inputs
+        newRow.find('input').not('.disc-type-input, .disc-input-hidden, .unit-input, .standard-packing-view input').val(0);
+        newRow.find('.qty-input').val(1);
+        newRow.find('.line-total').val('0.00');
+        newRow.find('.disc-amt-display').val('0.00');
+        newRow.find('.unit-input').val('Piece');
+        newRow.find('.color-input').val('');
+        newRow.find('.line-warehouse-input').val('');
+        
+        // Reset packing type to Standard and clear customize inputs
+        newRow.find('.packing-type-select').val('Standard');
+        newRow.find('.standard-packing-view').show();
+        newRow.find('.standard-packing-view input').val('Piece');
+        newRow.find('.customize-packing-view').removeClass('d-flex').hide();
+        newRow.find('.qty-input').prop('readonly', false).css('background-color', '#fff');
+        
+        // Reset discount toggle
+        const toggleBtn = newRow.find('.disc-type-toggle');
+        toggleBtn.attr('data-type', 'amount').text('Rs');
+        newRow.find('.disc-type-input').val('amount');
+        newRow.find('.disc-input-hidden').val(0);
+
+        newRow.find('.select2-container').remove();
+        $('#itemsList').append(newRow);
+        initSelect2();
+        recalc();
+    });
+
+    // Remove Row
+    $(document).on('click', '.remove-row', function() {
+        if ($('.item-row').length > 1) {
+            $(this).closest('tr').remove();
+            recalc();
+        } else {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Cannot delete!',
+                text: 'Invoice me kam se kam ek product hona zarori hai.'
+            });
+        }
+    });
+
+    // Product Selection -> Auto Price
+    $(document).on('change', '.product-select', function() {
+        var price = $(this).find(':selected').data('price') || 0;
+        var unit = $(this).find(':selected').data('unit') || 'Piece';
+        $(this).closest('tr').find('.price-input').val(price);
+        $(this).closest('tr').find('.unit-input').val(unit);
+        
+        // Also update standard packing view "Piece" text to the actual unit
+        $(this).closest('tr').find('.standard-packing-view input').val(unit);
+        recalc();
+    });
+
+    // --- Packing Logic ---
+    $(document).on('change', '.packing-type-select', function() {
+        const row = $(this).closest('tr');
+        const type = $(this).val().toLowerCase();
+        
+        if (type === 'standard') {
+            row.find('.standard-packing-view').show();
+            row.find('.customize-packing-view').removeClass('d-flex').hide();
+            
+            // Standard allows direct Qty edit
+            row.find('.qty-input').prop('readonly', false).css('background-color', '#fff');
+            
+            // Clear packing inputs
+            row.find('.pack-qty-input, .ipp-input, .loose-pcs-input').val(0);
+        } else {
+            row.find('.standard-packing-view').hide();
+            row.find('.customize-packing-view').addClass('d-flex').show();
+            
+            // Customize makes Qty readonly (auto-calculated)
+            row.find('.qty-input').prop('readonly', true).css('background-color', '#eef2ff');
+        }
+        recalc();
+    });
+
+    $(document).on('input', '.pack-qty-input, .ipp-input, .loose-pcs-input', function() {
+        const row = $(this).closest('tr');
+        const packingType = row.find('.packing-type-select').val().toLowerCase();
+        
+        if (packingType === 'customize') {
+            const packQty = parseFloat(row.find('.pack-qty-input').val()) || 0;
+            const ipp = parseFloat(row.find('.ipp-input').val()) || 0;
+            const loose = parseFloat(row.find('.loose-pcs-input').val()) || 0;
+            const totalQty = (packQty * ipp) + loose;
+            row.find('.qty-input').val(totalQty);
+        }
+        recalc();
+    });
+
     function recalc() {
         let subtotal = 0;
 
-        $('.item-group-row').each(function() {
-            const $groupRow = $(this);
-            const masterPrice = parseFloat($groupRow.find('.master-price-input').val()) || 0;
-            const masterDiscVal = parseFloat($groupRow.find('.master-disc-input-visual').val()) || 0;
-            const masterDiscType = $groupRow.find('.master-disc-type-input').val() || 'amount';
-            const totalGroupQty = parseFloat($groupRow.find('.group-total-qty').val()) || 0;
+        $('.item-row').each(function() {
+            const qty   = parseFloat($(this).find('.qty-input').val())   || 0;
+            const price = parseFloat($(this).find('.price-input').val()) || 0;
+            const discVal = parseFloat($(this).find('.disc-input-visual').val()) || 0;
+            const discType = $(this).find('.disc-type-input').val() || 'amount';
 
-            let groupDiscAmt = 0;
-            if (masterDiscType === 'percent') {
-                groupDiscAmt = (totalGroupQty * masterPrice) * (masterDiscVal / 100);
+            let discAmt = 0;
+            if (discType === 'percent') {
+                discAmt = (qty * price) * (discVal / 100);
             } else {
-                groupDiscAmt = masterDiscVal;
+                discAmt = discVal;
             }
+            
+            // Set the calculated Rs discount to hidden field so backend gets correct value
+            $(this).find('.disc-input-hidden').val(discAmt.toFixed(2));
+            $(this).find('.disc-amt-display').val(discAmt.toFixed(2));
 
-            // Sync values to sub-items
-            const $subItems = $groupRow.find('.hidden-item-inputs');
-            
-            $subItems.each(function() {
-                const $sub = $(this);
-                const subQty = parseFloat($sub.find('.sub-item-qty').val()) || 0;
-                
-                // Set price for this sub-item
-                $sub.find('.sub-item-price-hidden').val(masterPrice.toFixed(2));
-                
-                // Distribute discount proportionally by quantity if it's a fixed amount, 
-                // or just use percent if it's percent.
-                let subDiscAmt = 0;
-                if (masterDiscType === 'percent') {
-                    subDiscAmt = (subQty * masterPrice) * (masterDiscVal / 100);
-                } else {
-                    // Fixed amount distributed by qty share
-                    if (totalGroupQty > 0) {
-                        subDiscAmt = (subQty / totalGroupQty) * masterDiscVal;
-                    }
-                }
-                $sub.find('.sub-item-disc-hidden').val(subDiscAmt.toFixed(4));
-            });
-
-            // Update UI for the group
-            $groupRow.find('.group-disc-amt-display').val(groupDiscAmt.toFixed(2));
-            
-            const groupLineTotal = (totalGroupQty * masterPrice) - groupDiscAmt;
-            $groupRow.find('.group-line-total').val(groupLineTotal.toFixed(2));
-            
-            subtotal += groupLineTotal;
+            const lineTotal = (qty * price) - discAmt;
+            $(this).find('.line-total').val(lineTotal.toFixed(2));
+            subtotal += lineTotal;
         });
 
         $('#dispSubtotal').text(subtotal.toLocaleString('en-PK', {minimumFractionDigits: 2}));
@@ -422,33 +537,37 @@ $(document).ready(function() {
 
         $('#dispNet').text(net.toLocaleString('en-PK', {minimumFractionDigits: 2}));
         $('#netAmount').val(net.toFixed(2));
-        if (typeof calcPayments === "function") {
-            calcPayments();
+        
+        // Update the payment amount if paying now
+        if ($('input[name="payment_type"][value="pay_now"]').is(':checked')) {
+            let firstAmount = $('.rv-amount').first();
+            if(!firstAmount.val() || parseFloat(firstAmount.val()) > 0) {
+                firstAmount.val(net.toFixed(2));
+            }
         }
+        
+        calcPayments();
     }
 
     // Run on any price / disc / overhead change
-    $(document).on('input', '.master-price-input, .master-disc-input-visual, #overallDiscount, #extraCost', recalc);
+    $(document).on('input', '.qty-input, .price-input, .disc-input-visual, #overallDiscount, #extraCost', recalc);
 
     // Discount Type Toggle (Rs / %)
     $(document).on('click', '.disc-type-toggle', function() {
         let type = $(this).attr('data-type');
-        const $groupRow = $(this).closest('.item-group-row');
-        
         if(type === 'amount') {
             $(this).attr('data-type', 'percent');
             $(this).text('%');
-            $groupRow.find('.master-disc-type-input').val('percent');
+            $(this).siblings('.disc-type-input').val('percent');
         } else {
             $(this).attr('data-type', 'amount');
             $(this).text('Rs');
-            $groupRow.find('.master-disc-type-input').val('amount');
+            $(this).siblings('.disc-type-input').val('amount');
         }
-        $groupRow.find('.master-disc-input-visual').focus();
+        // focus back on input for fast typing
+        $(this).siblings('.disc-input-visual').focus();
         recalc();
     });
-
-
 
     // Payment Toggles
     $('#badgeLater').click(function() {
@@ -572,7 +691,7 @@ $(document).ready(function() {
     // Validation on submit
     $('#purchaseForm').on('submit', function(e) {
         let emptyPrice = false;
-        $('.master-price-input').each(function() {
+        $('.price-input').each(function() {
             if(parseFloat($(this).val()) < 0) emptyPrice = true;
         });
         if(emptyPrice) {

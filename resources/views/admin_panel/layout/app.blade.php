@@ -177,12 +177,7 @@
     <!-- ✅ Fix Scrollbar Jiggling & Layout Shift -->
     <style>
         html {
-            scrollbar-gutter: stable; /* Prevent layout shift when scrollbar appears/disappears */
-            overflow-y: scroll; /* Always show scrollbar space */
-        }
-        
-        body {
-            overflow-y: auto;
+            overflow-y: scroll; /* Always show scrollbar space to prevent shift */
         }
         
         /* Prevent body scroll when modal is open */

@@ -555,6 +555,10 @@ public function searchProductsForSalebypagination(Request $request)
      */
     private function storeProductPhase1(Request $request, int $userId)
     {
+        if (!$request->filled('hs_code')) {
+            return redirect()->back()->withInput()->with('swal_error', 'Product cannot be stored without HS Code.');
+        }
+
         // Image upload
         $imagePath = null;
         if ($request->hasFile('image')) {
@@ -662,9 +666,8 @@ public function searchProductsForSalebypagination(Request $request)
             return $product->id;
         });
 
-        // ✅ Redirect to product create page (store route) instead of opening stock form
-        // User will manually open opening stock form from navbar
-        return redirect()->route('store')
+        // ✅ Redirect to product list page (product route) after successful save
+        return redirect()->route('product')
                          ->with('success', 'Product profile created successfully! You can now configure opening stock from "Opening Stocks" in the navbar.');
     }
 

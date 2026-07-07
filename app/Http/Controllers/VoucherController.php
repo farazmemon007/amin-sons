@@ -763,6 +763,42 @@ public function getOpeningBalance($type, $id)
         return view('admin_panel.vochers.payment_vochers.all_payment_vochers', compact('receipts'));
     }
 
+    public function uploadProof(Request $request, $id)
+    {
+        $request->validate([
+            'receiving_proof' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
+        ]);
+
+        $voucher = \App\Models\PaymentVoucher::findOrFail($id);
+
+        if ($request->hasFile('receiving_proof')) {
+            if ($voucher->receiving_proof) {
+                $oldPath = public_path('uploads/receipts/' . $voucher->receiving_proof);
+                if (file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+
+            $file = $request->file('receiving_proof');
+            $filename = 'proof_' . $voucher->pvid . '_' . time() . '.' . $file->getClientOriginalExtension();
+            
+            // Ensure destination directory exists
+            $destinationPath = public_path('uploads/receipts');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
+            $file->move($destinationPath, $filename);
+
+            $voucher->receiving_proof = $filename;
+            $voucher->save();
+
+            return back()->with('success', 'Receiving proof uploaded successfully.');
+        }
+
+        return back()->with('error', 'Failed to upload receiving proof.');
+    }
+
     public function Paymentprint($id)
     {
         $voucher = \App\Models\PaymentVoucher::findOrFail($id);

@@ -104,7 +104,12 @@
                     <h2 class="card-title-premium">
                         <i class="bi bi-cart-plus"></i> Local Market Purchase
                     </h2>
-                    <div class="text-white opacity-75 fw-bold">Direct Inventory Entry</div>
+                    <div class="d-flex align-items-center">
+                        <a href="{{ route('store') }}" class="btn btn-md font-weight-bold mr-3 shadow-sm" style="background-color: #ffffff; color: #4f46e5; border: none; border-radius: 8px; padding: 6px 16px; transition: all 0.2s ease-in-out; display: inline-flex; align-items: center; justify-content: center; font-size: 0.85rem;" onmouseover="this.style.backgroundColor='#f1f5f9'; this.style.transform='translateY(-1px)';" onmouseout="this.style.backgroundColor='#ffffff'; this.style.transform='none';">
+                            <i class="fas fa-plus mr-2" style="font-size: 0.75rem;"></i> Item
+                        </a>
+                        <div class="text-white opacity-75 fw-bold">Direct Inventory Entry</div>
+                    </div>
                 </div>
 
                 <div class="card-body p-3 p-lg-4">

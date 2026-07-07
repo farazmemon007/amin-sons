@@ -12,7 +12,7 @@
                 </div>
                 <div class="page-btn d-flex justify-content-end col-lg-6">
                     @can('warehouse.create')
-                    <button class="btn btn-outline-primary mb-2" data-bs-toggle="modal" data-bs-target="#warehouseModal" onclick="clearWarehouse()">
+                    <button class="btn btn-outline-primary mb-2" data-toggle="modal" data-target="#warehouseModal" onclick="clearWarehouse()">
                         <i class="fas fa-plus me-1"></i> Add Warehouse
                     </button>
                     @endcan
@@ -64,8 +64,8 @@
                                         data-location="{{ $w->location }}"
                                         data-remarks="{{ $w->remarks }}"
                                         data-branches="{{ $w->branches->pluck('id')->implode(',') }}"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#warehouseModal">
+                                        data-toggle="modal"
+                                        data-target="#warehouseModal">
                                         <i class="fas fa-pen"></i> Edit
                                     </button>
                                     @endcan
@@ -122,18 +122,20 @@
 
 {{-- ✅ ERP: Assign Staff to Warehouse Modal --}}
 <div class="modal fade" id="assignStaffModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content" style="border-radius:16px;overflow:hidden;">
             <div class="modal-header" style="background:linear-gradient(135deg,#0066cc,#004499);color:#fff;">
                 <h5 class="modal-title">
-                    <i class="fas fa-users-cog me-2"></i>
+                    <i class="fas fa-users-cog mr-2"></i>
                     Assign Staff — <span id="assignWarehouseName">Warehouse</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
             <div class="modal-body p-4">
                 <div class="alert alert-info border-0 mb-3" style="background:#e8f4ff;">
-                    <i class="fas fa-info-circle me-1"></i>
+                    <i class="fas fa-info-circle mr-1"></i>
                     <strong>Cross-Branch Support:</strong> Super Admin can assign a single Incharge to warehouses across multiple branches.
                 </div>
 
@@ -167,7 +169,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-success" id="saveStaffBtn">
                     <i class="fas fa-save me-1"></i> Save Assignment
                 </button>
@@ -209,8 +211,7 @@
         $('#assignStaffLoading').show();
         $('#assignStaffContent').hide();
 
-        var modal = new bootstrap.Modal(document.getElementById('assignStaffModal'));
-        modal.show();
+        $('#assignStaffModal').modal('show');
 
         // Fetch current assigned users via AJAX
         $.get('/warehouse/' + warehouseId + '/users', function (data) {
