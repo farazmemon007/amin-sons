@@ -1,6 +1,34 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+    /* Premium Select2 Styling to match Bootstrap 4/5 */
+    .select2-container--default .select2-selection--single {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        height: 38px;
+        line-height: 38px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px;
+        padding-left: 12px;
+        color: #495057;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
+    .select2-container {
+        width: 100% !important;
+    }
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: #0d6efd;
+    }
+    .select2-dropdown {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+</style>
 <div class="container-fluid">
     <div class="card shadow-sm border-0">
         <div class="card-header bg-primary text-white">
@@ -133,13 +161,24 @@
 @section('js')
 <script>
 $(document).ready(function() {
+    // Helper to initialize Select2
+    function initProductSelect2(selector) {
+        $(selector).select2({
+            placeholder: "Select Product",
+            width: '100%'
+        });
+    }
+
+    // Initialize Select2 on page load
+    initProductSelect2('.product-select');
+
     // ✅ ERP PROPER: Load products based on selected branch
     $('#to_branch_id').on('change', function() {
         const branchId = $(this).val();
         
         if (!branchId) {
             // Clear all product dropdowns if no branch selected
-            $('.product-select').html('<option value="">Select Branch First</option>').prop('disabled', true);
+            $('.product-select').html('<option value="">Select Branch First</option>').trigger('change').prop('disabled', true);
             return;
         }
 
@@ -154,18 +193,21 @@ $(document).ready(function() {
                 
                 if (response.products && response.products.length > 0) {
                     response.products.forEach(function(product) {
-                        productHtml += `<option value="${product.id}">${product.item_name}</option>`;
+                        const code = product.item_code ? ` (${product.item_code})` : '';
+                        productHtml += `<option value="${product.id}">${product.item_name}${code}</option>`;
                     });
                 } else {
-                    productHtml = '<option value="">No products available in this branch</option>';
+                    productHtml = '<option value="">No products available</option>';
                 }
 
-                // Update all existing product dropdowns
-                $('.product-select').html(productHtml).prop('disabled', false);
+                // Update all existing product dropdowns and trigger Select2 update
+                $('.product-select').each(function() {
+                    $(this).html(productHtml).prop('disabled', false).trigger('change');
+                });
             },
             error: function(error) {
                 console.error('Error loading products:', error);
-                $('.product-select').html('<option value="">Error loading products</option>').prop('disabled', true);
+                $('.product-select').html('<option value="">Error loading products</option>').trigger('change').prop('disabled', true);
             }
         });
     });
@@ -179,7 +221,7 @@ $(document).ready(function() {
     $(document).on('click', '.remove-row', function() {
         const $row = $(this).closest('tr');
         if ($('#product_body tr').length === 1) {
-            $row.find('select').val('');
+            $row.find('select').val('').trigger('change');
             $row.find('input').val('1');
             return;
         }
@@ -218,7 +260,9 @@ $(document).ready(function() {
                 </td>
             </tr>
         `;
-        $('#product_body').append(row);
+        const $row = $(row);
+        $('#product_body').append($row);
+        initProductSelect2($row.find('.product-select'));
     }
 
     // Trigger initial load if branch is already selected (e.g., validation error scenario)

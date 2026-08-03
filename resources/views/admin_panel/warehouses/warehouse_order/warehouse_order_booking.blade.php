@@ -10,9 +10,9 @@
                     <strong>Warehouse Delivery Challans</strong>
                     <div class="small text-muted">Manage DCs, create outward gate passes and review packing details</div>
                 </div>
-                <div>
-                    <a href="{{ url('warehouse_orders/create') }}" class="btn btn-sm btn-primary">New DC</a>
-                </div>
+                <!-- <div>
+                    <a href="{{ url('warehouse_orders/create') }}" class="btn btn-sm btn-primary">New DC</a> 
+                </div> -->
             </div>
 
             <table class="table table-bordered table-striped" id="warehouseOrdersTable">

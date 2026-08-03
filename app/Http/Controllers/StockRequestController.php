@@ -582,9 +582,8 @@ class StockRequestController extends Controller
         // Validate branch exists
         $branch = Branch::findOrFail($branchId);
 
-        // Get all products for the specified branch
-        $products = Product::where('branch_id', $branchId)
-            ->select('id', 'item_name', 'item_code')
+        // Get all products (products table doesn't have branch_id, products are global)
+        $products = Product::select('id', 'item_name', 'item_code')
             ->orderBy('item_name')
             ->get();
 
