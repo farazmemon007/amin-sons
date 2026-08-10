@@ -1,10 +1,43 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
-{{-- ✅ Initialize variable for safety --}}
 @php
     $isSuperAdmin = isset($isSuperAdmin) ? $isSuperAdmin : false;
+    // Safe percentage: avoid division by zero when totalQty is 0
+    $totalQtySafe = ($totalQty > 0) ? $totalQty : 1;
 @endphp
+
+{{-- ✅ SweetAlert: Show warning when product stock is zero --}}
+@if($totalQty <= 0)
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        @if(!$hasEverHadStock)
+        Swal.fire({
+            icon: 'info',
+            title: 'No Opening Stock',
+            html: '<p style="color:#64748b;font-size:15px;">This product has <strong>never been added to opening stock</strong>.<br>Please add opening stock first before viewing warehouse distribution.</p>',
+            confirmButtonText: '<i class="fas fa-plus-circle"></i> Add Opening Stock',
+            cancelButtonText: 'Close',
+            showCancelButton: true,
+            confirmButtonColor: '#6366f1',
+            cancelButtonColor: '#94a3b8',
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                window.location.href = '{{ route("opening.stocks.index") }}';
+            }
+        });
+        @else
+        Swal.fire({
+            icon: 'warning',
+            title: 'Zero Stock',
+            html: '<p style="color:#64748b;font-size:15px;">This product currently has <strong>0 quantity</strong> in all warehouses.<br>Stock may have been fully sold or transferred out.</p>',
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#6366f1',
+        });
+        @endif
+    });
+</script>
+@endif
 
 <style>
     :root {
@@ -519,7 +552,7 @@
 
                     <!-- Progress Bar -->
                     <div class="progress-bar-container">
-                        <div class="progress-fill" style="width: {{ ($warehouse['quantity'] / $totalQty) * 100 }}%"></div>
+                        <div class="progress-fill" style="width: {{ $totalQty > 0 ? round(($warehouse['quantity'] / $totalQty) * 100, 2) : 0 }}%"></div>
                     </div>
 
                     <!-- Customer Reserved Details -->

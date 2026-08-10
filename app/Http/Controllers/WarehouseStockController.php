@@ -444,6 +444,12 @@ class WarehouseStockController extends Controller
         $totalCustomerReserved= $warehouses->sum('customer_reserved');
         $totalAvailable       = $warehouses->sum('available_qty');
 
+        // ✅ Check if this product has EVER had a warehouse stock record
+        // (even if current quantity is 0 due to sales/transfers)
+        $hasEverHadStock = WarehouseStock::where('product_id', $productId)
+            ->whereIn('branch_id', $allowedBranchIds)
+            ->exists();
+
         return view('admin_panel.warehouses.warehouse_stocks.show', compact(
             'product',
             'warehouses',
@@ -454,7 +460,8 @@ class WarehouseStockController extends Controller
             'isSuperAdmin',
             'availableBranches',
             'selectedBranchId',
-            'showBranchFilter'
+            'showBranchFilter',
+            'hasEverHadStock'
         ));
     }
 

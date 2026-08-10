@@ -12,13 +12,13 @@
                     <!-- Tabs Navigation -->
                     <ul class="nav nav-tabs mb-4" role="tablist">
                         <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#incoming" role="tab">
+                            <a class="nav-link active" data-toggle="tab" data-bs-toggle="tab" href="#incoming" role="tab">
                                 📥 Incoming Requests (To Approve)
                                 <span class="badge bg-danger ms-2">{{ $incomingRequests->count() }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#outgoing" role="tab">
+                            <a class="nav-link" data-toggle="tab" data-bs-toggle="tab" href="#outgoing" role="tab">
                                 📤 Outgoing Requests (Sent)
                                 <span class="badge bg-info ms-2">{{ $outgoingRequests->count() }}</span>
                             </a>
