@@ -97,7 +97,7 @@
                                         <td>
                                             <input type="number" name="unit_price[]"
                                                 class="form-control form-control-sm unit-price text-end"
-                                                step="0.01" min="0" value="{{ number_format($item->product->wholesale_price ?: $item->product->price ?: 0, 2, '.', '') }}"
+                                                step="0.01" min="0" value="{{ number_format($item->defaultUnitPrice ?? ($item->product->wholesale_price ?: $item->product->price ?: 0), 2, '.', '') }}"
                                                 style="background-color: #fff3cd; border-color: #ffc107; font-weight: 600;">
                                         </td>
 

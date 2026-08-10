@@ -177,6 +177,9 @@ class StockRequestController extends Controller
                 ->where('product_id', $item->product_id)
                 ->whereIn('warehouse_id', $sourceWarehouses->pluck('id')->toArray())
                 ->sum('quantity');
+
+            // Set default unit price: Purchase price -> Opening price fallback
+            $item->defaultUnitPrice = $this->getProductUnitPrice($item->product_id);
         }
 
         return view('admin_panel.inter_branch.stock_requests.approve', compact('stockRequest', 'items', 'sourceWarehouses', 'destinationWarehouses'));
@@ -556,20 +559,64 @@ class StockRequestController extends Controller
             ->first();
 
         $quantity = $stock ? $stock->quantity : 0;
-        
-        // Use warehouse stock price if available, otherwise use product price
-        $price = 0;
-        if ($stock && $stock->price && $stock->price > 0) {
-            $price = $stock->price;
-        } else {
-            $product = Product::find($productId);
-            $price = $product ? ($product->wholesale_price ?: $product->price ?: 0) : 0;
-        }
+        $price = $this->getProductUnitPrice($productId, $warehouseId);
 
         return response()->json([
             'quantity' => (int)$quantity,
             'price' => floatval($price),
         ]);
+    }
+
+    /**
+     * Get unit price for a product:
+     * 1. Latest purchase price (if product has been purchased)
+     * 2. Otherwise Opening Price / Product Price (wholesale_price or retail price)
+     */
+    private function getProductUnitPrice($productId, $warehouseId = null)
+    {
+        // 1. Fetch latest purchase price
+        try {
+            $purchaseQuery = \App\Models\PurchaseItem::where('product_id', $productId)
+                ->where('price', '>', 0);
+
+            if ($warehouseId && \Illuminate\Support\Facades\Schema::hasColumn('purchase_items', 'warehouse_id')) {
+                $whPurchasePrice = (clone $purchaseQuery)->where('warehouse_id', $warehouseId)->latest('id')->value('price');
+                if ($whPurchasePrice && $whPurchasePrice > 0) {
+                    return floatval($whPurchasePrice);
+                }
+            }
+
+            $lastPurchasePrice = $purchaseQuery->latest('id')->value('price');
+            if ($lastPurchasePrice && $lastPurchasePrice > 0) {
+                return floatval($lastPurchasePrice);
+            }
+        } catch (\Exception $e) {
+            // Ignore if table/column missing
+        }
+
+        // 2. If no purchase price, check warehouse stock price
+        if ($warehouseId) {
+            $whStockPrice = WarehouseStock::where('warehouse_id', $warehouseId)
+                ->where('product_id', $productId)
+                ->where('price', '>', 0)
+                ->value('price');
+            if ($whStockPrice && $whStockPrice > 0) {
+                return floatval($whStockPrice);
+            }
+        }
+
+        // 3. Fallback to Opening Price / Product Price (wholesale_price or retail price)
+        $product = Product::find($productId);
+        if ($product) {
+            if ($product->wholesale_price && $product->wholesale_price > 0) {
+                return floatval($product->wholesale_price);
+            }
+            if ($product->price && $product->price > 0) {
+                return floatval($product->price);
+            }
+        }
+
+        return 0.00;
     }
 
     // ✅ ERP PROPER - Get products for a specific branch (for dynamic dropdown)
