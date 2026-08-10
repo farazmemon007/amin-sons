@@ -303,8 +303,13 @@ class BranchLedgerController extends Controller
     public function report(Request $request)
     {
         $branchId = auth()->user()->branch_id;
+        
+        if (auth()->user()->hasRole('super admin')) {
+            $branchId = $request->input('branch_id', $branchId);
+        }
+
         if (!$branchId) {
-            return back()->with('error', 'User must be assigned to a branch.');
+            return back()->with('error', 'Please specify a branch to generate the report.');
         }
 
         $currentBranch = Branch::findOrFail($branchId);
