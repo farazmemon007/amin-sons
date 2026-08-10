@@ -16,9 +16,18 @@ class NotificationController extends Controller
     public function getPendingNotifications()
     {
         try {
-            $notifications = Notification::where('status', 'pending')
-                ->whereDate('notification_date', '<=', Carbon::today())
-                ->with(['booking', 'customer', 'product', 'warehouse'])
+            $query = Notification::where('status', 'pending')
+                ->whereDate('notification_date', '<=', Carbon::today());
+
+            if (!auth()->user()->hasRole('super admin')) {
+                $branchId = auth()->user()->branch_id;
+                $query->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)
+                      ->orWhereNull('branch_id');
+                });
+            }
+
+            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse'])
                 ->orderBy('notification_date', 'asc')
                 ->get();
 
@@ -156,9 +165,18 @@ class NotificationController extends Controller
     public function getCount()
     {
         try {
-            $count = Notification::where('status', 'pending')
-                ->whereDate('notification_date', '<=', Carbon::today())
-                ->count();
+            $query = Notification::where('status', 'pending')
+                ->whereDate('notification_date', '<=', Carbon::today());
+
+            if (!auth()->user()->hasRole('super admin')) {
+                $branchId = auth()->user()->branch_id;
+                $query->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)
+                      ->orWhereNull('branch_id');
+                });
+            }
+
+            $count = $query->count();
 
             return response()
                 ->json([
@@ -186,7 +204,17 @@ class NotificationController extends Controller
     public function getAllNotifications()
     {
         try {
-            $notifications = Notification::with(['booking', 'customer', 'product', 'warehouse'])
+            $query = Notification::query();
+
+            if (!auth()->user()->hasRole('super admin')) {
+                $branchId = auth()->user()->branch_id;
+                $query->where(function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId)
+                      ->orWhereNull('branch_id');
+                });
+            }
+
+            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse'])
                 ->orderBy('notification_date', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();

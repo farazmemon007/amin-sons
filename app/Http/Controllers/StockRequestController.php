@@ -124,6 +124,20 @@ class StockRequestController extends Controller
                         ]);
                     }
                 }
+
+                // Create notification for the target branch
+                $sendingBranch = \App\Models\Branch::find($fromBranchId);
+                $sendingBranchName = $sendingBranch->name ?? $sendingBranch->branch_name ?? 'Branch #' . $fromBranchId;
+                \App\Models\Notification::create([
+                    'branch_id' => $validated['to_branch_id'],
+                    'type' => 'stock_request',
+                    'title' => 'New Stock Request Received',
+                    'description' => "Stock request #{$stockRequest->id} has been received from {$sendingBranchName}.",
+                    'notification_date' => now()->toDateString(),
+                    'status' => 'pending',
+                    'is_read' => false,
+                    'created_by' => auth()->id(),
+                ]);
             });
 
             return redirect()->route('stock_requests.index')
