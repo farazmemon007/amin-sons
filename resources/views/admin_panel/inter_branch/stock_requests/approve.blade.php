@@ -96,8 +96,8 @@
 
                                         <td>
                                             <input type="number" name="unit_price[]"
-                                                class="form-control form-control-sm unit-price text-end" readonly
-                                                step="0.01" value="0.00"
+                                                class="form-control form-control-sm unit-price text-end"
+                                                step="0.01" min="0" value="{{ number_format($item->product->wholesale_price ?: $item->product->price ?: 0, 2, '.', '') }}"
                                                 style="background-color: #fff3cd; border-color: #ffc107; font-weight: 600;">
                                         </td>
 
@@ -373,6 +373,13 @@
                 calculateRowTotal($row);
                 calculateGrandTotal();
                 updateTransferDestinations(); // ✅ Update destination display
+            });
+
+            // When user enters/updates unit price
+            $(document).on('change keyup', '.unit-price', function() {
+                const $row = $(this).closest('tr');
+                calculateRowTotal($row);
+                calculateGrandTotal();
             });
 
             // When user enters delivery charges
