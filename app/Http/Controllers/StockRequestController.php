@@ -90,18 +90,27 @@ class StockRequestController extends Controller
             $fromBranchId = $validated['from_branch_id'];
         } else {
             // Regular users create from their own branch
+            $fromBranchId = auth()->user()->branch_id;
+            if (!$fromBranchId) {
+                return back()->with('error', 'User must be assigned to a branch.');
+            }
+
             $validated = $request->validate([
-                'to_branch_id' => 'required|exists:branches,id|different:from_branch_id',
+                'to_branch_id' => [
+                    'required',
+                    'exists:branches,id',
+                    function ($attribute, $value, $fail) use ($fromBranchId) {
+                        if ($value == $fromBranchId) {
+                            $fail('The destination branch must be different from your own branch.');
+                        }
+                    }
+                ],
                 'product_id' => 'required|array|min:1',
                 'product_id.*' => 'required|integer|exists:products,id',
                 'quantity' => 'required|array|min:1',
                 'quantity.*' => 'required|integer|min:1',
                 'remarks' => 'nullable|string|max:500',
             ]);
-            $fromBranchId = auth()->user()->branch_id;
-            if (!$fromBranchId) {
-                return back()->with('error', 'User must be assigned to a branch.');
-            }
         }
 
         try {
