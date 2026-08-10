@@ -20,37 +20,85 @@ class HomeController extends Controller
             return redirect()->route('login');
         }
 
-        $usertype = Auth::user()->usertype;
-        $userId = Auth::id();
+        $user = Auth::user();
+        $usertype = $user->usertype;
+        $userId = $user->id;
 
         if ($usertype == 'user') {
             return view('user_panel.dashboard', compact('userId'));
         } elseif ($usertype == 'admin') {
+            // Filter by branch if user is not super admin and has a branch_id
+            $branchId = !$user->hasRole('super admin') ? $user->branch_id : null;
+
             // Stats
             $categoryCount = DB::table('categories')->count();
             $subcategoryCount = DB::table('subcategories')->count();
             $productCount = DB::table('products')->count();
-            $customerscount = DB::table('customers')->count();
 
-            $totalPurchases = DB::table('purchases')->sum('net_amount');
-            $totalPurchaseReturns = DB::table('purchase_returns')->sum('net_amount');
-            $totalSales = DB::table('sales')->sum('total_net');
-            $totalSalesReturns = DB::table('sales_returns')->sum('total_net');
+            $customersQuery = DB::table('customers');
+            $purchasesQuery = DB::table('purchases');
+            $purchaseReturnsQuery = DB::table('purchase_returns');
+            $salesQuery = DB::table('sales');
+            $salesReturnsQuery = DB::table('sales_returns');
+
+            if ($branchId) {
+                $customersQuery->where('branch_id', $branchId);
+                $purchasesQuery->where('branch_id', $branchId);
+                $salesQuery->where('branch_id', $branchId);
+
+                $purchaseReturnsQuery->whereExists(function ($query) use ($branchId) {
+                    $query->select(DB::raw(1))
+                          ->from('purchases')
+                          ->whereColumn('purchases.id', 'purchase_returns.purchase_id')
+                          ->where('purchases.branch_id', $branchId);
+                });
+
+                $salesReturnsQuery->whereExists(function ($query) use ($branchId) {
+                    $query->select(DB::raw(1))
+                          ->from('sales')
+                          ->whereColumn('sales.id', 'sales_returns.sale_id')
+                          ->where('sales.branch_id', $branchId);
+                });
+            }
+
+            $customerscount = $customersQuery->count();
+            $totalPurchases = $purchasesQuery->sum('net_amount');
+            $totalPurchaseReturns = $purchaseReturnsQuery->sum('net_amount');
+            $totalSales = $salesQuery->sum('total_net');
+            $totalSalesReturns = $salesReturnsQuery->sum('total_net');
 
             // Charts data
             $dailyLabels = collect(range(6, 0))->map(fn($i) => Carbon::today()->subDays($i)->format('Y-m-d'));
-            $dailyData = $dailyLabels->map(fn($date) => DB::table('sales')->whereDate('created_at', $date)->sum('total_net'));
+            $dailyData = $dailyLabels->map(function ($date) use ($branchId) {
+                $query = DB::table('sales')->whereDate('created_at', $date);
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+                return $query->sum('total_net');
+            });
 
             $weeklyLabels = ['This Week', 'Last Week', '2 Weeks Ago'];
-            $weeklyData = collect([0, 1, 2])->map(function ($i) {
+            $weeklyData = collect([0, 1, 2])->map(function ($i) use ($branchId) {
                 $start = Carbon::now()->startOfWeek()->subWeeks($i);
                 $end = $start->copy()->endOfWeek();
-                return DB::table('sales')->whereBetween('created_at', [$start, $end])->sum('total_net');
+                $query = DB::table('sales')->whereBetween('created_at', [$start, $end]);
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+                return $query->sum('total_net');
             })->reverse()->values();
 
             $months = range(1, Carbon::now()->month);
             $monthLabels = collect($months)->map(fn($m) => Carbon::create()->month($m)->format('F'));
-            $monthlyData = collect($months)->map(fn($m) => DB::table('sales')->whereMonth('created_at', $m)->whereYear('created_at', Carbon::now()->year)->sum('total_net'));
+            $monthlyData = collect($months)->map(function ($m) use ($branchId) {
+                $query = DB::table('sales')
+                    ->whereMonth('created_at', $m)
+                    ->whereYear('created_at', Carbon::now()->year);
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+                return $query->sum('total_net');
+            });
 
             $salesChartStats = [
                 'daily' => ['categories' => $dailyLabels, 'series' => [['name' => 'Sales', 'data' => $dailyData]]],
@@ -60,15 +108,33 @@ class HomeController extends Controller
 
             // Purchase Charts
             $purchaseDailyLabels = $dailyLabels;
-            $purchaseDailyData = $purchaseDailyLabels->map(fn($date) => DB::table('purchases')->whereDate('created_at', $date)->sum('net_amount'));
+            $purchaseDailyData = $purchaseDailyLabels->map(function ($date) use ($branchId) {
+                $query = DB::table('purchases')->whereDate('created_at', $date);
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+                return $query->sum('net_amount');
+            });
             
-            $purchaseWeeklyData = collect([0, 1, 2])->map(function ($i) {
+            $purchaseWeeklyData = collect([0, 1, 2])->map(function ($i) use ($branchId) {
                 $start = Carbon::now()->startOfWeek()->subWeeks($i);
                 $end = $start->copy()->endOfWeek();
-                return DB::table('purchases')->whereBetween('created_at', [$start, $end])->sum('net_amount');
+                $query = DB::table('purchases')->whereBetween('created_at', [$start, $end]);
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+                return $query->sum('net_amount');
             })->reverse()->values();
 
-            $purchaseMonthlyData = collect($months)->map(fn($m) => DB::table('purchases')->whereMonth('created_at', $m)->whereYear('created_at', Carbon::now()->year)->sum('net_amount'));
+            $purchaseMonthlyData = collect($months)->map(function ($m) use ($branchId) {
+                $query = DB::table('purchases')
+                    ->whereMonth('created_at', $m)
+                    ->whereYear('created_at', Carbon::now()->year);
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+                return $query->sum('net_amount');
+            });
 
             $purchaseChartStats = [
                 'daily' => ['categories' => $purchaseDailyLabels, 'series' => [['name' => 'Purchases', 'data' => $purchaseDailyData]]],
