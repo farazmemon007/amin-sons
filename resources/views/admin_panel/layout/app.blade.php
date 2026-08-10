@@ -345,12 +345,13 @@
                     *===========================-->
                         <li class="nav-item">
                             <a href="{{ url("/")}}" class="nav-link"><i class="menu_icon feather ft-home"></i><span class="menu-title">Dashboard</span></a>
-
                         </li>
+
                         <!--=========================*
                          📦 Products Management
+                         Show if user has ANY product-related permission
                     *===========================-->
-                        @can('product.view')
+                        @if(Auth::user()->canAny(['product.view', 'category.view', 'subcategory.view', 'brand.view', 'unit.view']))
                         <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon fas fa-box"></i>
@@ -361,8 +362,7 @@
                                 <ul class="submenu-item">
                                     @can('product.view')
                                     <li><a href="{{route('product')}}"><i class="fas fa-box"></i> All Products</a></li>
-                                    {{-- ✅ Phase 2: Opening Stocks Link --}}
-                                    <li><a href="{{route('opening.stocks.index')}}"><i class="fas fa-hourglass-half" style="color: #ffc107;"></i> ⏳ Opening Stocks <span class="badge badge-warning badge-pill" id="incomplete-count" style="display: none;"></span></a></li>
+                                    <li><a href="{{route('opening.stocks.index')}}"><i class="fas fa-hourglass-half" style="color: #ffc107;"></i> Opening Stocks</a></li>
                                     @endcan
                                     @can('category.view')
                                     <li><a href="{{route('Category.home')}}"><i class="fas fa-list"></i> Categories</a></li>
@@ -379,101 +379,101 @@
                                 </ul>
                             </div>
                         </li>
-                        @endcan
+                        @endif
 
                         <!--=========================*
-                         � Purchase & Inventory
+                         🛒 Purchase & Stock
+                         Show if user has ANY purchase/warehouse/inventory permission
                     *===========================-->
-                      @can('purchase.view')
-<li class="nav-item">
-    <a href="#" class="nav-link">
-        <i class="menu_icon fas fa-boxes"></i>
-        <span class="menu-title">Purchase & Stock</span>
-        <i class="menu-arrow"></i>
-    </a>
-    <div class="submenu">
-        <ul class="submenu-item" style="display: flex; flex-direction: row; gap: 20px; list-style: none;">
-            
-            <li style="flex: 1;">
-                <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
-                    <i class="fas fa-shopping-cart"></i> Purchase Orders
-                </a>
-                <ul style="list-style: none; padding: 0;">
-                    @can('purchase.view') {{-- Using purchase.view for PO access --}}
-                    <li><a href="{{route('purchase_orders.index')}}"><i class="fas fa-clipboard-list"></i> PO List</a></li>
-                    <li><a href="{{route('purchase_orders.create')}}"><i class="fas fa-plus-circle"></i> Create New PO</a></li>
-                    @endcan
-                    @can('inward.gatepass.view')
-                    <li><a href="{{route('InwardGatepass.home')}}"><i class="fas fa-door-open"></i> Inward Gatepasses</a></li>
-                    @endcan
-                    @can('purchase.view')
-                    <li><a href="{{route('Purchase.home')}}"><i class="fas fa-file-invoice"></i> Purchase Invoice</a></li>
-                    @endcan
-                    @can('vendor.view')
-                    <li><a href="{{url('vendorlist')}}"><i class="fas fa-truck"></i> Vendors</a></li>
-                    @endcan
-                    @can('vendor.ledger')
-                    <li><a href="{{ route('vendors.ledger') }}"><i class="fas fa-book"></i> Vendor Ledger</a></li>
-                    @endcan
-                </ul>
-            </li>
+                        @if(Auth::user()->canAny(['purchase.view', 'purchase.order.view', 'purchase.order.create', 'inward.gatepass.view', 'vendor.view', 'vendor.ledger', 'warehouse.view', 'warehouse.manage', 'warehouse.stock.view', 'stock.transfer.view', 'warehouse.orders.view', 'stock.request.view']) || Auth::user()->hasRole('super admin'))
+                        <li class="nav-item">
+                            <a href="#" class="nav-link">
+                                <i class="menu_icon fas fa-boxes"></i>
+                                <span class="menu-title">Purchase & Stock</span>
+                                <i class="menu-arrow"></i>
+                            </a>
+                            <div class="submenu">
+                                <ul class="submenu-item" style="display: flex; flex-direction: row; gap: 20px; list-style: none;">
 
-            <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
-                <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
-                    <i class="fas fa-warehouse"></i> Warehouse Managment
-                </a>
-                <ul style="list-style: none; padding: 0;">
-                    @can('warehouse.view')
-                    <li><a href="{{url('warehouse')}}"><i class="fas fa-building"></i> Warehouses</a></li>
-                    @endcan
-                    @if(Auth::user()->can('warehouse.manage') || Auth::user()->hasRole('super admin'))
-                    <li><a href="{{ url('/admin/branch-warehouse') }}"><i class="fas fa-sitemap"></i> WH Assignments</a></li>
-                    @endif
-                    {{-- @can('warehouse.stock.view')
-                    <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stocks</a></li>
-                    @endcan --}}
-                    <!-- @can('stock.transfer.view')
-                    <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfers</a></li>
-                    @endcan -->
-                    @can('warehouse.orders.view')
-                    <li><a href="{{url('warehouse_orders')}}"><i class="fas fa-file-alt"></i> Warehouse Orders</a></li>
-                    @endcan
-                    {{-- <li><a href="{{url('inter-branch/stock-requests')}}"><i class="fas fa-random"></i> Inter-Branch Transfers</a></li> --}}
-                </ul>
-            </li>
-            <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
-                <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
-                    <i class="fas fa-warehouse"></i> Inventory Management
-                </a>
-                <ul style="list-style: none; padding: 0;">
-                    {{-- @can('warehouse.view')
-                    <li><a href="{{url('warehouse')}}"><i class="fas fa-building"></i> Warehouses</a></li>
-                    @endcan --}}
-                    {{-- @if(Auth::user()->can('warehouse.manage') || Auth::user()->hasRole('super admin'))
-                    <li><a href="{{ url('/admin/branch-warehouse') }}"><i class="fas fa-sitemap"></i> WH Assignments</a></li>
-                    @endif --}}
-                    @can('warehouse.stock.view')
-                    <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stocks</a></li>
-                    @endcan
-                    @can('stock.transfer.view')
-                    <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfers</a></li>
-                    @endcan
-                    {{-- @can('warehouse.orders.view')
-                    <li><a href="{{url('warehouse_orders')}}"><i class="fas fa-file-alt"></i> Warehouse Orders</a></li>
-                    @endcan --}}
-                    <li><a href="{{url('inter-branch/stock-requests')}}"><i class="fas fa-random"></i> Inter-Branch Transfers</a></li>
-                </ul>
-            </li>
+                                    {{-- Column 1: Purchase Orders --}}
+                                    @if(Auth::user()->canAny(['purchase.view', 'purchase.order.view', 'purchase.order.create', 'inward.gatepass.view', 'vendor.view', 'vendor.ledger']))
+                                    <li style="flex: 1;">
+                                        <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
+                                            <i class="fas fa-shopping-cart"></i> Purchase Orders
+                                        </a>
+                                        <ul style="list-style: none; padding: 0;">
+                                            @can('purchase.order.view')
+                                            <li><a href="{{route('purchase_orders.index')}}"><i class="fas fa-clipboard-list"></i> PO List</a></li>
+                                            @endcan
+                                            @can('purchase.order.create')
+                                            <li><a href="{{route('purchase_orders.create')}}"><i class="fas fa-plus-circle"></i> Create New PO</a></li>
+                                            @endcan
+                                            @can('inward.gatepass.view')
+                                            <li><a href="{{route('InwardGatepass.home')}}"><i class="fas fa-door-open"></i> Inward Gatepasses</a></li>
+                                            @endcan
+                                            @can('purchase.view')
+                                            <li><a href="{{route('Purchase.home')}}"><i class="fas fa-file-invoice"></i> Purchase Invoice</a></li>
+                                            @endcan
+                                            @can('vendor.view')
+                                            <li><a href="{{url('vendorlist')}}"><i class="fas fa-truck"></i> Vendors</a></li>
+                                            @endcan
+                                            @can('vendor.ledger')
+                                            <li><a href="{{ route('vendors.ledger') }}"><i class="fas fa-book"></i> Vendor Ledger</a></li>
+                                            @endcan
+                                        </ul>
+                                    </li>
+                                    @endif
 
-        </ul>
-    </div>
-</li>
-@endcan
+                                    {{-- Column 2: Warehouse Management --}}
+                                    @if(Auth::user()->canAny(['warehouse.view', 'warehouse.manage', 'warehouse.orders.view']) || Auth::user()->hasRole('super admin'))
+                                    <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
+                                        <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
+                                            <i class="fas fa-warehouse"></i> Warehouse Management
+                                        </a>
+                                        <ul style="list-style: none; padding: 0;">
+                                            @can('warehouse.view')
+                                            <li><a href="{{url('warehouse')}}"><i class="fas fa-building"></i> Warehouses</a></li>
+                                            @endcan
+                                            @if(Auth::user()->can('warehouse.manage') || Auth::user()->hasRole('super admin'))
+                                            <li><a href="{{ url('/admin/branch-warehouse') }}"><i class="fas fa-sitemap"></i> WH Assignments</a></li>
+                                            @endif
+                                            @can('warehouse.orders.view')
+                                            <li><a href="{{url('warehouse_orders')}}"><i class="fas fa-file-alt"></i> Warehouse Orders</a></li>
+                                            @endcan
+                                        </ul>
+                                    </li>
+                                    @endif
+
+                                    {{-- Column 3: Inventory Management --}}
+                                    @if(Auth::user()->canAny(['warehouse.stock.view', 'stock.transfer.view', 'stock.request.view']))
+                                    <li style="flex: 1; border-left: 1px solid #eee; padding-left: 15px;">
+                                        <a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;">
+                                            <i class="fas fa-warehouse"></i> Inventory Management
+                                        </a>
+                                        <ul style="list-style: none; padding: 0;">
+                                            @can('warehouse.stock.view')
+                                            <li><a href="{{url('warehouse_stocks')}}"><i class="fas fa-boxes"></i> Warehouse Stocks</a></li>
+                                            @endcan
+                                            @can('stock.transfer.view')
+                                            <li><a href="{{url('stock_transfers')}}"><i class="fas fa-exchange-alt"></i> Stock Transfers</a></li>
+                                            @endcan
+                                            @can('stock.request.view')
+                                            <li><a href="{{url('inter-branch/stock-requests')}}"><i class="fas fa-random"></i> Inter-Branch Transfers</a></li>
+                                            @endcan
+                                        </ul>
+                                    </li>
+                                    @endif
+
+                                </ul>
+                            </div>
+                        </li>
+                        @endif
 
                         <!--=========================*
                          💰 Sales & Customers
+                         Show if user has ANY sales/customer permission
                     *===========================-->
-                        @can('sale.view')
+                        @if(Auth::user()->canAny(['sale.view', 'sale.create', 'generate Dc.view', 'outward.gatepass.view', 'zone.view', 'sales.officer.view', 'customer.view', 'customerremainingproducts.view', 'find Dc.view']))
                         <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon fas fa-receipt"></i>
@@ -490,16 +490,21 @@
                                     @can('generate Dc.view')
                                     <li><a href="{{url('OutwardGatepass')}}"><i class="fas fa-file-pdf"></i> Create Delivery Challan</a></li>
                                     @endcan
-                                    <li><a href="{{url("OutwardGatepass/list")}}"><i class="fas fa-list"></i>Outward Gate Pass</a></li>
+                                    @can('outward.gatepass.view')
+                                    <li><a href="{{url('OutwardGatepass/list')}}"><i class="fas fa-list"></i> Outward Gate Pass</a></li>
+                                    @endcan
+                                    @can('find Dc.view')
+                                    <li><a href="{{ route('sale.find.view') }}"><i class="fas fa-search"></i> Find DC</a></li>
+                                    @endcan
                                     @can('zone.view')
                                     <li><a href="{{url('zone')}}"><i class="fas fa-map-marker-alt"></i> Zones</a></li>
                                     @endcan
                                     @can('sales.officer.view')
                                     <li><a href="{{ route('sales.officer.index') }}"><i class="fas fa-user-tie"></i> Salesmen (Officers)</a></li>
                                     @endcan
-                                    
+
                                     <li style="border-top: 1px solid #eee; margin: 4px 0; padding: 0;"></li>
-                                    
+
                                     <!-- Customers Section -->
                                     <li><a href="#" style="font-weight: 600; color: #2980b9; padding: 6px 8px; cursor: default;" onclick="return false;"><i class="fas fa-users"></i> Customers</a></li>
                                     @can('customer.view')
@@ -511,10 +516,10 @@
                                 </ul>
                             </div>
                         </li>
-                        @endcan
+                        @endif
 
                         <!--=========================*
-                         🔔 Notifications
+                         🔔 Notifications (always visible for logged-in users)
                     *===========================-->
                         <li class="nav-item">
                             <a href="{{route('notifications.index')}}" class="nav-link">
@@ -524,7 +529,7 @@
                         </li>
 
                         {{-- ✅ Complaints --}}
-                        @can('complaint.view')
+                        @if(Auth::user()->canAny(['complaint.view', 'complaint.create', 'warehouse.stock.view']))
                         <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon fas fa-exclamation-circle" style="color:#e67e22;"></i>
@@ -533,16 +538,18 @@
                             </a>
                             <div class="submenu">
                                 <ul class="submenu-item">
+                                    @can('complaint.view')
                                     <li><a href="{{ route('complaints.index') }}"><i class="fas fa-list"></i> Complaints List</a></li>
+                                    @endcan
                                     @can('warehouse.stock.view')
                                     <li><a href="{{ route('complaints.damaged-stock.index') }}"><i class="fas fa-dumpster"></i> Damaged Stock</a></li>
                                     @endcan
                                 </ul>
                             </div>
                         </li>
-                        @endcan
+                        @endif
 
-                        {{-- ✅ Find Document --}}
+                        {{-- ✅ Find Document (always visible for logged-in users) --}}
                         <li class="nav-item">
                             <a href="{{ route('find.index') }}" class="nav-link">
                                 <i class="menu_icon fas fa-search"></i>
@@ -551,7 +558,7 @@
                         </li>
 
                         <!-- Vouchers Menu -->
-                        @can('voucher.view')
+                        @if(Auth::user()->canAny(['voucher.view', 'chart.of.accounts.view', 'narration.view', 'receipts.voucher.view', 'payment.voucher.view', 'expense.voucher.view', 'journal.voucher.view']))
                         <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon feather ft-clipboard"></i>
@@ -561,7 +568,7 @@
                             <div class="submenu">
                                 <ul class="submenu-item">
                                     @can('chart.of.accounts.view')
-                                    <li><a href="{{ route('view_all') }}"><i class="fa-solid fa-money-bill-wave"></i> Char Of Accounts</a></li>
+                                    <li><a href="{{ route('view_all') }}"><i class="fa-solid fa-money-bill-wave"></i> Chart Of Accounts</a></li>
                                     @endcan
                                     @can('narration.view')
                                     <li><a href="{{ route('narrations.index') }}"><i class="fa-solid fa-money-bill-wave"></i> Narrations</a></li>
@@ -581,10 +588,10 @@
                                 </ul>
                             </div>
                         </li>
-                        @endcan
+                        @endif
 
                         <!-- Reports Menu -->
-                        @can('report.item.stock.view')
+                        @if(Auth::user()->canAny(['report.item.stock.view', 'report.customer.ledger.view', 'report.vendor.ledger.view', 'report.purchase.view', 'report.sale.view', 'branch.ledger.view', 'report.assembly.view', 'report.inventory.onhand.view', 'report.stock.hold.view']))
                         <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon feather ft-clipboard"></i>
@@ -594,10 +601,10 @@
                             <div class="submenu">
                                 <ul class="submenu-item">
                                     @can('report.customer.ledger.view')
-                                    <li><a href="{{ route('report.customer.ledger.new') }}"><i class="fa-solid fa-users"></i> Customer ledger Report</a></li>
+                                    <li><a href="{{ route('report.customer.ledger.new') }}"><i class="fa-solid fa-users"></i> Customer Ledger Report</a></li>
                                     @endcan
                                     @can('report.vendor.ledger.view')
-                                    <li><a href="{{ route('vendors-ledger') }}"><i class="fa-solid fa-users"></i> Vendor ledger Report</a></li>
+                                    <li><a href="{{ route('vendors-ledger') }}"><i class="fa-solid fa-users"></i> Vendor Ledger Report</a></li>
                                     @endcan
                                     @can('report.item.stock.view')
                                     <li><a href="{{ route('report.item_stock') }}"><i class="fa-solid fa-users"></i> Item Stock Report</a></li>
@@ -621,7 +628,6 @@
                                         <li><a href="{{ route('branch_ledger_view_branch', Auth::user()->branch_id) }}"><i class="fa-solid fa-book"></i> Branch Ledger</a></li>
                                     @endif
                                     @endcan
-                                    
                                     @can('report.assembly.view')
                                     <li><a href="{{route('assembly.report')}}"><i class="fas fa-cogs"></i> Assembly Report</a></li>
                                     @endcan
@@ -634,10 +640,10 @@
                                 </ul>
                             </div>
                         </li>
-                        @endcan
+                        @endif
 
                         <!-- User Management Menu -->
-                        @can('user.view')
+                        @if(Auth::user()->canAny(['user.view', 'role.view', 'permission.view', 'branch.view']) || Auth::user()->hasRole('super admin'))
                         <li class="nav-item">
                             <a href="#" class="nav-link">
                                 <i class="menu_icon feather ft-clipboard"></i>
@@ -661,13 +667,12 @@
                                 </ul>
                             </div>
                         </li>
-                        @endcan
+                        @endif
 
-
-    </ul>
-    </div>
-    </div>
-    </nav>
+                    </ul>
+                </div>
+            </div>
+        </nav>
 
         @yield('content')
 

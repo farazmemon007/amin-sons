@@ -346,12 +346,12 @@ public function searchProductsForSalebypagination(Request $request)
                 // always include own branch
                 $allowedBranchIds[] = $user->branch_id;
 
-                // ✅ Check for explicit branch-view permissions
-                // permission name pattern: branch.wise.product.view.{id}
-                // This ensures users don't see other branches unless explicitly granted
+                // ✅ Check for explicit cross-branch permissions
+                // Permission format: branch:{id}:product.view
+                // These are only granted explicitly to specific users who need cross-branch access
                 $branchIds = Branch::pluck('id');
                 foreach ($branchIds as $bid) {
-                    if ($bid !== $user->branch_id && $user->can('branch.wise.product.view.' . $bid)) {
+                    if ($bid !== $user->branch_id && $user->can("branch:{$bid}:product.view")) {
                         $allowedBranchIds[] = $bid;
                     }
                 }
@@ -1126,7 +1126,7 @@ public function searchProductsForSalebypagination(Request $request)
      * Determine which branches the current user is allowed to access.
      *
      * Super admin: all branches.
-     * Other users: own branch + any branches granted via 'branch.wise.product.view.{id}' permissions.
+     * Other users: own branch + any branches granted via 'branch:{id}:product.view' permissions.
      */
     private function getAllowedBranchIds(): array
     {
@@ -1140,13 +1140,13 @@ public function searchProductsForSalebypagination(Request $request)
             return Branch::pluck('id')->toArray();
         }
 
-        $allowed = [$user->branch_id];
-        $branchIds = Branch::pluck('id');
-        foreach ($branchIds as $bid) {
-            if ($user->can('branch.wise.product.view.' . $bid)) {
+        $allowed = [(int) $user->branch_id];
+        Branch::pluck('id')->each(function ($bid) use ($user, &$allowed) {
+            $bid = (int) $bid;
+            if ($bid !== (int) $user->branch_id && $user->can("branch:{$bid}:product.view")) {
                 $allowed[] = $bid;
             }
-        }
+        });
 
         return array_unique($allowed);
     }

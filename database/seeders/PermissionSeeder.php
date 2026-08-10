@@ -7,37 +7,45 @@ use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use App\Models\Branch;
 
 class PermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // 🔴 Clear cache
+        // ─── Clear cache ─────────────────────────────────────────────────
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // 🔴 Disable FK checks
+        // ─── Disable FK checks for clean truncate ────────────────────────
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-
         DB::table('model_has_permissions')->truncate();
         DB::table('role_has_permissions')->truncate();
         DB::table('permissions')->truncate();
-
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         $guard = 'web';
 
-        // Comprehensive permissions (deduplicated and organized)
+        // =====================================================================
+        // STANDARD PERMISSIONS (module.action format — apply to user's OWN branch)
+        //
+        // Convention:
+        //   product.view   = user can view products in THEIR assigned branch
+        //   branch:{id}:product.view = cross-branch access to branch {id}
+        //                              (granted explicitly to specific users)
+        // =====================================================================
         $permissions = [
-            // Dashboard
-            'view dashboard',
-            // Management
-            'management.view',
-            //dc 
-            'generate Dc.view',
-            'find Dc.view',
-        
 
-            // Product Management
+            // ── Dashboard ─────────────────────────────────────────────────
+            'view dashboard',
+
+            // ── DC / Delivery Challans ────────────────────────────────────
+            'generate Dc.view',     // Create DC index page
+            'find Dc.view',         // Find DC by number
+
+            // ── Management (top-level guard) ──────────────────────────────
+            'management.view',
+
+            // ── Products ──────────────────────────────────────────────────
             'product.view',
             'product.create',
             'product.edit',
@@ -45,36 +53,38 @@ class PermissionSeeder extends Seeder
             'product.barcode',
             'product.assembly',
 
-            // Product Discount
+            // ── Product Discounts ─────────────────────────────────────────
             'product.discount.view',
             'product.discount.create',
             'product.discount.edit',
             'product.discount.delete',
             'product.discount.barcode',
 
-            // Category & SubCategory
+            // ── Categories ────────────────────────────────────────────────
             'category.view',
             'category.create',
             'category.edit',
             'category.delete',
+
+            // ── Sub-Categories ────────────────────────────────────────────
             'subcategory.view',
             'subcategory.create',
             'subcategory.edit',
             'subcategory.delete',
 
-            // Brand
+            // ── Brands ────────────────────────────────────────────────────
             'brand.view',
             'brand.create',
             'brand.edit',
             'brand.delete',
 
-            // Unit
+            // ── Units ─────────────────────────────────────────────────────
             'unit.view',
             'unit.create',
             'unit.edit',
             'unit.delete',
 
-            // Purchase Management
+            // ── Purchase Management ───────────────────────────────────────
             'purchase.view',
             'purchase.create',
             'purchase.edit',
@@ -85,70 +95,73 @@ class PermissionSeeder extends Seeder
             'purchase.return.edit',
             'purchase.return.delete',
 
-            // Purchase Order
+            // ── Purchase Orders ───────────────────────────────────────────
             'purchase.order.view',
             'purchase.order.create',
             'purchase.order.edit',
             'purchase.order.delete',
 
-            // Inward Gatepass
+            // ── Inward Gatepass ───────────────────────────────────────────
             'inward.gatepass.view',
             'inward.gatepass.create',
             'inward.gatepass.edit',
             'inward.gatepass.delete',
-            
-            // Outward Gatepass
+
+            // ── Outward Gatepass ──────────────────────────────────────────
             'outward.gatepass.view',
             'outward.gatepass.create',
             'outward.gatepass.edit',
             'outward.gatepass.delete',
             'outward.gatepass.print',
 
-            // Warehouse & Stock & order
+            // ── Warehouses ────────────────────────────────────────────────
             'warehouse.view',
             'warehouse.create',
             'warehouse.edit',
             'warehouse.delete',
-            'warehouse.manage',
+            'warehouse.manage',          // Assign warehouses to branches/users
+
+            // ── Warehouse Stock ───────────────────────────────────────────
             'warehouse.stock.view',
             'warehouse.stock.create',
             'warehouse.stock.edit',
             'warehouse.stock.delete',
-            // Stock Transfer
+
+            // ── Warehouse Orders ──────────────────────────────────────────
+            'warehouse.orders.view',     // Index listing
+            'warehouse.order.view',      // Single order view
+            'warehouse.order.edit',      // Edit order
+
+            // ── Stock Transfers ───────────────────────────────────────────
             'stock.transfer.view',
             'stock.transfer.create',
             'stock.transfer.edit',
             'stock.transfer.delete',
-            'stock.adjust',
+            'stock.adjust',              // Adjust/write-off stock quantities
 
-            // ✅ NEW: Inter-Branch Stock Request System
+            // ── Inter-Branch Stock Requests ───────────────────────────────
             'stock.request.view',
             'stock.request.create',
             'stock.request.approve',
             'stock.request.reject',
 
-            // ✅ NEW: Inter-Branch Vouchers (Payment/Receipt)
+            // ── Inter-Branch Vouchers ─────────────────────────────────────
             'inter.branch.voucher.view',
             'inter.branch.voucher.create',
             'inter.branch.voucher.delete',
 
-            // ✅ NEW: Branch Ledger (Financial Tracking)
-            'branch.ledger.view',
-            'branch.ledger.report',
-            'branch.account.view',
+            // ── Branch Ledger ─────────────────────────────────────────────
+            'branch.ledger.view',        // View own-branch ledger
+            'branch.ledger.report',      // Export/print branch ledger
+            'branch.account.view',       // View branch accounts
 
-            'warehouse.orders.view',
-            // Granular permissions for warehouse order admin UI
-            'warehouse.order.view',
-            'warehouse.order.edit',
-
-            // Vendor
+            // ── Vendors ───────────────────────────────────────────────────
             'vendor.view',
             'vendor.create',
             'vendor.edit',
             'vendor.delete',
-            'vendor.ledger',
-            'vendor.ledger.branch.view',
+            'vendor.ledger',             // View vendor ledger
+            'vendor.ledger.branch.view', // View vendor ledger filtered by branch
             'vendor.payments.view',
             'vendor.payments.create',
             'vendor.payments.delete',
@@ -156,7 +169,7 @@ class PermissionSeeder extends Seeder
             'vendor.bilties.create',
             'vendor.bilties.delete',
 
-            // Sales Management
+            // ── Sales ─────────────────────────────────────────────────────
             'sale.view',
             'sale.create',
             'sale.edit',
@@ -166,8 +179,10 @@ class PermissionSeeder extends Seeder
             'sale.receipt',
             'sale.return.view',
             'sale.return.create',
+            'sale.return.edit',
+            'sale.return.delete',
 
-            // Customer
+            // ── Customers ─────────────────────────────────────────────────
             'customer.view',
             'customer.create',
             'customer.edit',
@@ -177,22 +192,22 @@ class PermissionSeeder extends Seeder
             'customer.payments.create',
             'customer.payments.delete',
             'customer.toggle.status',
-            'customerremainingproducts.view',           // اپنی branch کا دیکھنا
-            'customerremainingproducts.view.all',       // تمام branches کا دیکھنا
+            'customerremainingproducts.view',      // Own-branch pending deliveries
+            'customerremainingproducts.view.all',  // All branches pending deliveries
 
-            // Sales Officer
+            // ── Sales Officers ────────────────────────────────────────────
             'sales.officer.view',
             'sales.officer.create',
             'sales.officer.edit',
             'sales.officer.delete',
 
-            // Zone
+            // ── Zones ─────────────────────────────────────────────────────
             'zone.view',
             'zone.create',
             'zone.edit',
             'zone.delete',
 
-            // Booking
+            // ── Bookings ──────────────────────────────────────────────────
             'booking.view',
             'booking.create',
             'booking.edit',
@@ -200,160 +215,146 @@ class PermissionSeeder extends Seeder
             'booking.receipt',
             'booking.invoice',
 
-            // Vouchers
+            // ── Vouchers (parent gate) ────────────────────────────────────
             'voucher.view',
+
+            // ── Receipts Voucher ──────────────────────────────────────────
             'receipts.voucher.view',
             'receipts.voucher.create',
             'receipts.voucher.delete',
             'receipts.voucher.print',
+
+            // ── Payment Voucher ───────────────────────────────────────────
             'payment.voucher.view',
             'payment.voucher.create',
             'payment.voucher.delete',
             'payment.voucher.print',
+
+            // ── Expense Voucher ───────────────────────────────────────────
             'expense.voucher.view',
             'expense.voucher.create',
             'expense.voucher.delete',
             'expense.voucher.print',
+
+            // ── Journal Voucher ───────────────────────────────────────────
             'journal.voucher.view',
             'journal.voucher.create',
             'journal.voucher.delete',
 
-            // Chart of Accounts
+            // ── Chart of Accounts ─────────────────────────────────────────
             'chart.of.accounts.view',
             'chart.of.accounts.create',
             'chart.of.accounts.edit',
             'chart.of.accounts.delete',
 
-            // Narration
+            // ── Narrations ────────────────────────────────────────────────
             'narration.view',
             'narration.create',
             'narration.delete',
 
-            // Reporting
+            // ── Complaints ────────────────────────────────────────────────
+            'complaint.view',
+            'complaint.create',
+            'complaint.edit',
+            'complaint.delete',
+            'complaint.print',
+            'complaint.home_service',
+
+            // ── Reports ───────────────────────────────────────────────────
+            // Each permission = own-branch report access
+            // Cross-branch access = branch:{id}:report.*.view (generated below)
             'report.item.stock.view',
-            'report.item.stock.view.all.branches',      // ✅ Super admin: View all branches
-            'report.item.stock.view.own.branch',        // ✅ Branch admin: View only own branch
             'report.purchase.view',
             'report.sale.view',
-            // Branch-wise sale report permission (base)
-            'report.sale.branch.view',
-            // Branch-wise customer ledger view (base)
-            'report.customer.ledger.branch.view',
             'report.customer.ledger.view',
             'report.vendor.ledger.view',
-            'report.vendor.ledger.branch.view',
             'report.assembly.view',
             'report.inventory.onhand.view',
             'report.stock.hold.view',
 
-            // User Management
+            // ── User Management ───────────────────────────────────────────
             'user.view',
             'user.create',
             'user.edit',
             'user.delete',
 
-            // Role Management
+            // ── Role Management ───────────────────────────────────────────
             'role.view',
             'role.create',
             'role.edit',
             'role.delete',
             'role.permission.update',
 
-            // Permission Management
+            // ── Permission Management ─────────────────────────────────────
             'permission.view',
             'permission.create',
             'permission.delete',
 
-            // Branch
+            // ── Branch Management ─────────────────────────────────────────
             'branch.view',
             'branch.create',
             'branch.edit',
             'branch.delete',
-
-            // Legacy permissions (keeping for backward compatibility)
-            'create product',
-            'edit product',
-            'delete product',
-            'create role',
-            'update role',
-            'view discount',
-            'view category',
-            'view subcategory',
-            'view brand',
-            'view unit',
-            'edit stock',
-            'view inward gatepass',
-            'create inward gatepass',
-            'view purchase',
-            'view vendor',
-            'view warehouse',
-            'view warehouse stock',
-            'view stock transfer',
-            'view sale',
-            'view customer',
-            'view sales officer',
-            'view zone',
-            'view vouchers',
-            'view chart of accounts',
-            'view narration',
-            'view receipts voucher',
-            'view payment voucher',
-            'view expense voucher',
-            'view journal voucher',
-            'view reports',
-            'view item stock report',
-            'view purchase report',
-            'view sale report',
-            'view customer ledger report',
-            'view assembly report',
-            'view inventory on hand',
-            'view user',
-            'view role',
-            'view permissions',
-            'view branch',
-            
         ];
 
-        // Ensure unique values just in case
-        $permissions = array_values(array_unique($permissions));
+        // =====================================================================
+        // PER-BRANCH CROSS-ACCESS PERMISSIONS
+        //
+        // Format: branch:{branch_id}:module.action
+        //
+        // Purpose: Grant a user from Branch A explicit access to data of Branch B.
+        // These are NEVER auto-granted — must be assigned manually per user/role.
+        //
+        // Examples:
+        //   branch:2:product.view    → User can view Branch 2's products
+        //   branch:2:sale.view       → User can view Branch 2's sales
+        //   branch:2:purchase.view   → User can view Branch 2's purchases
+        // =====================================================================
+        $crossBranchPermissions = [
+            'product.view',
+            'sale.view',
+            'purchase.view',
+            'purchase.create',
+            'purchase.edit',
+            'purchase.delete',
+            'report.sale.view',
+            'report.item.stock.view',
+            'report.customer.ledger.view',
+            'report.vendor.ledger.view',
+            'report.purchase.view',
+            'warehouse.stock.view',
+            'customer.view',
+            'customer.ledger',
+        ];
 
-        // Add one permission per branch so users can be granted specific branch access
-        foreach (\App\Models\Branch::pluck('id') as $bid) {
-            $permissions[] = "branch.wise.product.view.$bid";
-            $permissions[] = "warehouse-stocks-product.view.$bid";
-            // allow granting report viewing per branch
-            $permissions[] = "report.sale.branch.view.$bid";
-            $permissions[] = "report.item.stock.view.$bid";        // ✅ NEW: Item stock report per branch
-            // per-branch permission to view customer ledger for a branch
-            $permissions[] = "report.customer.ledger.branch.view.$bid";
-            $permissions[] = "report.vendor.ledger.branch.view.$bid";
-            
-            // ✅ ERP STANDARD: Cross-branch purchase permissions per branch
-            // Allows managers to view/manage purchases from other branches
-            $permissions[] = "purchase.view.$bid";
-            $permissions[] = "purchase.create.$bid";
-            $permissions[] = "purchase.edit.$bid";
-            $permissions[] = "purchase.delete.$bid";
+        foreach (Branch::pluck('id') as $branchId) {
+            foreach ($crossBranchPermissions as $perm) {
+                $permissions[] = "branch:{$branchId}:{$perm}";
+            }
         }
 
-        // dedupe again after appending
-        $permissions = array_values(array_unique($permissions));
+        // ─── Deduplicate ──────────────────────────────────────────────────
+        $permissions = array_values(array_unique(array_filter($permissions)));
 
-        foreach ($permissions as $permission) {
+        // ─── Create all permissions ───────────────────────────────────────
+        foreach ($permissions as $permName) {
             Permission::firstOrCreate([
-                'name' => $permission,
+                'name'       => $permName,
                 'guard_name' => $guard,
             ]);
         }
 
+        $this->command->info('✅ Created ' . count($permissions) . ' permissions.');
+
+        // ─── Super Admin gets ALL permissions ────────────────────────────
         $superAdmin = Role::firstOrCreate([
-            'name' => 'super admin',
+            'name'       => 'super admin',
             'guard_name' => $guard,
         ]);
 
-        // Sync all permissions that exist in DB for the specified guard to super admin.
-        // This is more robust than relying solely on the local $permissions array.
-        $allPermissionNames = Permission::where('guard_name', $guard)->pluck('name')->toArray();
-        $superAdmin->syncPermissions($allPermissionNames);
+        $allPermissions = Permission::where('guard_name', $guard)->pluck('name')->toArray();
+        $superAdmin->syncPermissions($allPermissions);
+
+        $this->command->info('✅ Super admin synced with all ' . count($allPermissions) . ' permissions.');
     }
 }

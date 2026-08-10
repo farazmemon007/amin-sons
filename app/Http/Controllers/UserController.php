@@ -25,9 +25,10 @@ class UserController extends Controller
                     $allowedBranchIds = Branch::pluck('id')->toArray();
                 } else {
                     $allowedBranchIds[] = $u->branch_id;
+                    // Check cross-branch permissions: branch:{id}:user.view
                     $branchIds = Branch::pluck('id');
                     foreach ($branchIds as $bid) {
-                        if ($u->can('branch.view.' . $bid)) {
+                        if ($u->can('branch:' . $bid . ':user.view')) {
                             $allowedBranchIds[] = $bid;
                         }
                     }
@@ -224,7 +225,8 @@ class UserController extends Controller
         $allBranchIds = Branch::pluck('id')->map(fn($id) => (int) $id)->toArray();
 
         foreach ($allBranchIds as $branchId) {
-            $permName = 'warehouse.stock.view.' . $branchId;
+            // New format: branch:{id}:warehouse.stock.view
+            $permName = "branch:{$branchId}:warehouse.stock.view";
 
             if (in_array($branchId, $branchIdsForAssigned)) {
                 $perm = Permission::firstOrCreate(['name' => $permName, 'guard_name' => 'web']);

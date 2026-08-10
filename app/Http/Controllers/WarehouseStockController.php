@@ -461,7 +461,7 @@ class WarehouseStockController extends Controller
     public function create()
     {
         // Determine branches the user can access
-        $allowedBranchIds = $this->allowedBranches('warehouse-stocks-product.view');
+        $allowedBranchIds = $this->allowedBranches('warehouse.stock.view');
 
         // Branch list for view: super admin sees all branches, others only allowed ones
         if (Auth::check() && Auth::user()->hasRole('super admin')) {
@@ -516,7 +516,7 @@ class WarehouseStockController extends Controller
         $data = $request->only(['branch_id', 'warehouse_id', 'product_id', 'quantity', 'price', 'remarks']);
 
         // ✅ ERP PROPER: Security check - user can only add stock to branches they have access to
-        $allowedBranchIds = $this->allowedBranches('warehouse-stocks-product.view');
+        $allowedBranchIds = $this->allowedBranches('warehouse.stock.view');
         if (!in_array($data['branch_id'], $allowedBranchIds)) {
             return redirect()->back()->with('error', 'Unauthorized: You cannot add stock to this branch.');
         }
@@ -593,7 +593,7 @@ class WarehouseStockController extends Controller
     public function edit(WarehouseStock $warehouseStock)
     {
         // ✅ ERP PROPER: Security check - user can only edit stock from branches they have access to
-        $allowedBranchIds = $this->allowedBranches('warehouse-stocks-product.view');
+        $allowedBranchIds = $this->allowedBranches('warehouse.stock.view');
         if (!in_array($warehouseStock->branch_id, $allowedBranchIds)) {
             return redirect()->route('warehouse_stocks.index')->with('error', 'Unauthorized: You cannot edit stock from this branch.');
         }
@@ -611,7 +611,7 @@ class WarehouseStockController extends Controller
     public function update(Request $request, WarehouseStock $warehouseStock)
     {
         // ✅ ERP PROPER: Security check - user can only update stock from branches they have access to
-        $allowedBranchIds = $this->allowedBranches('warehouse-stocks-product.view');
+        $allowedBranchIds = $this->allowedBranches('warehouse.stock.view');
         if (!in_array($warehouseStock->branch_id, $allowedBranchIds)) {
             return redirect()->route('warehouse_stocks.index')->with('error', 'Unauthorized: You cannot update stock from this branch.');
         }
