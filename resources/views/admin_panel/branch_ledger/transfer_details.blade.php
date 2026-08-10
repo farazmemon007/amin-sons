@@ -167,12 +167,12 @@
                             <td class="text-center">
                                 <strong>{{ number_format($transfer->quantity, 0) }}</strong>
                             </td>
-                            <td>
-                                {{ number_format($transfer->product->price ?? 0, 2) }}
+                            <td class="text-end">
+                                {{ number_format($transfer->unit_price, 2) }}
                             </td>
                             <td class="text-end">
                                 <strong class="text-success">
-                                    {{ number_format($transfer->quantity * ($transfer->product->price ?? 0), 2) }}
+                                    {{ number_format($transfer->total_value, 2) }}
                                 </strong>
                             </td>
                             <td>

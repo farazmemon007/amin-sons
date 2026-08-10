@@ -94,5 +94,54 @@ class StockTransfer extends Model
             'approved_at' => now(),
         ]);
     }
+
+    /**
+     * Get unit price for stock transfer:
+     * 1. If stock request item exists, use approved unit_price
+     * 2. Otherwise, check latest purchase price
+     * 3. Fallback to product wholesale_price or price
+     */
+    public function getUnitPriceAttribute()
+    {
+        // 1. Check if linked to stock_request and has unit_price on item
+        if ($this->stock_request_id) {
+            $item = \App\Models\StockRequestItem::where('stock_request_id', $this->stock_request_id)
+                ->where('product_id', $this->product_id)
+                ->first();
+            if ($item && $item->unit_price && $item->unit_price > 0) {
+                return (float) $item->unit_price;
+            }
+        }
+
+        // 2. Check latest PurchaseItem price for this product
+        try {
+            $purchasePrice = \App\Models\PurchaseItem::where('product_id', $this->product_id)
+                ->where('price', '>', 0)
+                ->latest('id')
+                ->value('price');
+            if ($purchasePrice && $purchasePrice > 0) {
+                return (float) $purchasePrice;
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        // 3. Fallback to product price (wholesale_price or price)
+        if ($this->product) {
+            if ($this->product->wholesale_price && $this->product->wholesale_price > 0) {
+                return (float) $this->product->wholesale_price;
+            }
+            if ($this->product->price && $this->product->price > 0) {
+                return (float) $this->product->price;
+            }
+        }
+
+        return 0.00;
+    }
+
+    public function getTotalValueAttribute()
+    {
+        return (float) ($this->quantity * $this->unit_price);
+    }
 }
 

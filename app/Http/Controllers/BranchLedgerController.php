@@ -295,7 +295,7 @@ class BranchLedgerController extends Controller
         
         foreach ($transfers as $transfer) {
             $totalQuantity += $transfer->quantity;
-            $totalValue += ($transfer->quantity * ($transfer->product->price ?? 0));
+            $totalValue += $transfer->total_value;
         }
 
         return view('admin_panel.branch_ledger.transfer_details', compact(
