@@ -169,7 +169,7 @@
                         <button type="submit" class="btn btn-success" id="submitBtn">
                             <i class="fas fa-check-circle"></i> Approve Request
                         </button>
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal" data-bs-toggle="modal"
                             data-bs-target="#rejectModal">
                             <i class="fas fa-times-circle"></i> Reject Request
                         </button>
@@ -188,7 +188,9 @@
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title">Reject Request</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
                 <form action="{{ route('inter_branch_stock_requests.reject', $stockRequest) }}" method="POST">
                     @csrf
@@ -200,7 +202,7 @@
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-danger">Confirm Rejection</button>
                     </div>
                 </form>
@@ -284,16 +286,15 @@
                     return false;
                 }
 
-                // Check total items value
-                let itemsTotal = 0;
+                // Check total items quantity
+                let totalApprovedQty = 0;
                 $('.table tbody tr').each(function() {
                     const qty = parseInt($(this).find('.approved-qty').val()) || 0;
-                    const price = parseFloat($(this).find('.unit-price').val()) || 0;
-                    itemsTotal += (qty * price);
+                    totalApprovedQty += qty;
                 });
 
-                if (itemsTotal <= 0) {
-                    alert('Please enter valid approval quantities with amounts greater than 0');
+                if (totalApprovedQty <= 0) {
+                    alert('Please enter approval quantity greater than 0 for at least one item');
                     return false;
                 }
 
@@ -321,7 +322,8 @@
                 }
 
                 // Fetch stock and price from server
-                const url = `/inter-branch/stock-requests/warehouse-stock/${warehouseId}/${productId}`;
+                const baseUrl = "{{ url('inter-branch/stock-requests/warehouse-stock') }}";
+                const url = `${baseUrl}/${warehouseId}/${productId}`;
 
                 $.ajax({
                     url: url,

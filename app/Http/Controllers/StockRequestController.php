@@ -551,27 +551,23 @@ class StockRequestController extends Controller
     // Get warehouse stock for a product (JSON response)
     public function getWarehouseStock($warehouseId, $productId)
     {
-        $branchId = auth()->user()->branch_id;
-        
-        $stock = WarehouseStock::where('branch_id', $branchId)
-            ->where('warehouse_id', $warehouseId)
+        $stock = WarehouseStock::where('warehouse_id', $warehouseId)
             ->where('product_id', $productId)
             ->first();
 
         $quantity = $stock ? $stock->quantity : 0;
         
-        // Use warehouse stock price if available, otherwise use product's wholesale price
+        // Use warehouse stock price if available, otherwise use product price
         $price = 0;
-        if ($stock && $stock->price) {
+        if ($stock && $stock->price && $stock->price > 0) {
             $price = $stock->price;
         } else {
-            // Get price from product
             $product = Product::find($productId);
-            $price = $product ? $product->price : 0;
+            $price = $product ? ($product->wholesale_price ?: $product->price ?: 0) : 0;
         }
 
         return response()->json([
-            'quantity' => $quantity,
+            'quantity' => (int)$quantity,
             'price' => floatval($price),
         ]);
     }
