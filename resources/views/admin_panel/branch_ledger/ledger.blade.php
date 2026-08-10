@@ -89,7 +89,7 @@
                         @forelse ($transactions as $transaction)
                             <tr>
                                 <td>{{ $transaction->created_at->format('M d, Y H:i') }}</td>
-                                <td>{{ $transaction->description }}</td>
+                                <td>{{ $transaction->display_description }}</td>
                                 <td>
                                     {{ $transaction->relatedBranch?->name ?? 'N/A' }}
                                 </td>
@@ -105,7 +105,7 @@
                                 </td>
                                 <td class="text-end">
                                     <strong class="@if ($transaction->type === 'debit') text-danger @else text-success @endif">
-                                        {{ number_format($transaction->amount, 2) }}
+                                        {{ number_format($transaction->display_amount, 2) }}
                                     </strong>
                                 </td>
                             </tr>

@@ -77,7 +77,7 @@
                             <tr>
                                 <td>{{ $transaction->created_at->format('M d, Y') }}</td>
                                 <td>
-                                    {{ $transaction->description }}
+                                    {{ $transaction->display_description }}
                                     @if ($transaction->relatedBranch)
                                         <br>
                                         <small class="text-muted">{{ $transaction->relatedBranch->name ?? 'Branch #' . $transaction->related_branch_id }}</small>
@@ -93,7 +93,7 @@
                                         <span class="badge bg-success">Credit</span>
                                     @endif
                                 </td>
-                                <td>{{ number_format($transaction->amount, 2) }}</td>
+                                <td>{{ number_format($transaction->display_amount, 2) }}</td>
                                 <td><strong>{{ number_format($account?->current_balance ?? 0, 2) }}</strong></td>
                             </tr>
                         @empty

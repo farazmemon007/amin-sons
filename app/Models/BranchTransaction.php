@@ -98,4 +98,61 @@ class BranchTransaction extends Model
         BranchAccount::where('branch_id', $fromBranchId)->first()?->updateBalance();
         BranchAccount::where('branch_id', $toBranchId)->first()?->updateBalance();
     }
+
+    /**
+     * Get display amount for a transaction:
+     * If the amount is 0 and it is an inter-branch transfer, dynamically calculate the total value.
+     */
+    public function getDisplayAmountAttribute()
+    {
+        if ($this->amount > 0) {
+            return (float) $this->amount;
+        }
+
+        if ($this->reference_type === 'transfer' && $this->reference_id) {
+            $total = \App\Models\StockRequestItem::where('stock_request_id', $this->reference_id)
+                ->get()
+                ->sum(function ($item) {
+                    $price = $item->unit_price;
+                    if (!$price || $price <= 0) {
+                        $purchasePrice = \App\Models\PurchaseItem::where('product_id', $item->product_id)
+                            ->where('price', '>', 0)
+                            ->latest('id')
+                            ->value('price');
+                        if ($purchasePrice && $purchasePrice > 0) {
+                            $price = $purchasePrice;
+                        } else {
+                            $product = \App\Models\Product::find($item->product_id);
+                            $price = $product ? ($product->wholesale_price ?: $product->price ?: 0) : 0;
+                        }
+                    }
+                    return $item->approved_qty * $price;
+                });
+
+            if ($total > 0) {
+                return (float) $total;
+            }
+        }
+
+        return (float) $this->amount;
+    }
+
+    /**
+     * Get display description for a transaction:
+     * If it is an inter-branch transfer, dynamically update the text to show the correct stock value.
+     */
+    public function getDisplayDescriptionAttribute()
+    {
+        if ($this->reference_type === 'transfer' && $this->reference_id) {
+            $amount = $this->display_amount;
+            $relatedName = $this->relatedBranch->name ?? $this->relatedBranch->branch_name ?? 'Branch #' . $this->related_branch_id;
+            
+            if ($this->type === 'credit') {
+                return "Stock transfer (Stock Value): " . number_format($amount, 2) . " to {$relatedName}. Request ID: {$this->reference_id}";
+            } else {
+                return "Stock transfer (Stock Value): " . number_format($amount, 2) . " from {$relatedName}. Request ID: {$this->reference_id}";
+            }
+        }
+        return $this->description;
+    }
 }

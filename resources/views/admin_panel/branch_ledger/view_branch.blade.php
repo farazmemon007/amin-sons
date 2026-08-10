@@ -117,7 +117,7 @@
                                 </small>
                             </td>
                             <td>
-                                <strong>{{ $transaction->description }}</strong>
+                                <strong>{{ $transaction->display_description }}</strong>
                             </td>
                             <td>
                                 @if ($transaction->relatedBranch)
@@ -148,11 +148,11 @@
                             <td class="text-end">
                                 @if ($transaction->type === 'debit')
                                     <span class="text-danger font-weight-bold">
-                                        -{{ number_format($transaction->amount, 2) }}
+                                        -{{ number_format($transaction->display_amount, 2) }}
                                     </span>
                                 @else
                                     <span class="text-success font-weight-bold">
-                                        +{{ number_format($transaction->amount, 2) }}
+                                        +{{ number_format($transaction->display_amount, 2) }}
                                     </span>
                                 @endif
                             </td>

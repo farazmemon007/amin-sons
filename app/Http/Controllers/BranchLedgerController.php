@@ -36,9 +36,14 @@ class BranchLedgerController extends Controller
                 ->paginate(30);
         }
 
-        // Summary statistics
-        $totalDebit = $transactions->sum(fn($t) => $t->isDebit() ? $t->amount : 0);
-        $totalCredit = $transactions->sum(fn($t) => $t->isCredit() ? $t->amount : 0);
+        // Summary statistics (calculated from all transactions using display_amount)
+        if (auth()->user()->hasRole('super admin')) {
+            $allTx = BranchTransaction::all();
+        } else {
+            $allTx = BranchTransaction::where('branch_id', $branchId)->get();
+        }
+        $totalDebit = $allTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
+        $totalCredit = $allTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
         $balance = $totalCredit - $totalDebit;
 
         return view('admin_panel.branch_ledger.index', compact(
@@ -59,9 +64,10 @@ class BranchLedgerController extends Controller
             $currentBranch = null;
             $account = null;
 
-            // Statistics for all branches
-            $totalDebit = BranchTransaction::where('type', 'debit')->sum('amount');
-            $totalCredit = BranchTransaction::where('type', 'credit')->sum('amount');
+            // Statistics for all branches (calculated using display_amount)
+            $allTx = BranchTransaction::all();
+            $totalDebit = $allTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
+            $totalCredit = $allTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
             $balance = $totalCredit - $totalDebit;
 
             // Recent transactions (all branches)
@@ -89,14 +95,10 @@ class BranchLedgerController extends Controller
             $currentBranch = Branch::findOrFail($branchId);
             $account = BranchAccount::where('branch_id', $branchId)->first();
 
-            // Statistics
-            $totalDebit = BranchTransaction::where('branch_id', $branchId)
-                ->where('type', 'debit')
-                ->sum('amount');
-
-            $totalCredit = BranchTransaction::where('branch_id', $branchId)
-                ->where('type', 'credit')
-                ->sum('amount');
+            // Statistics (calculated using display_amount)
+            $allTx = BranchTransaction::where('branch_id', $branchId)->get();
+            $totalDebit = $allTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
+            $totalCredit = $allTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
 
             $balance = $totalCredit - $totalDebit;
 
@@ -173,10 +175,11 @@ class BranchLedgerController extends Controller
         // Get available branches for filter
         $branches = Branch::where('id', '!=', $branchId)->get();
 
-        // Summary
+        // Summary (calculated using display_amount from all filtered transactions)
+        $allFilteredTx = (clone $query)->get();
         $summary = [
-            'totalDebit' => $transactions->sum(fn($t) => $t->isDebit() ? $t->amount : 0),
-            'totalCredit' => $transactions->sum(fn($t) => $t->isCredit() ? $t->amount : 0),
+            'totalDebit' => $allFilteredTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0),
+            'totalCredit' => $allFilteredTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0),
         ];
 
         return view('admin_panel.branch_ledger.ledger', compact('transactions', 'branches', 'summary'));
@@ -197,14 +200,9 @@ class BranchLedgerController extends Controller
         $branches = Branch::with(['account'])
             ->get()
             ->map(function ($branch) {
-                $totalDebit = BranchTransaction::where('branch_id', $branch->id)
-                    ->where('type', 'debit')
-                    ->sum('amount');
-                
-                $totalCredit = BranchTransaction::where('branch_id', $branch->id)
-                    ->where('type', 'credit')
-                    ->sum('amount');
-                
+                $allTx = BranchTransaction::where('branch_id', $branch->id)->get();
+                $totalDebit = $allTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
+                $totalCredit = $allTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
                 $balance = $totalCredit - $totalDebit;
                 
                 return [
@@ -239,15 +237,10 @@ class BranchLedgerController extends Controller
             ->orderByDesc('created_at')
             ->paginate(50);
 
-        // Summary statistics
-        $totalDebit = BranchTransaction::where('branch_id', $branchId)
-            ->where('type', 'debit')
-            ->sum('amount');
-
-        $totalCredit = BranchTransaction::where('branch_id', $branchId)
-            ->where('type', 'credit')
-            ->sum('amount');
-
+        // Summary statistics (calculated using display_amount)
+        $allTx = BranchTransaction::where('branch_id', $branchId)->get();
+        $totalDebit = $allTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
+        $totalCredit = $allTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
         $balance = $totalCredit - $totalDebit;
 
         return view('admin_panel.branch_ledger.view_branch', compact(
@@ -329,8 +322,8 @@ class BranchLedgerController extends Controller
 
         $transactions = $query->orderByDesc('created_at')->get();
 
-        $totalDebit = $transactions->where('type', 'debit')->sum('amount');
-        $totalCredit = $transactions->where('type', 'credit')->sum('amount');
+        $totalDebit = $transactions->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
+        $totalCredit = $transactions->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
         $balance = $totalCredit - $totalDebit;
 
         // Generate PDF using barryvdh/laravel-dompdf
