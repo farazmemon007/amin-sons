@@ -363,7 +363,7 @@ class VendorController extends Controller
      */
     public function getVendorsByBranch($branchId)
     {
-        $vendors = Vendor::where('branch_id', $branchId)->orderBy('name')->get(['id', 'name', 'phone', 'address']);
+        $vendors = Vendor::where('branch_id', $branchId)->orderBy('name')->get(['id', 'name', 'phone', 'address', 'company_names']);
         return response()->json($vendors);
     }
 }

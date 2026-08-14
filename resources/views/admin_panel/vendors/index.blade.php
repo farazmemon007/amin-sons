@@ -201,7 +201,8 @@
                 <button class="btn btn-premium btn-add" data-toggle="modal" data-target="#vendorModal" onclick="clearVendor()">
                     <i class="fas fa-plus-circle mr-2"></i> Add New Vendor
                 </button>
-                <a href="{{ url('vendors-ledger') }}" class="btn btn-premium btn-outline-danger ml-2">
+                {{-- Ledger, Payments, Bilty buttons hidden --}}
+                {{-- <a href="{{ url('vendors-ledger') }}" class="btn btn-premium btn-outline-danger ml-2">
                     <i class="fas fa-book mr-2"></i> Ledger
                 </a>
                 <a href="{{ route('vendor.payments') }}" class="btn btn-premium btn-outline-primary ml-2">
@@ -209,7 +210,7 @@
                 </a>
                 <a href="{{ url('vendor/bilties') }}" class="btn btn-premium btn-outline-info ml-2">
                     <i class="fas fa-truck mr-2"></i> Bilty
-                </a>
+                </a> --}}
             </div>
         </div>
 

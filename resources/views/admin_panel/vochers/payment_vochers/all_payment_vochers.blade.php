@@ -7,6 +7,18 @@
     .custom-compact-table th, .custom-compact-table td {
         padding: 8px 10px !important;
         vertical-align: middle !important;
+        white-space: normal !important;
+        word-break: break-word;
+    }
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .action-buttons form {
+        margin: 0;
     }
     .custom-compact-table th {
         font-weight: 700;
@@ -99,36 +111,55 @@
                                     <td><strong class="text-success">{{ number_format((float)$item->total_amount, 2) }}</strong></td>
                                     <td>{{ $item->created_at }}</td>
                                     <td>
-                                        <div class="d-flex gap-1 align-items-center">
-                                            <a href="{{ route('PaymentVoucher.print', $item->id) }}"
-                                                target="_blank"
-                                                class="btn btn-sm btn-danger" title="Print Voucher">
-                                                <i class="fas fa-print"></i>
-                                            </a>
+                                        <div class="action-buttons">
+                                            @if($item->status !== 'voided')
+                                                <a href="{{ route('PaymentVoucher.print', $item->id) }}"
+                                                    target="_blank"
+                                                    class="btn btn-sm btn-danger" title="Print Voucher">
+                                                    <i class="fas fa-print"></i>
+                                                </a>
 
-                                            @if($item->receiving_proof)
-                                                <button type="button" 
-                                                    class="btn btn-sm btn-success btn-view-proof" 
-                                                    data-pvid="{{ $item->pvid }}" 
-                                                    data-url="{{ asset('uploads/receipts/' . $item->receiving_proof) }}" 
-                                                    title="View Receiving Proof">
-                                                    <i class="fas fa-image"></i>
-                                                </button>
-                                                <button type="button" 
-                                                    class="btn btn-sm btn-outline-secondary btn-upload-proof" 
-                                                    data-id="{{ $item->id }}" 
-                                                    data-pvid="{{ $item->pvid }}" 
-                                                    title="Change Proof">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
+                                                @if($item->receiving_proof)
+                                                    <button type="button" 
+                                                        class="btn btn-sm btn-success btn-view-proof" 
+                                                        data-pvid="{{ $item->pvid }}" 
+                                                        data-url="{{ asset('uploads/receipts/' . $item->receiving_proof) }}" 
+                                                        title="View Receiving Proof">
+                                                        <i class="fas fa-image"></i>
+                                                    </button>
+                                                    <button type="button" 
+                                                        class="btn btn-sm btn-outline-secondary btn-upload-proof" 
+                                                        data-id="{{ $item->id }}" 
+                                                        data-pvid="{{ $item->pvid }}" 
+                                                        title="Change Proof">
+                                                        <i class="fas fa-sync-alt"></i>
+                                                    </button>
+                                                @else
+                                                    <button type="button" 
+                                                        class="btn btn-sm btn-outline-primary btn-upload-proof" 
+                                                        data-id="{{ $item->id }}" 
+                                                        data-pvid="{{ $item->pvid }}" 
+                                                        title="Upload Receiving Proof">
+                                                        <i class="fas fa-upload"></i> Proof
+                                                    </button>
+                                                @endif
+                                                
+                                                @can('payment.voucher.create')
+                                                <form action="{{ route('payment-vouchers.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to VOID this payment? Ledgers will be reversed.');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-warning" title="Void Payment">
+                                                        <i class="fas fa-ban"></i> Void
+                                                    </button>
+                                                </form>
+                                                @endcan
                                             @else
-                                                <button type="button" 
-                                                    class="btn btn-sm btn-outline-primary btn-upload-proof" 
-                                                    data-id="{{ $item->id }}" 
-                                                    data-pvid="{{ $item->pvid }}" 
-                                                    title="Upload Receiving Proof">
-                                                    <i class="fas fa-upload"></i> Proof
-                                                </button>
+                                                <span class="badge bg-danger">Voided</span>
+                                                <a href="{{ route('PaymentVoucher.print', $item->id) }}"
+                                                    target="_blank"
+                                                    class="btn btn-sm btn-secondary" title="Print Voided Voucher">
+                                                    <i class="fas fa-print"></i>
+                                                </a>
                                             @endif
                                         </div>
                                     </td>

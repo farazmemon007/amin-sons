@@ -125,7 +125,7 @@
     {{-- ✅ Search Filters --}}
     <div class="card card-filter">
         <div class="card-body">
-            <form action="{{ route('vendors.ledger') }}" method="GET" class="row g-3 align-items-end">
+            <form action="{{ route('vendors.ledger') }}" method="GET" class="row g-3 align-items-end" id="ledger-filter-form">
                 @if(auth()->user()->hasRole('super admin'))
                     <div class="col-md-3">
                         <label class="filter-label">Branch</label>
@@ -209,19 +209,20 @@
 
 @push('scripts')
  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
- <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
      $(document).ready(function() {
+
+         // Initialize Select2 on all select elements
          $('.select2').select2({
-             placeholder: "Select a Vendor",
+             placeholder: "Select an option",
              allowClear: true,
              width: '100%'
          });
 
+         // DataTable
          $('#default-datatable').DataTable({
              "pageLength": 10,
              "lengthMenu": [10, 25, 50, 100],
@@ -231,6 +232,66 @@
                  "lengthMenu": "_MENU_ per page"
              }
          });
+
+         // ✅ Branch Change → Fetch branch vendors via AJAX → Update dropdown
+         $('#branch_id').on('change', function() {
+             var branchId = $(this).val();
+             var vendorSelect = $('#vendor_id');
+
+             // Destroy Select2, show loading
+             if (vendorSelect.hasClass('select2-hidden-accessible')) {
+                 vendorSelect.select2('destroy');
+             }
+             vendorSelect.html('<option value="">Loading vendors...</option>');
+             vendorSelect.select2({ placeholder: "Loading...", allowClear: true, width: '100%' });
+
+             $.ajax({
+                 url: "{{ route('vendors-by-branch') }}",
+                 type: "GET",
+                 data: { branch_id: branchId },
+                 success: function(response) {
+                     // Destroy Select2 before repopulating
+                     if (vendorSelect.hasClass('select2-hidden-accessible')) {
+                         vendorSelect.select2('destroy');
+                     }
+
+                     var html = '<option value="">All Vendors</option>';
+                     if (Array.isArray(response)) {
+                         response.forEach(function(vendor) {
+                             var vName = vendor.name || vendor.customer_name;
+                             html += '<option value="' + vendor.id + '">' + vName + '</option>';
+                         });
+                     }
+                     vendorSelect.html(html);
+
+                     // Reinitialize Select2
+                     vendorSelect.select2({
+                         placeholder: "Select an option",
+                         allowClear: true,
+                         width: '100%'
+                     });
+
+                     // ✅ Redirect with branch_id in URL so table also filters
+                     var baseUrl = "{{ route('vendors.ledger') }}";
+                     var startDate = $('#start_date').val();
+                     var endDate   = $('#end_date').val();
+                     var params    = new URLSearchParams();
+                     if (branchId)   params.append('branch_id',  branchId);
+                     if (startDate)  params.append('start_date', startDate);
+                     if (endDate)    params.append('end_date',   endDate);
+                     window.location.href = baseUrl + (params.toString() ? '?' + params.toString() : '');
+                 },
+                 error: function(xhr) {
+                     console.error('Error fetching vendors by branch:', xhr);
+                     if (vendorSelect.hasClass('select2-hidden-accessible')) {
+                         vendorSelect.select2('destroy');
+                     }
+                     vendorSelect.html('<option value="">All Vendors</option>');
+                     vendorSelect.select2({ placeholder: "Select an option", allowClear: true, width: '100%' });
+                 }
+             });
+         });
      });
  </script>
-@endpush
+@endpush
+

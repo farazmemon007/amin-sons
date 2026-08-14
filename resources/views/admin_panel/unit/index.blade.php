@@ -15,7 +15,7 @@
                          </div>
                          <div class="border mt-1 shadow rounded " style="background-color: white;">
                              <div class="col-lg-12 m-auto">
-                                 <div class="table-responsive mt-5 mb-5 ">
+                                 <div class="table-responsive mt-3 mb-3 ">
                                      <table id="default-datatable" class="table ">
                                          <thead class="text-center">
                                              <tr>

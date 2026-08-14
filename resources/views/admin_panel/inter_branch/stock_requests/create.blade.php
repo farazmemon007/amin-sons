@@ -35,14 +35,35 @@
             <h5 class="mb-0">➕ New Stock Request</h5>
         </div>
         <div class="card-body">
+            @if (session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            @endif
+
+            @if (session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> {{ session('success') }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            @endif
+
             @if ($errors->any())
-                <div class="alert alert-danger">
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     <strong>Validation Errors:</strong>
                     <ul>
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
                     </ul>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
                 </div>
             @endif
 
@@ -194,7 +215,8 @@ $(document).ready(function() {
                 if (response.products && response.products.length > 0) {
                     response.products.forEach(function(product) {
                         const code = product.item_code ? ` (${product.item_code})` : '';
-                        productHtml += `<option value="${product.id}">${product.item_name}${code}</option>`;
+                        const status = product.status_label ? ` [${product.status_label}]` : '';
+                        productHtml += `<option value="${product.id}">${product.item_name}${code}${status}</option>`;
                     });
                 } else {
                     productHtml = '<option value="">No products available</option>';

@@ -825,7 +825,7 @@
                     <div class="stat-card danger">
                         <div class="stat-icon"><i class="fa fa-layer-group"></i></div>
                         <div class="stat-value">
-                            {{ collect($allPermissions)->map(fn($p) => explode('.', $p->name)[0])->unique()->count() }}
+                            {{ count(config('permissions', [])) }}
                         </div>
                         <div class="stat-label">Modules</div>
                     </div>
@@ -1030,6 +1030,8 @@
 
     <script>
         const allPermissions = @json($allPermissions);
+        // Config-based modules for clean grouping
+        const permissionModules = @json($permissionModules);
 
         $(document).ready(function() {
             // Initialize module select2 and load modules from server
@@ -1196,85 +1198,53 @@
                 $('#permissionModal').modal('show');
             });
 
-            // Build Permission Groups UI
+
+            // Build Permission Groups UI — uses config/permissions.php for clean module grouping
             function buildPermissionGroups(assignedPerms) {
                 var container = $('#permissionGroupsContainer');
                 container.empty();
 
-                // Group permissions by module
-                var groups = {};
-                var moduleIcons = {
-                    'hr': 'fa-users',
-                    'users': 'fa-user',
-                    'roles': 'fa-user-shield',
-                    'settings': 'fa-cog',
-                    'reports': 'fa-chart-bar',
-                    'inventory': 'fa-boxes',
-                    'sales': 'fa-shopping-cart',
-                    'purchase': 'fa-cart-plus',
-                    'accounts': 'fa-calculator'
-                };
+                // Build a lookup: permissionName -> permission object
+                var permLookup = {};
+                allPermissions.forEach(function(p) { permLookup[p.name] = p; });
 
-                allPermissions.forEach(function(p) {
-                    // Group by everything before the last dot (the action)
-                    var parts = p.name.split('.');
-                    if (parts.length > 1) {
-                        parts.pop(); // remove action
-                        var module = parts.join('.');
-                    } else {
-                        var module = 'General';
-                    }
+                // Track permissions handled by config modules
+                var handledPermNames = new Set();
 
-                    if (!groups[module]) groups[module] = [];
-                    groups[module].push(p);
-                });
+                // Render config-defined modules (clean, with human labels)
+                Object.keys(permissionModules).forEach(function(moduleKey) {
+                    var moduleDef = permissionModules[moduleKey];
+                    var permsInModule = [];
 
-                Object.keys(groups).sort().forEach(function(module) {
-                    var perms = groups[module];
-
-                    // Custom sort order
-                    var order = {
-                        'view': 1,
-                        'create': 2,
-                        'edit': 3,
-                        'delete': 4,
-                        'approve': 5,
-                        'mark': 6,
-                        'print': 7,
-                        'export': 8
-                    };
-                    perms.sort(function(a, b) {
-                        var actionA = a.name.split('.').pop();
-                        var actionB = b.name.split('.').pop();
-                        var valA = order[actionA] || 99;
-                        var valB = order[actionB] || 99;
-                        return valA - valB;
+                    Object.keys(moduleDef.permissions).forEach(function(permName) {
+                        var permLabel = moduleDef.permissions[permName];
+                        var permObj = permLookup[permName];
+                        if (permObj) {
+                            permsInModule.push({ obj: permObj, label: permLabel, name: permName });
+                            handledPermNames.add(permName);
+                        }
                     });
 
-                    // Icon logic: check first part of module (e.g. 'hr' from 'hr.employees')
-                    var mainCategory = module.split('.')[0];
-                    var icon = moduleIcons[mainCategory] || 'fa-folder-open';
+                    if (permsInModule.length === 0) return;
 
-                    // Format Title: hr.employees -> HR Employees
-                    var title = module.replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-                        .replace('Hr ', 'HR ');
-
-                    var icon = moduleIcons[module] || moduleIcons[mainCategory] || 'fa-folder';
-                    var checkedCount = perms.filter(p => assignedPerms.includes(p.name)).length;
+                    var checkedCount = permsInModule.filter(p => assignedPerms.includes(p.name)).length;
+                    var icon  = moduleDef.icon  || 'fa-folder';
+                    var color = moduleDef.color || '#6366f1';
+                    var title = moduleDef.label || moduleKey;
 
                     var html = `
-                        <div class="permission-group" data-module="${module}">
+                        <div class="permission-group" data-module="${moduleKey}">
                             <div class="permission-group-header">
                                 <div class="module-name">
-                                    <span class="module-icon"><i class="fa ${icon}"></i></span>
-                                    ${title}
-                                    <span class="badge bg-secondary">${perms.length}</span>
+                                    <span class="module-icon" style="background:${color};"><i class="fa ${icon}"></i></span>
+                                    <span style="font-weight:700;">${title}</span>
+                                    <span class="badge" style="background:#e2e8f0;color:#475569;">${permsInModule.length}</span>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="badge bg-success">${checkedCount} active</span>
                                     <div class="form-check mb-0">
-                                        <input class="form-check-input module-select" type="checkbox" data-module="${module}">
-                                        <label class="form-check-label small">All</label>
+                                        <input class="form-check-input module-select" type="checkbox" data-module="${moduleKey}" title="Select All ${title}">
+                                        <label class="form-check-label small fw-semibold">All</label>
                                     </div>
                                 </div>
                             </div>
@@ -1282,43 +1252,74 @@
                                 <div class="row g-2">
                     `;
 
-                    perms.forEach(function(p) {
+                    permsInModule.forEach(function(p) {
                         var checked = assignedPerms.includes(p.name);
                         var action = p.name.split('.').pop();
-                        var knownActions = ['view', 'create', 'edit', 'delete', 'approve', 'mark',
-                            'print', 'export'
-                        ];
+                        var knownActions = ['view','create','edit','delete','approve','reject','print','export','mark'];
                         var actionClass = knownActions.includes(action) ? action : 'other';
 
                         html += `
-                            <div class="col-12 col-md-6 col-lg-4 col-xl-3 perm-item-wrapper" data-name="${p.name.toLowerCase()}">
-                                <div class="perm-item ${checked ? 'checked' : ''}" onclick="togglePerm('${p.id}')">
-                                    <input type="checkbox" name="permissions[]" value="${p.name}" id="perm-${p.id}" ${checked ? 'checked' : ''} onclick="event.stopPropagation()">
-                                    <label for="perm-${p.id}" onclick="event.stopPropagation(); togglePerm('${p.id}')">${p.name}</label>
+                            <div class="col-12 col-md-6 col-lg-4 col-xl-3 perm-item-wrapper" data-name="${p.name.toLowerCase()} ${p.label.toLowerCase()}">
+                                <div class="perm-item ${checked ? 'checked' : ''}" onclick="togglePerm('${p.obj.id}')">
+                                    <input type="checkbox" name="permissions[]" value="${p.name}" id="perm-${p.obj.id}" ${checked ? 'checked' : ''} onclick="event.stopPropagation()">
+                                    <label for="perm-${p.obj.id}" onclick="event.stopPropagation(); togglePerm('${p.obj.id}')">${p.label}</label>
                                     <span class="perm-action-badge ${actionClass}">${action}</span>
                                 </div>
                             </div>
                         `;
                     });
 
-                    // Add click handler to valid scope
-                    window.togglePerm = function(id) {
-                        var checkbox = $('#perm-' + id);
-                        checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
-                    };
-
-                    html += `
-                                </div>
-                            </div>
-                        </div>
-                    `;
-
+                    html += `</div></div></div>`;
                     container.append(html);
                 });
+
+                // Render orphaned permissions (not in any config module)
+                var orphaned = allPermissions.filter(p => !handledPermNames.has(p.name));
+                if (orphaned.length > 0) {
+                    var oChecked = orphaned.filter(p => assignedPerms.includes(p.name)).length;
+                    var oHtml = `
+                        <div class="permission-group" data-module="__other">
+                            <div class="permission-group-header">
+                                <div class="module-name">
+                                    <span class="module-icon" style="background:#64748b;"><i class="fa fa-ellipsis-h"></i></span>
+                                    <span style="font-weight:700;">Other / Legacy</span>
+                                    <span class="badge" style="background:#e2e8f0;color:#475569;">${orphaned.length}</span>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-success">${oChecked} active</span>
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input module-select" type="checkbox" data-module="__other">
+                                        <label class="form-check-label small fw-semibold">All</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="permission-group-body"><div class="row g-2">
+                    `;
+                    orphaned.forEach(function(p) {
+                        var checked = assignedPerms.includes(p.name);
+                        oHtml += `
+                            <div class="col-12 col-md-6 col-lg-4 perm-item-wrapper" data-name="${p.name.toLowerCase()}">
+                                <div class="perm-item ${checked ? 'checked' : ''}" onclick="togglePerm('${p.id}')">
+                                    <input type="checkbox" name="permissions[]" value="${p.name}" id="perm-${p.id}" ${checked ? 'checked' : ''} onclick="event.stopPropagation()">
+                                    <label for="perm-${p.id}" onclick="event.stopPropagation(); togglePerm('${p.id}')">${p.name}</label>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    oHtml += `</div></div></div>`;
+                    container.append(oHtml);
+                }
+
+                // togglePerm global helper
+                window.togglePerm = function(id) {
+                    var checkbox = $('#perm-' + id);
+                    checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+                };
 
                 updateSelectedCount();
                 updateModuleSelectStates();
             }
+
 
             // Update selected count
             function updateSelectedCount() {

@@ -4,43 +4,427 @@
 @can('product.view')
 
 <style>
-    div.dataTables_wrapper div.dataTables_length select { width: 75px !important; }
+    /* ─── Google Inter Font ─── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    /* ===== Product View Modal Styles ===== */
-    .pvm-label {
-        font-size: 11px; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.5px;
-        color: #6c757d; margin-bottom: 2px;
+    /* ─── Page & Table Base ─── */
+    .product-page-wrap {
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        padding: 0;
     }
-    .pvm-value { font-size: 14px; font-weight: 600; color: #212529; }
+
+    /* ─── Card ─── */
+    .product-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .product-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 24px;
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .product-card-header .header-left h5 {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .product-card-header .header-left h5 .icon-box {
+        width: 32px; height: 32px;
+        background: rgba(30,58,95,0.08);
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #1e3a5f;
+        font-size: 14px;
+    }
+
+    .product-card-header .header-left small {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 2px;
+        display: block;
+    }
+
+    /* ─── Add Product Button ─── */
+    .btn-add-product {
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        padding: 9px 20px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+        color: #fff;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        box-shadow: 0 2px 8px rgba(30,58,95,0.3);
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+    .btn-add-product:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(30,58,95,0.4);
+        color: #fff;
+        text-decoration: none;
+    }
+
+    /* ─── DataTable Wrapper Padding ─── */
+    .product-card .dataTables_wrapper {
+        padding: 16px 24px 20px;
+        font-family: 'Inter', sans-serif;
+    }
+    div.dataTables_wrapper div.dataTables_length select {
+        width: 70px !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        padding: 4px 8px !important;
+        font-size: 13px !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+    div.dataTables_wrapper div.dataTables_filter input {
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        padding: 6px 12px !important;
+        font-size: 13px !important;
+        font-family: 'Inter', sans-serif !important;
+    }
+    div.dataTables_wrapper div.dataTables_filter input:focus {
+        border-color: #1e3a5f !important;
+        box-shadow: 0 0 0 3px rgba(30,58,95,0.08) !important;
+        outline: none !important;
+    }
+    div.dataTables_wrapper div.dataTables_info {
+        font-size: 12px !important;
+        color: #94a3b8 !important;
+        padding-top: 10px !important;
+    }
+    div.dataTables_wrapper div.dataTables_paginate .paginate_button.current {
+        background: #1e3a5f !important;
+        border-color: #1e3a5f !important;
+        color: #fff !important;
+        border-radius: 6px !important;
+    }
+    div.dataTables_wrapper div.dataTables_paginate .paginate_button:hover {
+        background: #f1f5f9 !important;
+        border-color: #e2e8f0 !important;
+        color: #1e3a5f !important;
+        border-radius: 6px !important;
+    }
+
+    /* ─── Table Core ─── */
+    #productTable {
+        font-family: 'Inter', sans-serif !important;
+        font-size: 13px !important;
+        width: 100% !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+    }
+
+    #productTable thead th {
+        background: #f8fafc !important;
+        color: #64748b !important;
+        font-size: 11px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.55px !important;
+        padding: 13px 14px !important;
+        border-top: none !important;
+        border-bottom: 2px solid #e2e8f0 !important;
+        white-space: nowrap !important;
+        vertical-align: middle !important;
+    }
+
+    #productTable tbody td {
+        padding: 11px 14px !important;
+        vertical-align: middle !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        color: #334155 !important;
+        font-size: 13px !important;
+        background: #ffffff !important;
+    }
+
+    #productTable tbody tr {
+        transition: background 0.15s ease;
+    }
+    #productTable tbody tr:hover td {
+        background: #f8faff !important;
+    }
+    #productTable tbody tr.secondary-row td {
+        background: #fffbeb !important;
+    }
+    #productTable tbody tr.secondary-row:hover td {
+        background: #fef9e7 !important;
+    }
+    #productTable tbody tr:last-child td {
+        border-bottom: none !important;
+    }
+
+    /* ─── Product Image Cell ─── */
+    .prod-img-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 1.5px solid #e2e8f0;
+    }
+    .prod-no-img {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #cbd5e1;
+        font-size: 16px;
+        border: 1.5px solid #e2e8f0;
+    }
+
+    /* ─── Item Code ─── */
+    .item-code-pill {
+        font-family: 'JetBrains Mono', 'Courier New', monospace;
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #1e3a5f;
+        background: rgba(30,58,95,0.07);
+        padding: 3px 9px;
+        border-radius: 6px;
+        letter-spacing: 0.4px;
+        display: inline-block;
+    }
+
+    /* ─── Badges ─── */
+    .badge-branch {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+        background: rgba(30,58,95,0.08);
+        color: #1e3a5f;
+        border: 1px solid rgba(30,58,95,0.15);
+        letter-spacing: 0.2px;
+    }
+    .badge-in-stock {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px; font-weight: 700;
+        padding: 4px 10px; border-radius: 20px;
+        background: rgba(13,159,110,0.1);
+        color: #0d9f6e;
+        border: 1px solid rgba(13,159,110,0.2);
+    }
+    .badge-no-stock {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px; font-weight: 700;
+        padding: 4px 10px; border-radius: 20px;
+        background: rgba(245,158,11,0.1);
+        color: #b45309;
+        border: 1px solid rgba(245,158,11,0.2);
+    }
+    .badge-primary-role {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px; font-weight: 700;
+        padding: 4px 10px; border-radius: 20px;
+        background: rgba(13,159,110,0.1);
+        color: #0d9f6e;
+        border: 1px solid rgba(13,159,110,0.2);
+    }
+    .badge-secondary-role {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px; font-weight: 700;
+        padding: 4px 10px; border-radius: 20px;
+        background: rgba(245,158,11,0.1);
+        color: #b45309;
+        border: 1px solid rgba(245,158,11,0.2);
+    }
+    .badge-qty {
+        font-family: 'Inter', sans-serif;
+        font-size: 11.5px; font-weight: 700;
+        padding: 3px 9px; border-radius: 6px;
+        background: rgba(30,58,95,0.08);
+        color: #1e3a5f;
+        border: 1px solid rgba(30,58,95,0.12);
+        min-width: 32px;
+        display: inline-block;
+        text-align: center;
+    }
+    .badge-no-qty {
+        font-family: 'Inter', sans-serif;
+        font-size: 11px; font-weight: 700;
+        padding: 3px 9px; border-radius: 6px;
+        background: rgba(220,53,69,0.08);
+        color: #dc3545;
+        border: 1px solid rgba(220,53,69,0.15);
+    }
+
+    /* ─── Stock By Branch Column ─── */
+    .branch-stock-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+        font-size: 12.5px;
+    }
+    .branch-stock-row:last-child { margin-bottom: 0; }
+    .branch-stock-name {
+        font-weight: 600;
+        color: #475569;
+        font-size: 12px;
+        min-width: 80px;
+    }
+
+    /* ─── Category Cell ─── */
+    .cat-main { font-weight: 600; color: #1e293b; font-size: 13px; }
+    .cat-sub   { font-size: 11.5px; color: #94a3b8; margin-top: 2px; }
+
+    /* ─── Item Name Cell ─── */
+    .item-name-text {
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 13px;
+        max-width: 200px;
+    }
+
+    /* ─── Price Cell ─── */
+    .price-cell {
+        font-weight: 700;
+        color: #1e293b;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .price-cell .currency-label {
+        font-size: 10px;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-right: 2px;
+    }
+
+    /* ─── Action Buttons ─── */
+    .btn-view-product {
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 7px;
+        background: rgba(245,158,11,0.12);
+        color: #92640a;
+        border: 1px solid rgba(245,158,11,0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .btn-view-product:hover {
+        background: rgba(245,158,11,0.2);
+        border-color: rgba(245,158,11,0.5);
+        transform: translateY(-1px);
+    }
+
+    .btn-more-actions {
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 7px;
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+    }
+    .btn-more-actions:hover {
+        background: #1e3a5f;
+        color: #ffffff;
+        border-color: #1e3a5f;
+        transform: translateY(-1px);
+    }
+
+    /* ─── Dropdown Menu ─── */
+    .custom-dropdown {
+        border-radius: 10px;
+        padding: 6px;
+        min-width: 210px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.12), 0 4px 10px rgba(0,0,0,0.06);
+    }
+    .custom-dropdown .dropdown-item {
+        border-radius: 6px;
+        padding: 9px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #334155;
+        font-family: 'Inter', sans-serif;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.15s;
+    }
+    .custom-dropdown .dropdown-item:hover {
+        background: #f1f5f9;
+        color: #1e3a5f;
+        padding-left: 18px;
+    }
+    .custom-dropdown .dropdown-divider {
+        border-color: #f1f5f9;
+        margin: 4px 0;
+    }
+
+    /* ─── PVM Modal ─── */
+    .pvm-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: #94a3b8;
+        margin-bottom: 3px;
+        font-family: 'Inter', sans-serif;
+    }
+    .pvm-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+        font-family: 'Inter', sans-serif;
+    }
     #productViewModal .standard-field,
     #productViewModal .customize-field { display: none; }
     #productViewModal .standard-field.d-show,
     #productViewModal .customize-field.d-show { display: block; }
     .color-badge {
-        display: inline-block; padding: 3px 10px;
-        background: #e9ecef; border-radius: 20px;
-        font-size: 12px; font-weight: 500; margin: 2px;
+        display: inline-block;
+        padding: 3px 10px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        margin: 2px;
+        color: #475569;
+        font-family: 'Inter', sans-serif;
     }
-    .custom-dropdown { border-radius: 10px; padding: 6px; min-width: 190px; }
-    .custom-dropdown .dropdown-item {
-        border-radius: 6px; padding: 8px 12px;
-        font-weight: 500; transition: all 0.2s;
-    }
-    .custom-dropdown .dropdown-item:hover {
-        background: #f1f3f5; transform: translateX(3px);
-    }
-    
-    /* ===== Compact Table Fix ===== */
-    .custom-compact-table { font-size: 13px; }
-    .custom-compact-table th, .custom-compact-table td {
-        padding: 8px 10px !important;
-        vertical-align: middle !important;
-        white-space: normal !important; /* Allow text wrapping */
-    }
-    .custom-compact-table .btn-sm { font-size: 12px; padding: 4px 8px; }
-    .min-w-100 { min-width: 100px; }
-    .min-w-150 { min-width: 150px; }
+
+    /* ─── Dropdown Appended (JS Clipping Fix) ─── */
     .dropdown-appended {
         display: none;
         position: absolute;
@@ -50,139 +434,156 @@
 @php $isSuperAdmin = isset($isSuperAdmin) ? $isSuperAdmin : false; @endphp
 
 {{-- ==================== PRODUCT TABLE ==================== --}}
-<div class="card shadow-sm border-0">
-    <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-0 fw-bold">📦 Product List</h5>
-            <small class="text-muted">Manage all products here</small>
+<div class="product-page-wrap">
+<div class="product-card">
+    <div class="product-card-header">
+        <div class="header-left">
+            <h5>
+                <span class="icon-box"><i class="fas fa-box"></i></span>
+                Product List
+            </h5>
+            <small>Manage all products &amp; inventory</small>
         </div>
-        <a href="{{ url('create_prodcut') }}" class="btn btn-primary">Add Product</a>
+        <a href="{{ url('create_prodcut') }}" class="btn-add-product">
+            <i class="fas fa-plus"></i> Add Product
+        </a>
     </div>
-    <div class="card-body">
-        @if(session()->has('success'))
-            <div class="alert alert-success alert-dismissible fade show">
-                ✅ {{ session('success') }}
-                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-        @endif
-        <div class="table-responsive" style="overflow-x: hidden;">
-            <table id="productTable" class="table table-striped table-bordered align-middle custom-compact-table" style="width:100%">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 30px;"><input type="checkbox" id="selectAll"></th>
-                        <th>#</th>
-                        <th>Item Code</th>
-                        @if($isSuperAdmin)
-                            <th>Branch</th>
-                            <th>Stock Status</th>
-                        @else
-                            <th>Status</th>
-                        @endif
-                        <th>Image</th>
-                        <th>Category / Sub</th>
-                        <th>Item Name</th>
-                        <th>Model</th>
-                        <th>Price</th>
-                        @if($isSuperAdmin)
-                            <th>Stock By Branch</th>
-                        @else
-                            <th>Stock</th>
-                        @endif
-                        <th>Alert Qty</th>
-                        <th>Brand</th>
-                        <th class="text-center">Action</th>
-                    </tr>
-                </thead>
+
+    {{-- Success Alert --}}
+    @if(session()->has('success'))
+    <div style="padding: 0 24px; margin-top:16px;">
+        <div class="alert alert-success alert-dismissible fade show" style="border:none; border-radius:10px; background:rgba(13,159,110,0.08); color:#0d9f6e; border-left:4px solid #0d9f6e; font-size:13px; font-family:'Inter',sans-serif;">
+            <i class="fas fa-check-circle" style="margin-right:6px;"></i> {{ session('success') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close" style="color:#0d9f6e;">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    </div>
+    @endif
+
+    <div class="table-responsive" style="overflow-x: auto;">
+        <table id="productTable" class="table" style="width:100%">
+            <thead>
+                <tr>
+                    <th style="width:36px;"><input type="checkbox" id="selectAll" style="cursor:pointer;"></th>
+                    <th style="width:42px;">#</th>
+                    <th>Item Code</th>
+                    @if($isSuperAdmin)
+                        <th>Branch</th>
+                        <th>Stock Status</th>
+                    @else
+                        <th>Status</th>
+                    @endif
+                    <th style="width:64px;">Image</th>
+                    <th>Category / Sub</th>
+                    <th>Item Name</th>
+                    <th>Model</th>
+                    <th>Price</th>
+                    @if($isSuperAdmin)
+                        <th>Stock By Branch</th>
+                    @else
+                        <th>Stock</th>
+                    @endif
+                    <th style="width:80px;">Alert Qty</th>
+                    <th>Brand</th>
+                    <th style="width:130px; text-align:center;">Action</th>
+                </tr>
+            </thead>
                 <tbody>
                     @foreach($products as $key => $product)
-                    <tr @if(!$isSuperAdmin && $product->is_secondary) style="background-color:#fff3cd;" @endif>
-                        <td><input type="checkbox" class="selectProduct" value="{{ $product->id }}"></td>
-                        <td>{{ $key + 1 }}</td>
-                        <td class="fw-bold">
-                            @if($isSuperAdmin)
-                                {{ $product->item_code }}
-                            @else
-                                {{ $product->branch_item_code ?? $product->item_code }}
-                            @endif
+                    <tr class="{{ (!$isSuperAdmin && $product->is_secondary) ? 'secondary-row' : '' }}">
+                        <td><input type="checkbox" class="selectProduct" value="{{ $product->id }}" style="cursor:pointer;"></td>
+                        <td style="color:#94a3b8; font-weight:600; font-size:12px;">{{ $key + 1 }}</td>
+                        <td>
+                            <span class="item-code-pill">
+                                @if($isSuperAdmin)
+                                    {{ $product->item_code }}
+                                @else
+                                    {{ $product->branch_item_code ?? $product->item_code }}
+                                @endif
+                            </span>
                         </td>
 
                         @if($isSuperAdmin)
-                            <td><span class="badge bg-primary">{{ $product->branch->name ?? 'Unknown' }}</span></td>
+                            <td><span class="badge-branch">{{ $product->branch->name ?? 'Unknown' }}</span></td>
                             <td>
                                 @if($product->all_warehouse_stocks && count($product->all_warehouse_stocks) > 0)
-                                    <span class="badge bg-success">✓ In Stock</span>
+                                    <span class="badge-in-stock"><i class="fas fa-check-circle" style="font-size:10px; margin-right:3px;"></i>In Stock</span>
                                 @else
-                                    <span class="badge bg-warning text-dark">◯ No Stock</span>
+                                    <span class="badge-no-stock"><i class="fas fa-circle" style="font-size:8px; margin-right:3px;"></i>No Stock</span>
                                 @endif
                             </td>
                         @else
                             <td>
                                 @if($product->is_primary)
-                                    <span class="badge bg-success">✓ PRIMARY</span>
+                                    <span class="badge-primary-role"><i class="fas fa-check-circle" style="font-size:10px; margin-right:3px;"></i>Primary</span>
                                 @else
-                                    <span class="badge bg-warning text-dark">◯ SECONDARY</span>
+                                    <span class="badge-secondary-role"><i class="fas fa-circle" style="font-size:8px; margin-right:3px;"></i>Secondary</span>
                                 @endif
                             </td>
                         @endif
 
                         <td>
                             @if($product->image)
-                                <img src="{{ asset('uploads/products/' . $product->image) }}" width="48" height="48" class="rounded border">
+                                <img src="{{ asset('uploads/products/' . $product->image) }}" class="prod-img-thumb">
                             @else
-                                <span class="badge bg-secondary">No Img</span>
+                                <span class="prod-no-img"><i class="fas fa-image"></i></span>
                             @endif
                         </td>
                         <td>
-                            <strong>{{ $product->category_relation->name ?? '-' }}</strong><br>
-                            <small class="text-muted">{{ $product->sub_category_relation->name ?? '-' }}</small>
+                            <div class="cat-main">{{ $product->category_relation->name ?? '-' }}</div>
+                            <div class="cat-sub">{{ $product->sub_category_relation->name ?? '-' }}</div>
                         </td>
-                        <td>{{ $product->item_name }}</td>
-                        <td>{{ $product->model ?? '-' }}</td>
-                        <td>PKR {{ number_format($product->price) }}</td>
+                        <td><span class="item-name-text">{{ $product->item_name }}</span></td>
+                        <td style="color:#64748b; font-size:12.5px;">{{ $product->model ?? '-' }}</td>
+                        <td class="price-cell"><span class="currency-label">PKR</span>{{ number_format($product->price) }}</td>
 
                         @if($isSuperAdmin)
                             <td>
                                 @if($product->all_warehouse_stocks && count($product->all_warehouse_stocks) > 0)
                                     @foreach($product->all_warehouse_stocks as $stock)
-                                        <div class="mb-2" style="font-size:18px;">
-                                            <span class="fw-bold text-dark">{{ $stock['branch_name'] }}:</span> 
-                                            <span class="badge bg-info text-dark shadow-sm" style="font-size:18px; padding: 8px 12px; font-weight: bold;">{{ $stock['quantity'] }}</span>
+                                        <div class="branch-stock-row">
+                                            <span class="branch-stock-name">{{ $stock['branch_name'] }}:</span>
+                                            <span class="badge-qty">{{ $stock['quantity'] }}</span>
                                         </div>
                                     @endforeach
                                 @else
-                                    <span class="badge bg-danger">📭 No Stock</span>
+                                    <span class="badge-no-qty">No Stock</span>
                                 @endif
                             </td>
                         @else
                             <td>
                                 @if($product->branch_stock_qty > 0)
-                                    <span class="badge bg-success">📦 {{ $product->branch_stock_qty }}</span>
+                                    <span class="badge-qty">{{ $product->branch_stock_qty }}</span>
                                 @else
-                                    <span class="badge bg-danger">📭 Out</span>
+                                    <span class="badge-no-qty">Out</span>
                                 @endif
                             </td>
                         @endif
 
-                        <td>{{ $product->alert_quantity }}</td>
-                        <td>{{ $product->brand->name ?? '-' }}</td>
-                        <td class="text-center">
-                            <button type="button" class="btn btn-sm btn-warning viewProductBtn" data-id="{{ $product->id }}">
-                                👁 View
-                            </button>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-sm btn-secondary dropdown-toggle" data-toggle="dropdown" data-boundary="window" aria-expanded="false">More</button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow custom-dropdown">
-                                    @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
-                                        <li><a class="dropdown-item" href="{{ route('products.edit', $product->id) }}">📋 Edit Profile</a></li>
-                                        <li><a class="dropdown-item" href="{{ route('opening.stocks.edit', $product->id) }}">💰 Edit Stock & Pricing</a></li>
-                                    @endif
-                                    <li><a class="dropdown-item" href="{{ route('generate-barcode-image', $product->id) }}">🏷 Generate Barcode</a></li>
-                                    @if($product->is_assembled)
-                                        <li><a class="dropdown-item" href="{{ route('assembly.report.show', $product->id) }}">⚙ Assembly Report</a></li>
-                                    @endif
-                                </ul>
+                        <td style="color:#64748b; font-weight:600; font-size:13px; text-align:center;">{{ $product->alert_quantity }}</td>
+                        <td style="font-size:12.5px; font-weight:500; color:#475569;">{{ $product->brand->name ?? '-' }}</td>
+                        <td style="text-align:center; white-space:nowrap;">
+                            <div style="display:inline-flex; align-items:center; gap:6px;">
+                                <button type="button" class="btn-view-product viewProductBtn" data-id="{{ $product->id }}">
+                                    <i class="fas fa-eye" style="font-size:11px;"></i> View
+                                </button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn-more-actions dropdown-toggle" data-toggle="dropdown" data-boundary="window" aria-expanded="false">
+                                        More <i class="fas fa-chevron-down" style="font-size:9px;"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end custom-dropdown">
+                                        @if(auth()->user()->can('product.edit') || auth()->user()->can('edit product') || auth()->user()->hasAnyRole(['super admin', 'admin']))
+                                            <li><a class="dropdown-item" href="{{ route('products.edit', $product->id) }}"><i class="fas fa-edit" style="color:#1e3a5f; width:16px;"></i> Edit Profile</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('opening.stocks.edit', $product->id) }}"><i class="fas fa-dollar-sign" style="color:#0d9f6e; width:16px;"></i> Edit Stock &amp; Pricing</a></li>
+                                        @endif
+                                        <li><a class="dropdown-item" href="{{ route('generate-barcode-image', $product->id) }}"><i class="fas fa-barcode" style="color:#64748b; width:16px;"></i> Generate Barcode</a></li>
+                                        @if($product->is_assembled)
+                                            <li><div class="dropdown-divider"></div></li>
+                                            <li><a class="dropdown-item" href="{{ route('assembly.report.show', $product->id) }}"><i class="fas fa-cogs" style="color:#7c3aed; width:16px;"></i> Assembly Report</a></li>
+                                        @endif
+                                    </ul>
+                                </div>
                             </div>
                         </td>
                     </tr>
@@ -190,7 +591,7 @@
                 </tbody>
             </table>
         </div>
-    </div>
+</div>
 </div>
 
 {{-- ==================== PRODUCT VIEW MODAL (ERP Standard) ==================== --}}

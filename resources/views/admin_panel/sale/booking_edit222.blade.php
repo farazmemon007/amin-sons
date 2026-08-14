@@ -546,7 +546,7 @@
                         </div>
 
                         <div class="text-end mt-3">
-                            <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary">Clear</button>
+                            <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary" style="color:#ffffff !important;"><i class="fas fa-eraser"></i> Clear</button>
                         </div>
                     </div>
 
@@ -564,15 +564,14 @@
 
                                 <thead>
                                     <tr>
-                                        <th style="width:10px">Product</th>
-
-                                        <th style="width:10px">Stock</th>
-                                        <th style="width:10px">Qty</th>
-                                        <th style="width:10px">Retail Price</th>
-                                        <th style="width:10px">Disc %</th>
-                                        <th style="width:10px">Disc Amt</th>
-                                        <th style="width:10px">Amount</th>
-
+                                        <th class="product-col">Product</th>
+                                        <th class="stock-col">Stock</th>
+                                        <th class="qty-col">Qty</th>
+                                        <th class="price-col">Retail Price</th>
+                                        <th class="disc-col">Disc %</th>
+                                        <th class="discamt-col">Disc Amt</th>
+                                        <th class="amount-col">Amount</th>
+                                        <th class="action-col"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
@@ -582,7 +581,7 @@
                                     <tr>
                                         <td colspan="6" class="text-end fw-bold">Total:</td>
                                         <td class="text-end fw-bold"><span id="totalAmount">0.00</span></td>
-                                        {{-- <td></td> --}}
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -681,6 +680,7 @@
                             </div>
 
                             {{-- hidden mirrors for backend --}}
+{{ ... }}
                             <input type="hidden" name="subTotal1" id="subTotal1" value="0">
                             <input type="hidden" name="subTotal2" id="subTotal2" value="0">
                             <input type="hidden" name="discountAmount" id="discountAmount" value="0">
@@ -690,22 +690,15 @@
                 </div>
 
                 {{-- Buttons --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-                    {{-- <button type="button" class="btn btn-sm btn-primary" id="btnEdit">Edit</button> --}}
-                    {{-- <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button> --}}
+                <div class="d-flex flex-wrap align-items-center justify-content-center p-3 mt-3 border-top" style="gap:10px !important;">
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted" disabled><i class="fas fa-warehouse"></i> Warehouse Sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted2" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
 
-                    {{-- <button type="button" class="btn btn-sm btn-success" id="btnSave"></button> --}}
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted"
-                        disabled>warehouse sale</button>
-                    <button type="button" class="btn btn-sm btn-outline-success" id="btnPosted2"
-                        disabled>Sale</button>
+                    <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint2"><i class="fas fa-print"></i> Print-2</button>
+                    <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnDCPrint"><i class="fas fa-truck"></i> DC Print</button>
 
-                    {{-- <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">DC </button> --}}
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint2">Print-2</button>
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnDCPrint">DC Print</button>
-
-                    <button type="button" class="btn btn-sm btn-danger" id="btnDelete">Delete</button>
-                    <button type="button" class="btn btn-sm btn-dark" id="btnExit">Exit</button>
+                    <button type="button" class="btn btn-sm btn-danger btn-action" id="btnDelete"><i class="fas fa-trash-alt"></i> Delete</button>
+                    <button type="button" class="btn btn-sm btn-dark btn-action" id="btnExit"><i class="fas fa-times-circle"></i> Exit</button>
                 </div>
             </form>
         </div>

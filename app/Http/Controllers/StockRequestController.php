@@ -137,8 +137,8 @@ class StockRequestController extends Controller
                 // Create notification for the target branch
                 $sendingBranch = \App\Models\Branch::find($fromBranchId);
                 $sendingBranchName = $sendingBranch->name ?? $sendingBranch->branch_name ?? 'Branch #' . $fromBranchId;
-                \App\Models\Notification::create([
-                    'branch_id' => $validated['to_branch_id'],
+                
+                $notificationData = [
                     'type' => 'stock_request',
                     'title' => 'New Stock Request Received',
                     'description' => "Stock request #{$stockRequest->id} has been received from {$sendingBranchName}.",
@@ -146,10 +146,16 @@ class StockRequestController extends Controller
                     'status' => 'pending',
                     'is_read' => false,
                     'created_by' => auth()->id(),
-                ]);
+                ];
+
+                if (\Illuminate\Support\Facades\Schema::hasColumn('notifications', 'branch_id')) {
+                    $notificationData['branch_id'] = $validated['to_branch_id'];
+                }
+
+                \App\Models\Notification::create($notificationData);
             });
 
-            return redirect()->route('stock_requests.index')
+            return redirect()->route('inter_branch_stock_requests.index')
                 ->with('success', 'Stock request created successfully. Waiting for approval.');
         } catch (\Exception $e) {
             return back()->with('error', 'Error creating request: ' . $e->getMessage());
@@ -648,17 +654,83 @@ class StockRequestController extends Controller
         // Validate branch exists
         $branch = Branch::findOrFail($branchId);
 
-        // Get all products (products table doesn't have branch_id, products are global)
-        $products = Product::select('id', 'item_name', 'item_code')
-            ->orderBy('item_name')
-            ->get();
+        // Get all products
+        $allProducts = Product::orderBy('item_name')->get();
+
+        // Deduplicate by name and code
+        $uniqueProducts = $allProducts->unique(function ($product) {
+            return trim(strtolower($product->item_name)) . '_' . trim(strtolower($product->item_code));
+        });
+
+        // Get product IDs that have active stock in this branch
+        $stockProductIds = WarehouseStock::where('branch_id', $branchId)
+            ->where('quantity', '>', 0)
+            ->pluck('product_id')
+            ->toArray();
+
+        // Map and categorize products as primary or secondary
+        $mappedProducts = $uniqueProducts->map(function ($product) use ($stockProductIds) {
+            $hasStock = in_array($product->id, $stockProductIds);
+            return [
+                'id' => $product->id,
+                'item_name' => $product->item_name,
+                'item_code' => $product->item_code,
+                'is_primary' => $hasStock,
+                'status_label' => $hasStock ? 'Primary' : 'Secondary'
+            ];
+        });
+
+        // Sort: Primary first, then Secondary, then by name
+        $sortedProducts = $mappedProducts->sortByDesc('is_primary')->values();
 
         return response()->json([
             'success' => true,
             'branch_id' => $branchId,
-            'branch_name' => $branch->branch_name,
-            'products' => $products,
-            'count' => $products->count(),
+            'branch_name' => $branch->name ?? $branch->branch_name,
+            'products' => $sortedProducts,
+            'count' => $sortedProducts->count(),
+        ]);
+    }
+
+    // Get details of a stock request for modal display
+    public function getDetails(StockRequest $stockRequest)
+    {
+        $stockRequest->load([
+            'fromBranch',
+            'toBranch',
+            'items.product',
+            'items.fromWarehouse',
+            'items.toWarehouse',
+            'createdBy',
+            'approvedBy'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'request' => [
+                'id' => $stockRequest->id,
+                'from_branch' => $stockRequest->fromBranch->name ?? $stockRequest->fromBranch->branch_name ?? 'Branch #' . $stockRequest->from_branch_id,
+                'to_branch' => $stockRequest->toBranch->name ?? $stockRequest->toBranch->branch_name ?? 'Branch #' . $stockRequest->to_branch_id,
+                'status' => $stockRequest->status,
+                'remarks' => $stockRequest->remarks ?? '-',
+                'created_at' => $stockRequest->created_at->format('M d, Y H:i'),
+                'created_by' => $stockRequest->createdBy->name ?? 'System',
+                'approved_by' => $stockRequest->approvedBy->name ?? '-',
+                'approved_at' => $stockRequest->approved_at ? $stockRequest->approved_at->format('M d, Y H:i') : '-',
+                'items' => $stockRequest->items->map(function ($item) {
+                    return [
+                        'product_name' => $item->product->item_name ?? 'Product #' . $item->product_id,
+                        'product_code' => $item->product->item_code ?? '-',
+                        'requested_qty' => $item->requested_qty,
+                        'approved_qty' => $item->approved_qty ?? 0,
+                        'from_warehouse' => $item->fromWarehouse->warehouse_name ?? '-',
+                        'to_warehouse' => $item->toWarehouse->warehouse_name ?? '-',
+                        'unit_price' => number_format($item->unit_price ?? 0, 2),
+                        'total_price' => number_format(($item->approved_qty ?? 0) * ($item->unit_price ?? 0), 2),
+                        'delivery_charges' => number_format($item->delivery_charges ?? 0, 2)
+                    ];
+                })
+            ]
         ]);
     }
 }

@@ -487,6 +487,17 @@
             color: white;
         }
 
+        .user-actions .btn-crossbranch {
+            background: #eff6ff;
+            color: #2563eb;
+            border: none;
+        }
+
+        .user-actions .btn-crossbranch:hover {
+            background: #2563eb;
+            color: white;
+        }
+
         /* Warehouse Assignment Modal */
         .wh-branch-block {
             border: 1px solid #e2e8f0;
@@ -673,14 +684,15 @@
                             <div class="user-card" data-user-id="{{ $user->id }}"
                                 data-name="{{ strtolower($user->name) }}" data-email="{{ strtolower($user->email) }}"
                                 data-roles="{{ json_encode($user->getRoleNames()) }}"
-                                data-branch="{{ $user->branch_id ?? 0 }}">
+                                data-branch="{{ $user->branch_id ?? 0 }}"
+                                data-branch-name="{{ $user->branch?->name ?? 'No Branch' }}">
                                 <div class="user-card-header">
                                     <div class="d-flex align-items-center">
                                         <div class="user-avatar">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
                                         <div class="user-info">
                                             <h4 class="user-name">{{ $user->name }}</h4>
                                             <div class="user-email">{{ $user->email }}</div>
-                                            <div class="user-email">branch Id: {{ $user->branch_id }}</div>
+                                            <div class="user-email" style="font-size:0.78rem;color:#64748b;"><i class="fa fa-code-branch me-1"></i>{{ $user->branch?->name ?? 'No Branch' }}</div>
                                             <div class="user-meta">ID: {{ $user->id }} • Joined
                                                 {{ $user->created_at?->diffForHumans() ?? 'N/A' }}</div>
                                         </div>
@@ -702,6 +714,14 @@
                                                 <i class="fa fa-warehouse"></i>
                                             </button>
                                         @endcan
+                                        @if(Auth::user()->hasRole('super admin'))
+                                            <button class="btn btn-crossbranch crossbranch-btn"
+                                                data-user-id="{{ $user->id }}"
+                                                data-user-name="{{ $user->name }}"
+                                                title="Cross-Branch Permissions">
+                                                <i class="fa fa-globe"></i>
+                                            </button>
+                                        @endif
                                         @can('users.delete')
                                             <button class="btn btn-delete delete-user-btn" data-id="{{ $user->id }}"
                                                 title="Delete User">
@@ -926,6 +946,54 @@
         </div>
     </div>
 
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    {{-- Cross-Branch Permissions Modal (Super Admin only)             --}}
+    {{-- ═══════════════════════════════════════════════════════════════ --}}
+    <div class="modal fade" id="crossbranchModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border:none;border-radius:20px;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+                <div class="modal-header" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:white;padding:22px 28px;border:none;">
+                    <div>
+                        <h5 class="modal-title mb-0" style="font-weight:700;font-size:1.2rem;">
+                            <i class="fa fa-globe me-2"></i>Cross-Branch Permissions
+                        </h5>
+                        <small class="opacity-75" id="cbUserLabel">Loading...</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4" style="background:#f8fafc;max-height:70vh;overflow-y:auto;">
+
+                    <div class="alert border-0 mb-3" style="background:#dbeafe;color:#1e40af;border-radius:10px;">
+                        <i class="fa fa-info-circle me-2"></i>
+                        <strong>Super Admin:</strong> Grant this user view/access permissions for other branches.
+                        Cross-branch permissions are only for <em>read/view/report</em> access — create/edit/delete always remain on the user's home branch.
+                    </div>
+
+                    <div id="cbLoading" class="text-center py-5">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2 text-muted small">Loading branch permissions...</p>
+                    </div>
+
+                    <div id="cbContent" style="display:none;">
+                        <input type="hidden" id="cbUserId">
+                        <div id="cbBranchAccordion" class="accordion"></div>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer" style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:18px 28px;">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fa fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="cbSaveBtn" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;padding:10px 24px;border-radius:10px;font-weight:600;">
+                        <i class="fa fa-check me-1"></i>Save Cross-Branch Permissions
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @section('js')
@@ -934,6 +1002,7 @@
     <script>
         const allRoles = @json($allRoles);
         const currentUserIsSuperAdmin = @json(Auth::check() && Auth::user()->hasRole('super admin'));
+        const crossBranchModulesConfig = @json(collect(config('permissions'))->filter(fn($m) => !empty($m['cross_branch']))->all());
 
         function buildRolesCheckboxes(container, assignedRoles) {
             var $container = $(container);
@@ -1248,6 +1317,218 @@
                     }
                 });
             });
+
+            // ── Cross-Branch Permissions ──────────────────────────────────────
+            $(document).on('click', '.crossbranch-btn', function() {
+                var userId   = $(this).data('user-id');
+                var userName = $(this).data('user-name');
+
+                $('#cbUserId').val(userId);
+                $('#cbUserLabel').text('User: ' + userName);
+                $('#cbBranchAccordion').empty();
+                $('#cbLoading').show();
+                $('#cbContent').hide();
+                $('#crossbranchModal').modal('show');
+
+                $.getJSON('{{ url("/users") }}/' + userId + '/crossbranch-permissions', function(data) {
+                    $('#cbLoading').hide();
+                    $('#cbContent').show();
+
+                    var acc = $('#cbBranchAccordion');
+                    acc.empty();
+
+                    if (!data.branches || data.branches.length === 0) {
+                        acc.html('<div class="text-center text-muted py-4"><i class="fa fa-info-circle fa-2x mb-2 d-block"></i>No other branches available.</div>');
+                        return;
+                    }
+
+                    data.branches.forEach(function(branch, bi) {
+                        var collapseId = 'cbCollapse_' + bi;
+                        var headingId  = 'cbHeading_' + bi;
+
+                        // Count total and granted perms for this branch
+                        var totalPerms  = 0;
+                        var grantedCount = 0;
+                        branch.modules.forEach(function(mod) {
+                            mod.perms.forEach(function(p) {
+                                totalPerms++;
+                                if (p.checked) grantedCount++;
+                            });
+                        });
+
+                        var allGranted = grantedCount === totalPerms && totalPerms > 0;
+                        var hasSome    = grantedCount > 0 && !allGranted;
+
+                        var branchHtml = `
+                            <div class="accordion-item mb-2" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+                                <h2 class="accordion-header" id="${headingId}">
+                                    <button class="accordion-button ${bi === 0 ? '' : 'collapsed'}" type="button"
+                                        data-bs-toggle="collapse" data-bs-target="#${collapseId}"
+                                        style="background:linear-gradient(135deg,#1e40af,#1d4ed8);color:white;font-weight:700;border-radius:0;">
+                                        <span class="me-auto"><i class="fa fa-code-branch me-2"></i>${branch.name}</span>
+                                        <span class="badge ms-3" style="background:rgba(255,255,255,0.25);">
+                                            ${grantedCount}/${totalPerms} active
+                                        </span>
+                                    </button>
+                                </h2>
+                                <div id="${collapseId}" class="accordion-collapse collapse ${bi === 0 ? 'show' : ''}"
+                                    aria-labelledby="${headingId}" data-bs-parent="">
+                                    <div class="accordion-body p-0">
+
+                                        <div class="p-3 border-bottom" style="background:#f1f5f9;">
+                                            <label style="cursor:pointer;font-weight:600;font-size:0.85rem;">
+                                                <input type="checkbox" class="cb-branch-all me-2"
+                                                    data-branch="${branch.id}"
+                                                    ${allGranted ? 'checked' : ''}
+                                                    ${hasSome ? 'data-indeterminate="1"' : ''}>
+                                                Grant All Permissions for ${branch.name}
+                                            </label>
+                                        </div>
+                        `;
+
+                        // Render each module
+                        branch.modules.forEach(function(mod, mi) {
+                            var modGranted = mod.perms.filter(p => p.checked).length;
+                            var modTotal   = mod.perms.length;
+                            var modAll     = modGranted === modTotal && modTotal > 0;
+                            var modSome    = modGranted > 0 && !modAll;
+                            var modColor   = '#6366f1';
+
+                            branchHtml += `
+                                <div class="p-3 border-bottom">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong style="font-size:0.9rem;">
+                                            <i class="fa ${mod.icon} me-1" style="color:${modColor};"></i>
+                                            ${mod.label}
+                                            <span class="badge bg-secondary ms-1">${modGranted}/${modTotal}</span>
+                                        </strong>
+                                        <label style="cursor:pointer;font-size:0.82rem;font-weight:600;">
+                                            <input type="checkbox" class="cb-module-all me-1"
+                                                data-branch="${branch.id}" data-module="${mod.key}"
+                                                ${modAll ? 'checked' : ''}
+                                                ${modSome ? 'data-indeterminate="1"' : ''}>
+                                            All
+                                        </label>
+                                    </div>
+                                    <div class="row g-1">
+                            `;
+
+                            mod.perms.forEach(function(p) {
+                                var cbId   = 'cb_b' + branch.id + '_' + p.key.replace(/\./g, '_');
+                                var permVal= 'branch:' + branch.id + ':' + p.key;
+                                branchHtml += `
+                                    <div class="col-6 col-md-4 col-lg-3">
+                                        <label class="d-flex align-items-center gap-1 p-1 rounded" style="cursor:pointer;font-size:0.82rem;${p.checked ? 'background:#dbeafe;' : ''}">
+                                            <input type="checkbox" class="cb-crossbranch-perm"
+                                                id="${cbId}"
+                                                name="granted[]"
+                                                value="${permVal}"
+                                                data-branch="${branch.id}"
+                                                data-module="${mod.key}"
+                                                ${p.checked ? 'checked' : ''}>
+                                            ${p.label}
+                                        </label>
+                                    </div>
+                                `;
+                            });
+
+                            branchHtml += `</div></div>`; // row + module block
+                        });
+
+                        branchHtml += `</div></div></div></div>`; // accordion body/collapse/item
+                        acc.append(branchHtml);
+                    });
+
+                    // Set indeterminate state
+                    acc.find('[data-indeterminate="1"]').each(function() {
+                        this.indeterminate = true;
+                    });
+
+                    // Branch "All" toggle
+                    acc.on('change', '.cb-branch-all', function() {
+                        var branchId = $(this).data('branch');
+                        var checked  = $(this).is(':checked');
+                        acc.find(`.cb-crossbranch-perm[data-branch="${branchId}"]`).prop('checked', checked);
+                        acc.find(`.cb-module-all[data-branch="${branchId}"]`).prop('checked', checked).prop('indeterminate', false);
+                        updateBranchAllState(branchId);
+                    });
+
+                    // Module "All" toggle
+                    acc.on('change', '.cb-module-all', function() {
+                        var branchId = $(this).data('branch');
+                        var modKey   = $(this).data('module');
+                        var checked  = $(this).is(':checked');
+                        acc.find(`.cb-crossbranch-perm[data-branch="${branchId}"][data-module="${modKey}"]`).prop('checked', checked);
+                        updateBranchAllState(branchId);
+                    });
+
+                    // Individual permission change
+                    acc.on('change', '.cb-crossbranch-perm', function() {
+                        var branchId = $(this).data('branch');
+                        var modKey   = $(this).data('module');
+                        // update module all
+                        var modPerms  = acc.find(`.cb-crossbranch-perm[data-branch="${branchId}"][data-module="${modKey}"]`);
+                        var modChecked = modPerms.filter(':checked').length;
+                        var $modAll   = acc.find(`.cb-module-all[data-branch="${branchId}"][data-module="${modKey}"]`);
+                        $modAll.prop('checked', modChecked === modPerms.length).prop('indeterminate', modChecked > 0 && modChecked < modPerms.length);
+                        updateBranchAllState(branchId);
+                    });
+
+                    function updateBranchAllState(branchId) {
+                        var allPerms    = acc.find(`.cb-crossbranch-perm[data-branch="${branchId}"]`);
+                        var chkCount    = allPerms.filter(':checked').length;
+                        var $branchAll  = acc.find(`.cb-branch-all[data-branch="${branchId}"]`);
+                        $branchAll.prop('checked', chkCount === allPerms.length && allPerms.length > 0)
+                                  .prop('indeterminate', chkCount > 0 && chkCount < allPerms.length);
+                    }
+
+                }).fail(function(xhr) {
+                    $('#cbLoading').html('<p class="text-danger">Error loading permissions: ' + (xhr.responseJSON?.message || 'Unknown error') + '</p>');
+                });
+            });
+
+            // Save cross-branch permissions
+            $('#cbSaveBtn').click(function() {
+                var userId  = $('#cbUserId').val();
+                var granted = [];
+                $('#cbBranchAccordion .cb-crossbranch-perm:checked').each(function() {
+                    granted.push($(this).val());
+                });
+
+                $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin me-1"></i>Saving...');
+
+                $.ajax({
+                    url: '{{ route("users.crossbranch.save") }}',
+                    type: 'POST',
+                    data: {
+                        _token:  '{{ csrf_token() }}',
+                        user_id: userId,
+                        granted: granted,
+                    },
+                    success: function(res) {
+                        if (res.success) {
+                            $('#crossbranchModal').modal('hide');
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Saved!',
+                                text: res.success,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        var msg = xhr.responseJSON?.message || 'Could not save permissions.';
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                    },
+                    complete: function() {
+                        $('#cbSaveBtn').prop('disabled', false)
+                            .html('<i class="fa fa-check me-1"></i>Save Cross-Branch Permissions');
+                    }
+                });
+            });
+            // ──────────────────────────────────────────────────────────────────
+
         });
     </script>
 @endsection

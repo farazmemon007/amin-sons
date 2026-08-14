@@ -118,6 +118,17 @@
                                     <div class="fi-label">Freight Charges</div>
                                     <input type="number" step="0.01" name="freight_charges" class="fi" value="{{ old('freight_charges', $gatepass->freight_charges) }}">
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="fi-label">Freight Provider (Audit)</div>
+                                    <select name="freight_vendor_id" class="form-select select2">
+                                        <option value="">Select Transporter/Vendor</option>
+                                        @foreach ($vendors as $item)
+                                            <option value="{{ $item->id }}" {{ old('freight_vendor_id', $gatepass->freight_vendor_id) == $item->id ? 'selected' : '' }}>
+                                                {{ $item->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 <div class="col-md-12">
                                     <div class="fi-label">Note</div>
                                     <input type="text" name="note" class="fi" value="{{ old('note', $gatepass->note) }}">

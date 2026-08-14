@@ -382,37 +382,99 @@
     </style>
     <style>
         /* ===== Sales Table UI Fix ===== */
-        .sales-table td.product-col {
-            min-width: 180px;
+        .sales-table {
+            table-layout: fixed !important;
+            width: 100% !important;
+            min-width: 860px !important;
+            border-collapse: collapse !important;
         }
 
-        /* .sales-table td.warehouse-col {
-              min-width: 170px;
-          } */
-        .sales-table td.small-col {
-            width: 110px;
+        .sales-table th {
+            background: #f8fafc !important;
+            color: #475569 !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            padding: 10px 8px !important;
+            border-bottom: 2px solid #e2e8f0 !important;
+            white-space: nowrap !important;
         }
 
-        .sales-table td.medium-col {
-            width: 120px;
+        .sales-table td {
+            padding: 6px 6px !important;
+            vertical-align: middle !important;
         }
 
-        .sales-table td.action-col {
-            width: 100px;
-            text-align: center;
+        .sales-table .product-col  { width: 34% !important; min-width: 230px !important; }
+        .sales-table .stock-col    { width: 8% !important; min-width: 60px !important; }
+        .sales-table .qty-col      { width: 9% !important; min-width: 65px !important; }
+        .sales-table .price-col    { width: 12% !important; min-width: 85px !important; }
+        .sales-table .disc-col     { width: 14% !important; min-width: 100px !important; }
+        .sales-table .discamt-col  { width: 10% !important; min-width: 80px !important; }
+        .sales-table .amount-col   { width: 10% !important; min-width: 85px !important; }
+        .sales-table .action-col   { width: 3% !important; min-width: 40px !important; text-align: center !important; }
+
+        /* Select2 Truncation & Height Fix */
+        .sales-table .select2-container {
+            width: 100% !important;
+            max-width: 100% !important;
         }
 
-        .input-readonly {
-            background: #f1f3f5;
-            font-weight: 600;
+        .sales-table .select2-container .select2-selection--single {
+            height: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            border-radius: 6px !important;
+            border: 1.5px solid #cbd5e1 !important;
+            background: #ffffff !important;
         }
 
-        /* 🔥 FIX: Items panel overflow + Add Row cut issue */
-        .items-panel {
-            min-width: 0;
-            /* allow flex shrink */
-            width: 100%;
-            overflow: visible;
+        .sales-table .select2-container .select2-selection__rendered {
+            line-height: 34px !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            display: block !important;
+            padding-right: 22px !important;
+            font-size: 12.5px !important;
+            font-weight: 500 !important;
+            color: #1e293b !important;
+        }
+
+        /* Inputs in Sales Table */
+        .sales-table .form-control {
+            height: 36px !important;
+            font-size: 12.5px !important;
+            padding: 4px 8px !important;
+            border-radius: 6px !important;
+            border: 1.5px solid #cbd5e1 !important;
+        }
+
+        .sales-table .discount-wrapper {
+            display: flex !important;
+            align-items: center !important;
+            width: 100% !important;
+        }
+
+        .sales-table .discount-wrapper .discount-value {
+            border-top-right-radius: 0 !important;
+            border-bottom-right-radius: 0 !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+        }
+
+        .sales-table .discount-wrapper .discount-toggle {
+            height: 36px !important;
+            padding: 0 7px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
+            border: 1.5px solid #cbd5e1 !important;
+            border-left: none !important;
+            background: #f1f5f9 !important;
+            color: #475569 !important;
         }
 
         .items-panel>.d-flex {
@@ -632,7 +694,7 @@
                         </div>
 
                         <div class="text-end mt-3">
-                            <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary">Clear</button>
+                            <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary" style="color:#ffffff !important;"><i class="fas fa-eraser"></i> Clear</button>
                         </div>
                     </div>
 
@@ -650,15 +712,14 @@
 
                                 <thead>
                                     <tr>
-                                        <th style="width:10px">Product</th>
-
-                                        <th style="width:10px">Stock</th>
-                                        <th style="width:10px">Qty</th>
-                                        <th style="width:10px">Retail Price</th>
-                                        <th style="width:10px">Disc %</th>
-                                        <th style="width:10px">Disc Amt</th>
-                                        <th style="width:10px">Amount</th>
-
+                                        <th class="product-col">Product</th>
+                                        <th class="stock-col">Stock</th>
+                                        <th class="qty-col">Qty</th>
+                                        <th class="price-col">Retail Price</th>
+                                        <th class="disc-col">Disc %</th>
+                                        <th class="discamt-col">Disc Amt</th>
+                                        <th class="amount-col">Amount</th>
+                                        <th class="action-col"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
@@ -668,7 +729,7 @@
                                     <tr>
                                         <td colspan="6" class="text-end fw-bold">Total:</td>
                                         <td class="text-end fw-bold"><span id="totalAmount">0.00</span></td>
-                                        {{-- <td></td> --}}
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -773,22 +834,16 @@
                 </div>
 
                 {{-- Buttons --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-                    {{-- <button type="button" class="btn btn-sm btn-primary btn-action" id="btnEdit">Edit</button> --}}
-                    {{-- <button type="button" class="btn btn-sm btn-warning btn-action" id="btnRevert">Revert</button> --}}
+                <div class="d-flex flex-wrap align-items-center justify-content-center p-3 mt-3 border-top" style="gap:10px !important;">
+                    <button type="button" class="btn btn-sm btn-success btn-action" id="btnSave"><i class="fas fa-file-invoice"></i> Sale Order</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted" disabled><i class="fas fa-warehouse"></i> Warehouse Sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted2" disabled><i class="fas fa-shopping-cart"></i> Sale</button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted3"><i class="fas fa-check-double"></i> Post</button>
 
-                    <button type="button" class="btn btn-sm btn-success btn-action" id="btnSave">Sale Order</button>
-                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted" disabled>warehouse sale</button>
-                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted2" disabled>Sale</button>
-                    <button type="button" class="btn btn-sm btn-outline-success btn-action" id="btnPosted3" >Post</button>
+                    <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint"><i class="fas fa-print"></i> Booking Invoice</button>
 
-                    <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint">BookingInvoice</button>
-                    {{-- <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint2">Save + Invoice </button> --}}
-                    <!-- <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnDCPrint">DC Print</button> -->
-                    <!-- <button type="button" class="btn btn-sm btn-primary btn-action" id="btnThermalPrint">🧾 Thermal Print</button> -->
-
-                    <button type="button" class="btn btn-sm btn-danger btn-action" id="btnDelete">Delete</button>
-                    <button type="button" class="btn btn-sm btn-dark btn-action" id="btnExit">Exit</button>
+                    <button type="button" class="btn btn-sm btn-danger btn-action" id="btnDelete"><i class="fas fa-trash-alt"></i> Delete</button>
+                    <button type="button" class="btn btn-sm btn-dark btn-action" id="btnExit"><i class="fas fa-times-circle"></i> Exit</button>
                 </div>
             </form>
         </div>
@@ -1647,47 +1702,36 @@
 
 
         <!-- STOCK -->
-        <td class="small-col">
+        <td class="stock-col">
           <input type="text"  class="form-control stock text-center input-readonly" readonly data-available-stock="0">
         </td>
 
-
-
         <!-- QTY -->
-        <td class="small-col">
+        <td class="qty-col">
           <input type="text" class="form-control sales-qty text-end" id="sales-qty" name="sales_qty[]" data-available-stock="0">
         </td>
 
         <!-- RETAIL PRICE -->
-        <td class="medium-col">
+        <td class="price-col">
           <input type="text" class="form-control retail-price text-end" value="0" name="retail_price[]">
         </td>
 
-    <!-- DISCOUNT -->
-    <!-- DISCOUNT % / PKR -->
-    <td class="large-col">
-      <div class="discount-wrapper">
-        <input type="text"
-               class="form-control discount-value text-end"
-               placeholder="" name="discount_percentage[]" >
-
-        <button type="button"
-                class="btn btn-outline-secondary discount-toggle"
-                data-type="percent">%</button>
-        
-        <input type="hidden" class="discount-type-field" name="discount_type[]" value="percent">
-      </div>
-    </td>
-
-
+        <!-- DISCOUNT -->
+        <td class="disc-col">
+          <div class="discount-wrapper">
+            <input type="text" class="form-control discount-value text-end" placeholder="" name="discount_percentage[]" >
+            <button type="button" class="btn btn-outline-secondary discount-toggle" data-type="percent">%</button>
+            <input type="hidden" class="discount-type-field" name="discount_type[]" value="percent">
+          </div>
+        </td>
 
         <!-- DISCOUNT AMOUNT -->
-        <td class="medium-col">
+        <td class="discamt-col">
           <input type="text" class="form-control discount-amount text-end" name="discount_amount[]">
         </td>
 
         <!-- NET AMOUNT -->
-        <td class="medium-col">
+        <td class="amount-col">
           <input type="text" class="form-control sales-amount text-end input-readonly" name="sales_amount[]" value="0" readonly>
         </td>
 

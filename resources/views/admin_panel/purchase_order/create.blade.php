@@ -403,10 +403,24 @@
                 method: 'GET',
                 success: function(vendors) {
                     const vendorSelect = $('#vendor_select');
+                    // Destroy Select2 first, then repopulate, then reinit
+                    if (vendorSelect.hasClass('select2-hidden-accessible')) {
+                        vendorSelect.select2('destroy');
+                    }
                     vendorSelect.empty().append('<option value="">-- Search Vendor --</option>');
                     vendors.forEach(v => {
-                        vendorSelect.append(`<option value="${v.id}" data-phone="${v.phone || ''}" data-address="${v.address || ''}">${v.name}</option>`);
+                        const company = v.company_names
+                            ? (Array.isArray(v.company_names) ? v.company_names.join(', ') : v.company_names)
+                            : '';
+                        vendorSelect.append(
+                            $('<option>').val(v.id)
+                                .text(v.name)
+                                .attr('data-phone', v.phone || '')
+                                .attr('data-address', v.address || '')
+                                .attr('data-company', company)
+                        );
                     });
+                    vendorSelect.select2({ width: '100%' });
                     $('#vendor_details').hide();
                     vendorSelect.trigger('change');
                 }

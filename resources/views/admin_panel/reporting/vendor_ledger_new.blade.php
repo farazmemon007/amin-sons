@@ -287,7 +287,7 @@ $(document).ready(function () {
             $.each(res, function(i, v) {
                 html += '<option value="' + v.id + '">' + v.customer_name + '</option>';
             });
-            $('#vendor_id').html(html);
+            $('#vendor_id').html(html).trigger('change');
         });
     });
 

@@ -291,7 +291,7 @@
         <!-- Header -->
         <div class="notification-panel-header">
             <h5>Notifications</h5>
-            <button class="notification-clear-btn" id="clearNotificationBtn" title="Clear All">
+            <button class="notification-clear-btn" id="clearNotificationBtn" title="Close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -365,56 +365,10 @@ document.addEventListener('DOMContentLoaded', function() {
         e.stopPropagation();
     });
 
-    // Clear all notifications
-    clearBtn.addEventListener('click', function() {
-        if (confirm('Mark all notifications as sent?')) {
-            if (notificationsData.length === 0) {
-                alert('No notifications to mark as sent');
-                return;
-            }
-            
-            // Get CSRF token
-            const csrfToken = getCsrfToken();
-            if (!csrfToken) {
-                console.error('CSRF token not found');
-                alert('Security error: CSRF token not found. Please refresh the page.');
-                return;
-            }
-            
-            // Create array of promises for all mark-as-sent requests
-            const promises = notificationsData.map(notif => 
-                fetch(`/notifications/${notif.id}/mark-as-sent`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-            );
-            
-            // Wait for all requests to complete
-            Promise.all(promises)
-                .then(() => {
-                    console.log('All notifications marked as sent');
-                    notificationsData = [];
-                    updateBadge(0);
-                    renderNotifications([]);
-                    // Close panel after success
-                    notificationPanel.classList.remove('show');
-                })
-                .catch(error => {
-                    console.error('Error marking notifications as sent:', error);
-                    alert(`Error: ${error.message}`);
-                    // Reload on error to sync
-                    loadNotifications();
-                });
-        }
+    // Close notification panel when clicking X button
+    clearBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        notificationPanel.classList.remove('show');
     });
 
     // Load notifications
@@ -462,6 +416,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let html = '';
         notifications.forEach(notif => {
+            let userIcon = '<i class="fas fa-user"></i>';
+            let detailIcon = '<i class="fas fa-file-invoice"></i> Booking: ' + notif.booking_no;
+            
+            if (notif.type === 'stock_request') {
+                userIcon = '<i class="fas fa-user-tag"></i> Creator:';
+                detailIcon = '<i class="fas fa-exchange-alt"></i> ' + notif.booking_no;
+            } else if (notif.product_name) {
+                detailIcon = '<i class="fas fa-box"></i> Product: ' + notif.product_name;
+            }
+
             html += `
                 <div class="notification-item ${notif.is_read ? '' : 'unread'}" data-id="${notif.id}">
                     <div class="notification-item-header">
@@ -469,10 +433,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="notification-item-date">${formatDate(notif.notification_date)}</span>
                     </div>
                     <div class="notification-item-customer">
-                        <i class="fas fa-user"></i> ${notif.customer_name}
+                        ${userIcon} ${notif.customer_name}
                     </div>
                     <div class="notification-item-booking">
-                        ${notif.booking_no ? '<i class="fas fa-file-invoice"></i> Booking: ' + notif.booking_no : (notif.product_name ? '<i class="fas fa-box"></i> Product: ' + notif.product_name : '')}
+                        ${detailIcon}
                     </div>
                     <div class="notification-item-actions">
                         <button class="notification-action-btn notification-action-read" onclick="markAsRead(${notif.id})" title="Mark as Read">

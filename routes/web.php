@@ -326,6 +326,10 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     // ✅ ERP: User-Centric Warehouse Assignment (Super Admin assigns multiple warehouses to a user)
     Route::get('/users/{id}/warehouse-assignments', [UserController::class, 'getUserWarehouseAssignments'])->name('users.warehouse.assignments')->middleware('permission:warehouse.manage');
     Route::post('/users/assign-warehouses', [UserController::class, 'assignUserWarehouses'])->name('users.assign.warehouses')->middleware('permission:warehouse.manage');
+
+    // ✅ ERP: Cross-branch permissions (Super Admin only)
+    Route::get('/users/{id}/crossbranch-permissions', [UserController::class, 'getCrossbranchPerms'])->name('users.crossbranch.get');
+    Route::post('/users/crossbranch-permissions', [UserController::class, 'saveCrossbranchPerms'])->name('users.crossbranch.save');
     });
     // Route::put('/users/{id}/roles', [UserController::class, 'updateRoles'])->name('users.update.roles');
 
@@ -562,6 +566,7 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
             Route::get('/{stockRequest}', [StockRequestController::class, 'show'])->middleware('permission:stock.request.approve')->name('show');
             Route::post('/{stockRequest}/approve', [StockRequestController::class, 'approve'])->middleware('permission:stock.request.approve')->name('approve');
             Route::post('/{stockRequest}/reject', [StockRequestController::class, 'reject'])->middleware('permission:stock.request.approve')->name('reject');
+            Route::get('/{stockRequest}/details', [StockRequestController::class, 'getDetails'])->middleware('permission:stock.request.view')->name('details');
             Route::get('/warehouse-stock/{warehouse}/{product}', [StockRequestController::class, 'getWarehouseStock'])->middleware('permission:stock.request.approve')->name('warehouse_stock');
         });
 
@@ -623,12 +628,24 @@ Route::get('/dc-find/{invoice}', [SaleController::class, 'finddc'])
     Route::get('/all-recepit-vochers', [VoucherController::class, 'all_recepit_vochers'])->middleware('permission:receipts.voucher.view')->name('all-recepit-vochers');
     Route::get('/recepit-vochers', [VoucherController::class, 'recepit_vochers'])->middleware('permission:receipts.voucher.view')->name('recepit-vochers');
     Route::post('/recepit/vochers/stote', [VoucherController::class, 'store_rec_vochers'])->middleware('permission:receipts.voucher.create')->name('recepit.vochers.store');
+    
+    // Receipt Voucher Edit & Delete Routes
+    Route::get('/recepit-vochers/{id}/edit', [VoucherController::class, 'edit_receipt'])->middleware('permission:receipts.voucher.create')->name('recepit-vochers.edit');
+    Route::put('/recepit-vochers/{id}', [VoucherController::class, 'update_receipt'])->middleware('permission:receipts.voucher.create')->name('recepit-vochers.update');
+    Route::delete('/recepit-vochers/{id}', [VoucherController::class, 'destroy_receipt'])->middleware('permission:receipts.voucher.create')->name('recepit-vochers.destroy');
+
     ////// payment vouchers
     Route::get('/Payment-vochers', [VoucherController::class, 'Payment_vochers'])->middleware('permission:payment.voucher.view')->name('Payment-vochers');
 route::post('/Payment/vochers/stote', [VoucherController::class, 'store_Pay_vochers'])->middleware('permission:payment.voucher.create')->name('Payment.vochers.store');
 Route::get('/all-Payment-vochers', [VoucherController::class, 'all_Payment_vochers'])->middleware('permission:payment.voucher.view')->name('all-Payment-vochers');
 Route::get('/Payment-voucher/print/{id}', [VoucherController::class, 'Paymentprint'])->middleware('permission:payment.voucher.print')->name('PaymentVoucher.print');
 Route::post('/payment-vouchers/{id}/upload-proof', [VoucherController::class, 'uploadProof'])->middleware('permission:payment.voucher.create')->name('payment-vouchers.upload-proof');
+
+    // Payment Voucher Edit & Delete Routes
+    Route::get('/payment-vouchers/{id}/edit', [VoucherController::class, 'edit_payment'])->middleware('permission:payment.voucher.create')->name('payment-vouchers.edit');
+    Route::put('/payment-vouchers/{id}', [VoucherController::class, 'update_payment'])->middleware('permission:payment.voucher.create')->name('payment-vouchers.update');
+    Route::delete('/payment-vouchers/{id}', [VoucherController::class, 'destroy_payment'])->middleware('permission:payment.voucher.create')->name('payment-vouchers.destroy');
+
     ////// expense voucher
     Route::get('/all-expense-vochers', [VoucherController::class, 'all_expense_vochers'])->middleware('permission:expense.voucher.view')->name('all-expense-vochers');
 Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->middleware('permission:expense.voucher.view')->name('expense-vochers');
@@ -676,7 +693,7 @@ Route::get('report/customer-ledger/fetch-new', [ReportingController::class, 'fet
 
     Route::get('report/vendor-ledger-new', [ReportingController::class, 'vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.new');
     Route::get('report/vendor-ledger/fetch-new', [ReportingController::class, 'fetch_vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.fetch.new');
-    Route::get('report/vendors-by-branch', [ReportingController::class, 'vendorsByBranch'])->middleware('permission:report.vendor.ledger.view|report.purchase.view')->name('vendors-by-branch');
+    Route::get('report/vendors-by-branch', [ReportingController::class, 'vendorsByBranch'])->middleware('permission:report.vendor.ledger.view|report.purchase.view|vendor.ledger')->name('vendors-by-branch');
     Route::get('/warehouses-by-branch', [App\Http\Controllers\WarehouseController::class, 'warehousesByBranch'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit|purchase.create')->name('warehouses-by-branch');
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:report.inventory.onhand.view')->name('reports.onhand');
     

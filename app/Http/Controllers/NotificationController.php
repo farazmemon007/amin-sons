@@ -27,7 +27,7 @@ class NotificationController extends Controller
                 });
             }
 
-            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse'])
+            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy'])
                 ->orderBy('notification_date', 'asc')
                 ->get();
 
@@ -36,14 +36,36 @@ class NotificationController extends Controller
                     'success' => true,
                     'count' => $notifications->count(),
                     'notifications' => $notifications->map(function ($n) {
+                        $customerName = 'Unknown';
+                        $bookingNo = 'N/A';
+
+                        if ($n->type === 'stock_request') {
+                            $creator = $n->createdBy?->name ?? 'System';
+                            if (preg_match('/received from\s+(.+?)\.?$/i', $n->description, $branchMatches)) {
+                                $branchName = trim($branchMatches[1]);
+                                $customerName = $creator . ' (' . $branchName . ')';
+                            } else {
+                                $customerName = $creator;
+                            }
+                            
+                            if (preg_match('/request #(\d+)/i', $n->description, $matches)) {
+                                $bookingNo = 'Request #' . $matches[1];
+                            } else {
+                                $bookingNo = 'Request Details';
+                            }
+                        } else {
+                            $customerName = $n->customer?->customer_name ?? ($n->product?->item_name ?? 'Unknown');
+                            $bookingNo = $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A');
+                        }
+
                         return [
                             'id' => $n->id,
                             'title' => $n->title,
                             'description' => $n->description,
                             'type' => $n->type,
                             'notification_date' => $n->notification_date->format('Y-m-d'),
-                            'customer_name' => $n->customer?->customer_name ?? ($n->product?->item_name ?? 'Unknown'),
-                            'booking_no' => $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A'),
+                            'customer_name' => $customerName,
+                            'booking_no' => $bookingNo,
                             'product_name' => $n->product?->item_name,
                             'warehouse_name' => $n->warehouse?->warehouse_name,
                             'warehouse_order_id' => $n->warehouse_order_id,
@@ -214,7 +236,7 @@ class NotificationController extends Controller
                 });
             }
 
-            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse'])
+            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy'])
                 ->orderBy('notification_date', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -223,14 +245,36 @@ class NotificationController extends Controller
                 ->json([
                     'success' => true,
                     'notifications' => $notifications->map(function ($n) {
+                        $customerName = 'Unknown';
+                        $bookingNo = 'N/A';
+
+                        if ($n->type === 'stock_request') {
+                            $creator = $n->createdBy?->name ?? 'System';
+                            if (preg_match('/received from\s+(.+?)\.?$/i', $n->description, $branchMatches)) {
+                                $branchName = trim($branchMatches[1]);
+                                $customerName = $creator . ' (' . $branchName . ')';
+                            } else {
+                                $customerName = $creator;
+                            }
+                            
+                            if (preg_match('/request #(\d+)/i', $n->description, $matches)) {
+                                $bookingNo = 'Request #' . $matches[1];
+                            } else {
+                                $bookingNo = 'Request Details';
+                            }
+                        } else {
+                            $customerName = $n->customer?->customer_name ?? ($n->product?->item_name ?? 'Unknown');
+                            $bookingNo = $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A');
+                        }
+
                         return [
                             'id' => $n->id,
                             'title' => $n->title,
                             'description' => $n->description,
                             'type' => $n->type,
                             'notification_date' => $n->notification_date->format('Y-m-d'),
-                            'customer_name' => $n->customer?->customer_name ?? ($n->product?->item_name ?? 'Unknown'),
-                            'booking_no' => $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A'),
+                            'customer_name' => $customerName,
+                            'booking_no' => $bookingNo,
                             'product_name' => $n->product?->item_name,
                             'warehouse_name' => $n->warehouse?->warehouse_name,
                             'warehouse_order_id' => $n->warehouse_order_id,

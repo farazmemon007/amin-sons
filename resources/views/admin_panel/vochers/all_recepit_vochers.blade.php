@@ -5,6 +5,24 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
+<style>
+    /* Prevent horizontal scroll */
+    #example th, #example td {
+        white-space: normal !important;
+        word-break: break-word;
+    }
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .action-buttons form {
+        margin: 0;
+    }
+</style>
+
 <div class="main-content">
     <div class="container-fluid">
         <div class="card-header mt-2 d-flex justify-content-between align-items-center">
@@ -59,11 +77,31 @@
                                 <td>{{ number_format((float)$item->total_amount, 2) }}</td>
                                 <td>{{ $item->created_at }}</td>
                                 <td>
-                                    <a href="{{ route('receiptVoucher.print', $item->id) }}"
-                                        target="_blank"
-                                        class="btn btn-sm btn-danger">
-                                        <i class="bi bi-printer"></i>
-                                    </a>
+                                    <div class="action-buttons">
+                                        @if($item->status !== 'voided')
+                                            <a href="{{ route('receiptVoucher.print', $item->id) }}"
+                                                target="_blank"
+                                                class="btn btn-sm btn-danger" title="Print">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                            @can('receipts.voucher.create')
+                                            <form action="{{ route('recepit-vochers.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to VOID this voucher? This will reverse the ledgers and cannot be undone.');">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-warning" title="Void Voucher">
+                                                    <i class="bi bi-x-circle"></i> Void
+                                                </button>
+                                            </form>
+                                            @endcan
+                                        @else
+                                            <span class="badge bg-danger">Voided</span>
+                                            <a href="{{ route('receiptVoucher.print', $item->id) }}"
+                                                target="_blank"
+                                                class="btn btn-sm btn-secondary" title="Print Voided">
+                                                <i class="bi bi-printer"></i>
+                                            </a>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @endforeach

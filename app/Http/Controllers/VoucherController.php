@@ -571,6 +571,34 @@ public function getOpeningBalance($type, $id)
         }
     }
 
+    public function destroy_receipt($id)
+    {
+        $voucher = ReceiptsVoucher::findOrFail($id);
+        
+        if ($voucher->status === 'voided') {
+            return back()->with('error', 'Voucher is already voided!');
+        }
+        
+        $success = \App\Services\VoucherService::reverseReceiptVoucher($voucher, auth()->id());
+        
+        if ($success) {
+            return back()->with('success', 'Receipt Voucher voided successfully! Ledgers reversed.');
+        } else {
+            return back()->with('error', 'Failed to void Receipt Voucher.');
+        }
+    }
+
+    public function edit_receipt($id)
+    {
+        // Edit logic can be added here
+        return back()->with('error', 'Edit feature is under construction for strict ERP mode. Please void and create a new voucher.');
+    }
+
+    public function update_receipt(Request $request, $id)
+    {
+        // Update logic
+    }
+
     public function Payment_vochers()
     {
         $narrations = \App\Models\Narration::where('expense_head', 'Payment voucher')
@@ -723,6 +751,33 @@ public function getOpeningBalance($type, $id)
         }
     }
 
+    public function destroy_payment($id)
+    {
+        $voucher = PaymentVoucher::findOrFail($id);
+        
+        if ($voucher->status === 'voided') {
+            return back()->with('error', 'Voucher is already voided!');
+        }
+        
+        $success = \App\Services\VoucherService::reversePaymentVoucher($voucher, auth()->id());
+        
+        if ($success) {
+            return back()->with('success', 'Payment Voucher voided successfully! Ledgers reversed.');
+        } else {
+            return back()->with('error', 'Failed to void Payment Voucher.');
+        }
+    }
+
+    public function edit_payment($id)
+    {
+        return back()->with('error', 'Edit feature is under construction for strict ERP mode. Please void and create a new voucher.');
+    }
+
+    public function update_payment(Request $request, $id)
+    {
+        // Update logic
+    }
+    
      public function all_Payment_vochers()
     {
         $receipts = \App\Models\PaymentVoucher::orderBy('id', 'DESC')->get();

@@ -14,9 +14,18 @@ class RoleController extends Controller
      public function index()
     {
         $roles = Role::all();
-        $allPermissions  = Permission::all();
-        return view('admin_panel.roles.role', compact(['roles', 'allPermissions'])); 
+
+        // Only show standard (non-cross-branch) permissions — exclude branch:{id}:* dynamic ones
+        $allPermissions = Permission::where('name', 'not like', 'branch:%:%')
+            ->orderBy('name')
+            ->get();
+
+        // Pass config-based module definitions to the view for clean grouping
+        $permissionModules = config('permissions', []);
+
+        return view('admin_panel.roles.role', compact(['roles', 'allPermissions', 'permissionModules']));
     }
+
 
     public function store(Request $request)
     {

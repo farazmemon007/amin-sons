@@ -9,109 +9,13 @@
 <html class="no-js" lang="zxx">
 
 <head>
+    {{-- ✅ Premium CSS Design System --}}
+    <link rel="stylesheet" href="{{ asset('assets/css/custom-premium.css') }}">
     <style>
-        /* Logo Styling - Beautiful Brand Header */
-        .nav_logo.rt_logo {
-            font-size: 1.5rem !important;
-            font-family: 'Segoe UI', 'Trebuchet MS', sans-serif !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.8px !important;
-            color: #1e3a5f !important;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-            padding: 8px 16px !important;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-            display: inline-block;
-            background: linear-gradient(135deg, rgba(30, 58, 95, 0.05), rgba(30, 58, 95, 0));
-            border-left: 4px solid #1e3a5f;
-            text-transform: uppercase !important;
-            letter-spacing: 1.2px !important;
-        }
+        /* ─── Layout-level overrides (keep as minimal as possible) ─── */
+        .rt_nav_wrapper { min-height: 60px; }
 
-        .nav_logo.rt_logo:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(30, 58, 95, 0.25);
-            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
-        }
-
-        .nav_logo.rt_logo i {
-            font-size: 1.8rem !important;
-            color: #1e3a5f !important;
-            margin-right: 8px !important;
-            vertical-align: middle;
-            animation: fadeInScale 0.5s ease;
-        }
-
-        @keyframes fadeInScale {
-            from {
-                opacity: 0;
-                transform: scale(0.8);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
-        }
-
-        .rt_nav_wrapper {
-            min-height: 60px;
-        }
-
-        /* ERP Mega Menu & Normal Submenu Compact Styling */
-        .nav-item .submenu,
-        .mega-menu .submenu {
-            background: #fff;
-            padding: 12px;
-            /* compact padding */
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        }
-
-        .mega-menu .category-heading {
-            font-size: 13px;
-            font-weight: 600;
-            color: #34495e;
-            margin-bottom: 8px;
-            padding-bottom: 4px;
-            border-bottom: 1px solid #eaeaea;
-        }
-
-        .nav-item .submenu-item li,
-        .mega-menu .submenu-item li {
-            margin-bottom: 4px;
-            /* less spacing */
-        }
-
-        .nav-item .submenu-item li a,
-        .mega-menu .submenu-item li a {
-            display: flex;
-            align-items: center;
-            font-size: 15px;
-            /* smaller font */
-            color: #555;
-            padding: 4px 8px;
-            /* compact padding */
-            border-radius: 4px;
-            transition: all 0.2s ease;
-        }
-
-        .nav-item .submenu-item li a i,
-        .mega-menu .submenu-item li a i {
-            font-size: 14px;
-            margin-right: 6px;
-            color: #2980b9;
-            min-width: 18px;
-            text-align: center;
-        }
-
-        .nav-item .submenu-item li a:hover,
-        .mega-menu .submenu-item li a:hover {
-            background: #f1f7fd;
-            color: #2980b9;
-            font-weight: 500;
-        }
-
-        /* Make 5 columns distribute evenly across full width */
+        /* Multi-column submenu layout */
         .col-group-wrapper.row {
             display: flex;
             flex-wrap: wrap;
@@ -119,9 +23,8 @@
             margin-right: 0 !important;
             margin-left: 0 !important;
         }
-
         .col-group {
-            flex: 1 1 20% !important;  /* Each column takes 20% (5 columns = 100%) */
+            flex: 1 1 20% !important;
             margin-right: 0 !important;
             margin-left: 0 !important;
             min-width: 20%;
@@ -176,93 +79,50 @@
     
     <!-- ✅ Fix Scrollbar Jiggling & Layout Shift -->
     <style>
-        html {
-            overflow-y: scroll; /* Always show scrollbar space to prevent shift */
-        }
-        
-        /* Prevent body scroll when modal is open */
+        /* ─── Core layout fixes ─── */
+        html { overflow-y: scroll; }
+
         body.modal-open {
             overflow: hidden;
-            padding-right: 0 !important; /* Bootstrap adds padding, remove it to avoid double-shift */
+            padding-right: 0 !important;
         }
-        
-        /* Modal backdrop fix */
-        .modal-backdrop {
-            z-index: 1040;
-        }
-        
-        .modal.show {
-            z-index: 1050;
-        }
+        .modal-backdrop { z-index: 1040; }
+        .modal.show    { z-index: 1050; }
 
-        /* ✅ Fix Navbar Wrapping Issue - Ensure all items stay in one row */
+        /* ─── Navbar wrapping fix ─── */
         .nav.page-navigation {
             display: flex !important;
             flex-wrap: nowrap !important;
             width: 100% !important;
-            justify-content: center !important; /* Center items for better balance */
+            justify-content: center !important;
         }
-
         .nav.page-navigation .nav-item {
             flex: 0 0 auto !important;
-        }
-
-        .nav.page-navigation .nav-item .nav-link {
-            padding: 25px 8px !important; /* Even more compact padding (8px) */
-            white-space: nowrap !important;
-            display: flex !important;
-            align-items: center !important;
-        }
-
-        .nav.page-navigation .nav-item .menu-title {
-            font-size: 13px !important;
-            margin-left: 6px !important; /* Reduced margin */
-        }
-
-        /* Responsive adjustments for medium screens */
-        @media (max-width: 1400px) {
-            .nav.page-navigation .nav-item .nav-link {
-                padding: 20px 8px !important;
-            }
-            .nav.page-navigation .nav-item .menu-title {
-                font-size: 13px !important;
-            }
-        }
-
-        @media (max-width: 1200px) {
-            .nav-bottom .container {
-                max-width: 100% !important;
-            }
-            .nav.page-navigation {
-                overflow-x: auto !important; /* Allow scroll if still too wide */
-                padding-bottom: 5px;
-            }
-            /* Hide scrollbar for clean look */
-            .nav.page-navigation::-webkit-scrollbar {
-                display: none;
-            }
-            .nav.page-navigation {
-                -ms-overflow-style: none;  /* IE and Edge */
-                scrollbar-width: none;  /* Firefox */
-            }
-        }
-
-        /* ✅ Fix Submenu Closing Issue - Bridge the gap between tab and dropdown */
-        .nav.page-navigation .nav-item {
             position: relative !important;
         }
+        .nav.page-navigation .nav-item:hover {
+            z-index: 1000 !important;
+        }
 
+        /* ─── Submenu gap bridge fix ─── */
         .nav.page-navigation .nav-item .submenu {
             top: 100% !important;
-            margin-top: -20px !important; /* Overlap the parent nav-item to eliminate gap */
-            padding-top: 20px !important; /* Cushion inside the menu */
-            transition: none !important; /* Remove transition for instant tab switching */
+            margin-top: -2px !important;
+            padding-top: 10px !important;
+            transition: none !important;
             z-index: 999 !important;
         }
 
-        /* Ensure the current hovered item is always on top */
-        .nav.page-navigation .nav-item:hover {
-            z-index: 1000 !important;
+        /* ─── Responsive ─── */
+        @media (max-width: 1200px) {
+            .nav-bottom .container { max-width: 100% !important; }
+            .nav.page-navigation {
+                overflow-x: auto !important;
+                padding-bottom: 5px;
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .nav.page-navigation::-webkit-scrollbar { display: none; }
         }
     </style>
 
@@ -282,58 +142,61 @@
               Navigation
     *===========================-->
         <nav class="rt_nav_header horizontal-layout col-lg-12 col-12 p-0">
+            {{-- ═══════════════ TOP BAR ═══════════════ --}}
             <div class="top_nav flex-grow-1">
                 <div class="container d-flex flex-row h-100 align-items-center">
-                    <!--=========================*
-                              Logo
-                *===========================-->
-                    <div class="text-center rt_nav_wrapper d-flex align-items-center">
-                        {{-- <a class="nav_logo rt_logo" href="index.html"><img  src="{{asset('assets/images/WIJDAN-removebg-preview.png')}}" alt="logo" /></a> --}}
-                        <a class="nav_logo rt_logo text-success" href="index.html" style="font-size: 1.2rem; font-weight: 600; letter-spacing: 0.5px;">
+
+                    {{-- Brand Logo --}}
+                    <div class="rt_nav_wrapper d-flex align-items-center">
+                        <a class="nav_logo rt_logo" href="{{ url('/') }}">
                             @if(Auth::user()->hasRole('super admin'))
-                                <i class="fas fa-crown" style="color: #1e3a5f; margin-right: 5px;"></i>Ameen & Sons
+                                <i class="fas fa-crown"></i>
+                                <span>Ameen &amp; Sons</span>
                             @else
-                                <i class="fas fa-store" style="color: #1e3a5f; margin-right: 5px;"></i>{{ Auth::user()->branch->name ?? 'Branch' }}
+                                <i class="fas fa-store"></i>
+                                <span>{{ Auth::user()->branch->name ?? 'Branch' }}</span>
                             @endif
                         </a>
-                        {{-- <a class="nav_logo nav_logo_mob" href="index.html"><img src="{{asset('assets/images/WIJDAN-removebg-preview.png')}}" alt="logo"/></a> --}}
                     </div>
-                    <!--=========================*
-                           End Logo
-               *===========================-->
-                    <div class="nav_wrapper_main d-flex align-items-center justify-content-between flex-grow-1">
-                        <ul class="navbar-nav navbar-nav-right mr-0 ml-auto">
-                            <!-- Notification Icon -->
+
+                    {{-- Right-side: Notification + User --}}
+                    <div class="nav_wrapper_main d-flex align-items-center justify-content-end flex-grow-1" style="gap:4px;">
+                        <ul class="navbar-nav navbar-nav-right mr-0" style="flex-direction:row; align-items:center; gap:4px;">
+
+                            {{-- Notification Bell --}}
                             @include('components.notification-icon')
 
+                            {{-- User Profile --}}
                             <li class="nav-item nav-profile dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown" id="profileDropdown">
-                                    <span class="profile_name">{{ Auth::user()->name }} <i class="feather ft-chevron-down"></i></span>
+                                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-toggle="dropdown" id="profileDropdown" style="gap:8px; padding:6px 12px; border-radius:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);">
+                                    <span style="width:30px; height:30px; background:rgba(200,151,58,0.25); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                        <i class="fas fa-user" style="font-size:12px; color:#f0c050;"></i>
+                                    </span>
+                                    <span class="profile_name">{{ Auth::user()->name }}</span>
+                                    <i class="fas fa-chevron-down" style="font-size:10px; color:rgba(255,255,255,0.6);"></i>
                                 </a>
-                                <div class="dropdown-menu dropdown-menu-right navbar-dropdown pt-2" aria-labelledby="profileDropdown">
-                                    <span role="separator" class="divider"></span>
-                                    <form method="POST" action="{{ route('logout') }}">
-                                        @csrf
-                                        <button type="submit" class="dropdown-item">
-                                            <i class="ti-power-off text-dark mr-3"></i> Logout
-                                        </button>
-                                    </form>
-                                    {{-- </a> --}}
+                                <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown" style="min-width:200px; margin-top:8px;">
+                                    <div style="padding:12px 16px 10px; border-bottom:1px solid #f1f5f9;">
+                                        <div style="font-weight:700; font-size:13px; color:#1e293b;">{{ Auth::user()->name }}</div>
+                                        <div style="font-size:11px; color:#94a3b8; margin-top:2px;">{{ Auth::user()->email }}</div>
+                                    </div>
+                                    <div style="padding:6px;">
+                                        <form method="POST" action="{{ route('logout') }}">
+                                            @csrf
+                                            <button type="submit" class="dropdown-item" style="color:#dc3545;">
+                                                <i class="fas fa-sign-out-alt" style="color:#dc3545;"></i>
+                                                Sign Out
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             </li>
-                            <!--==================================*
-                                 End Profile Menu
-                        *====================================-->
                         </ul>
-                        <!--=========================*
-                               Mobile Menu
-                   *===========================-->
-                        <button class="navbar-toggler align-self-center" type="button" data-toggle="minimize">
+
+                        {{-- Mobile hamburger --}}
+                        <button class="navbar-toggler align-self-center" type="button" data-toggle="minimize" style="border:none; background:rgba(255,255,255,0.1); border-radius:6px; padding:6px 10px;">
                             <span class="feather ft-menu text-white"></span>
                         </button>
-                        <!--=========================*
-                           End Mobile Menu
-                   *===========================-->
                     </div>
                 </div>
             </div>
@@ -344,7 +207,7 @@
                               Home
                     *===========================-->
                         <li class="nav-item">
-                            <a href="{{ url("/")}}" class="nav-link"><i class="menu_icon feather ft-home"></i><span class="menu-title">Dashboard</span></a>
+                            <a href="{{ url('/')}}" class="nav-link"><i class="menu_icon feather ft-home"></i><span class="menu-title">Dashboard</span></a>
                         </li>
 
                         <!--=========================*
@@ -417,9 +280,9 @@
                                             @can('vendor.view')
                                             <li><a href="{{url('vendorlist')}}"><i class="fas fa-truck"></i> Vendors</a></li>
                                             @endcan
-                                            @can('vendor.ledger')
+                                            <!-- @can('vendor.ledger')
                                             <li><a href="{{ route('vendors.ledger') }}"><i class="fas fa-book"></i> Vendor Ledger</a></li>
-                                            @endcan
+                                            @endcan -->
                                         </ul>
                                     </li>
                                     @endif
@@ -459,6 +322,9 @@
                                             @endcan
                                             @can('stock.request.view')
                                             <li><a href="{{url('inter-branch/stock-requests')}}"><i class="fas fa-random"></i> Inter-Branch Transfers</a></li>
+                                            @endcan
+                                            @can('inter.branch.voucher.view')
+                                            <li><a href="{{url('inter-branch/vouchers')}}"><i class="fas fa-receipt"></i> Inter-Branch Vouchers</a></li>
                                             @endcan
                                         </ul>
                                     </li>
@@ -678,7 +544,7 @@
 
         <footer>
             <div class="footer-area">
-                <p>&copy; Copyright 2025. All right reserved. Ameen & Sons .</p>
+                <p>&copy; {{ date('Y') }} Ameen &amp; Sons &mdash; All Rights Reserved. Powered by ERP System.</p>
             </div>
         </footer>
     </div>
@@ -757,6 +623,26 @@
              // Let the default CSS handle the final close or force it here if needed
         });
     });
+    </script>
+
+    <script>
+        @if(Session::has('success'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Success',
+                text: '{{ Session::get('success') }}',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        @endif
+
+        @if(Session::has('error'))
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: '{{ Session::get('error') }}',
+            });
+        @endif
     </script>
 
     @yield('js')

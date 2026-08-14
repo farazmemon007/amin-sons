@@ -1,395 +1,702 @@
 @extends('admin_panel.layout.app')
 @section('content')
-
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
 
-<div class="main-content">
-    <div class="container-fluid">
+    .rv-page { background: #f0f4f8; min-height: 100vh; padding: 1.5rem; }
 
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h2 class="fw-bold mt-2">Expense Voucher</h2>
+    /* Header */
+    .rv-header {
+        background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
+        border-radius: 14px;
+        padding: 1.25rem 1.75rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 6px 20px rgba(220, 38, 38, 0.25);
+    }
+    .rv-header h3 { color: #fff; font-weight: 700; font-size: 1.3rem; margin: 0; }
+    .rv-header p  { color: rgba(255,255,255,0.75); margin: 0; font-size: 0.82rem; }
+    .rv-badge {
+        background: rgba(255,255,255,0.18);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 8px;
+        padding: 0.5rem 1.25rem;
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+
+    /* Card */
+    .rv-card {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+        overflow: hidden;
+        margin-bottom: 1.25rem;
+    }
+    .rv-card-header {
+        padding: 0.9rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        font-weight: 600;
+        font-size: 0.92rem;
+        border-bottom: 1px solid #f0f4f8;
+    }
+    .rv-card-header.green  { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+    .rv-card-header.blue   { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .rv-card-header.red    { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    .rv-card-header.gray   { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+    .rv-card-body { padding: 1.5rem; }
+
+    /* Form Controls */
+    .form-label { font-size: 0.8rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem; display: block; }
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1.5px solid #e2e8f0;
+        padding: 0.55rem 0.75rem;
+        font-size: 0.875rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        width: 100%;
+        background: #fff;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+        outline: none;
+    }
+    .form-control[readonly] { background: #f8fafc; color: #94a3b8; }
+
+    /* Balance Info Strip */
+    .balance-strip {
+        background: linear-gradient(90deg, #fef2f2, #f8fafc);
+        border: 1px solid #fecaca;
+        border-radius: 10px;
+        padding: 0.75rem 1.25rem;
+        margin-top: 0.75rem;
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+        flex-wrap: wrap;
+        font-size: 0.83rem;
+    }
+    .balance-strip .bl-item { display: flex; flex-direction: column; gap: 2px; }
+    .balance-strip .bl-label { color: #64748b; font-weight: 500; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .balance-strip .bl-value { font-weight: 700; font-size: 1rem; color: #1e293b; }
+    .balance-strip .text-green { color: #15803d; }
+    .balance-strip .text-red   { color: #dc2626; }
+
+    /* TO Table */
+    .to-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .to-table thead th {
+        background: #fef2f2;
+        color: #dc2626;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 0.7rem 0.75rem;
+        border-bottom: 2px solid #fecaca;
+    }
+    .to-table tbody td { padding: 0.5rem 0.5rem; vertical-align: middle; border-bottom: 1px solid #f1f5f9; }
+    .to-table tbody tr:last-child td { border-bottom: none; }
+
+    /* Row Number */
+    .row-num {
+        width: 28px; height: 28px;
+        background: #fef2f2; color: #dc2626;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+    }
+
+    /* Add Row Button */
+    .add-row-btn {
+        border: 2px dashed #fca5a5;
+        background: #fef2f2;
+        color: #dc2626;
+        border-radius: 10px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 0.75rem;
+        transition: all 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+    }
+    .add-row-btn:hover { background: #fee2e2; border-color: #ef4444; transform: translateY(-1px); }
+
+    /* Total Box */
+    .total-box {
+        background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        color: #fff;
+    }
+    .total-box .total-label { font-size: 0.82rem; opacity: 0.8; margin-bottom: 0.2rem; }
+    .total-box .total-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
+
+    /* Buttons */
+    .btn-save {
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        color: #fff; border: none;
+        border-radius: 10px; padding: 0.75rem 2rem;
+        font-weight: 700; font-size: 0.95rem;
+        cursor: pointer; width: 100%;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+        transition: all 0.2s;
+        display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-save:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4); }
+    .btn-outline-link {
+        color: #64748b; text-decoration: none; border: 1.5px solid #e2e8f0;
+        border-radius: 10px; padding: 0.7rem 1.5rem;
+        font-weight: 600; font-size: 0.875rem; width: 100%;
+        display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+        transition: all 0.2s; background: #fff;
+    }
+    .btn-outline-link:hover { background: #f8fafc; border-color: #cbd5e1; }
+
+    .btn-remove-row { border: none; background: none; color: #dc2626; cursor: pointer; padding: 0.3rem; border-radius: 6px; transition: background 0.15s; }
+    .btn-remove-row:hover { background: #fee2e2; }
+
+    /* Loading spinner inside select */
+    .select-loading { color: #94a3b8; font-style: italic; }
+
+    /* Alert */
+    .rv-alert { border-radius: 10px; padding: 0.85rem 1.2rem; font-size: 0.875rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .rv-alert.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .rv-alert.error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .rv-header { flex-direction: column; gap: 0.75rem; text-align: center; }
+        .to-table thead th, .to-table tbody td { font-size: 0.75rem; padding: 0.4rem; }
+    }
+</style>
+
+<div class="rv-page">
+    <div class="container-fluid" style="max-width: 1200px;">
+
+        {{-- Header --}}
+        <div class="rv-header">
+            <div>
+                <h3><i class="bi bi-receipt-cutoff me-2"></i>Expense Voucher</h3>
+                <p>Record expenses, vendor payments or other outflows</p>
+            </div>
+            <div class="rv-badge">{{ $nextRvid }}</div>
         </div>
-        <div class="card shadow">
-            <div class="card-body">
-                @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-                @endif
-                <form action="{{ route('expense.vochers.store') }}" method="POST">
-                    @csrf
-                    <div class="row mb-3">
-                        <div class="col-md-1">
-                            <label class="form-label fw-bold">EVID</label>
-                            <input type="text" class="form-control" name="evid" value="{{ $nextRvid }}" readonly>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Entry Date</label>
-                            <input type="date" name="entry_date" class="form-control" value="{{ now()->toDateString() }}">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Type</label>
-                            <select name="vendor_type" class="form-select">
-                                <option value="">Select</option>
 
-                                {{-- Account Head Options --}}
-                                @foreach($AccountHeads as $head)
-                                <option value="{{ $head->id }}">{{ $head->name }}</option>
-                                @endforeach
+        @if(session('success'))
+            <div class="rv-alert success"><i class="bi bi-check-circle-fill"></i> {{ session('success') }}</div>
+        @endif
+        @if(session('error'))
+            <div class="rv-alert error"><i class="bi bi-exclamation-triangle-fill"></i> {{ session('error') }}</div>
+        @endif
 
-                                <option value="vendor">Vendor</option>
-                                <option value="customer">Customer</option>
-                                <option value="walkin">Walkin Customer</option>
-                            </select>
-                        </div>
+        <form action="{{ route('expense.vochers.store') }}" method="POST" id="expenseForm">
+            @csrf
+            <input type="hidden" name="evid" value="{{ $nextRvid }}">
 
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Party</label>
-                            <select name="vendor_id" class="form-select">
-                                <option disabled selected>Select</option>
-                            </select>
+            {{-- ─── VOUCHER META ─── --}}
+            <div class="rv-card">
+                <div class="rv-card-header gray">
+                    <i class="bi bi-calendar3"></i> Voucher Information
+                </div>
+                <div class="rv-card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Entry Date <span class="text-danger">*</span></label>
+                            <input type="date" name="entry_date" class="form-control" value="{{ now()->toDateString() }}" required>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Tel / Account Code</label>
-                            <input type="text" name="tel" id="tel" class="form-control" readonly>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Remarks</label>
-                            <input type="text" name="remarks" class="form-control" id="remarks">
+                        <div class="col-md-9">
+                            <label class="form-label">Voucher Remarks</label>
+                            <input type="text" name="remarks" class="form-control" placeholder="e.g. Paid for office supplies...">
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {{-- ─── TO (Paid To) ─── --}}
+            <div class="rv-card">
+                <div class="rv-card-header green">
+                    <i class="bi bi-box-arrow-right"></i> TO &mdash; Paid To Party / Account
+                    <span style="font-weight: 400; font-size: 0.78rem; margin-left: auto; opacity: 0.8;">Select the type first, then the party</span>
+                </div>
+                <div class="rv-card-body">
+                    <div class="row g-3 align-items-end">
+                        {{-- Party Type --}}
+                        <div class="col-md-3">
+                            <label class="form-label">Party / Account Type <span class="text-danger">*</span></label>
+                            <select name="vendor_type" id="vendor_type" class="form-select" required>
+                                <option value="">— Select Type —</option>
+                                @foreach ($AccountHeads as $head)
+                                    <option value="{{ $head->id }}" data-kind="account">{{ $head->name }}</option>
+                                @endforeach
+                                <option value="vendor"    data-kind="party">Vendor</option>
+                                <option value="customer"  data-kind="party">Customer</option>
+                                <option value="walkin"    data-kind="party">Walk-in</option>
+                            </select>
+                        </div>
+
+                        {{-- Party Name --}}
+                        <div class="col-md-4" id="party_name_container">
+                            <label class="form-label" id="party_label">Select Party / Account <span class="text-danger">*</span></label>
+                            <select name="vendor_id" id="vendor_id" class="form-select" required>
+                                <option value="">— First select type above —</option>
+                            </select>
+                        </div>
+
+                        {{-- Walk-in Name (Hidden by default) --}}
+                        <div class="col-md-4" id="walkin_name_container" style="display: none;">
+                            <label class="form-label">Walk-in Name</label>
+                            <input type="text" name="walking_customer_name" id="walking_customer_name" class="form-control" placeholder="Enter specific name">
+                        </div>
+
+                        {{-- Mobile / Code --}}
+                        <div class="col-md-2">
+                            <label class="form-label">Mobile / Code</label>
+                            <input type="text" name="tel" id="tel" class="form-control" readonly placeholder="Auto-filled">
+                        </div>
+
+                        {{-- Previous Balance --}}
+                        <div class="col-md-3" id="balance_container">
+                            <label class="form-label">Previous Balance</label>
+                            <input type="number" name="bal" id="bal" class="form-control" readonly placeholder="0.00">
+                        </div>
+                    </div>
+
+                    {{-- Balance Info Strip --}}
+                    <div class="balance-strip" id="balanceStrip" style="display:none;">
+                        <div class="bl-item">
+                            <span class="bl-label">Party</span>
+                            <span class="bl-value" id="strip_name">—</span>
+                        </div>
+                        <div class="bl-item">
+                            <span class="bl-label">Current Outstanding Balance</span>
+                            <span class="bl-value" id="strip_bal">0.00</span>
+                        </div>
+                        <div class="bl-item">
+                            <span class="bl-label">Mobile</span>
+                            <span class="bl-value" id="strip_mobile">—</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ─── FROM (Paid From Accounts) ─── --}}
+            <div class="rv-card">
+                <div class="rv-card-header red">
+                    <i class="bi bi-bank"></i> FROM &mdash; Paid From Accounts
+                    <span style="font-weight: 400; font-size: 0.78rem; margin-left: auto; opacity: 0.8;">You can split the payment from multiple accounts</span>
+                </div>
+                <div class="rv-card-body" style="padding: 1rem;">
                     <div class="table-responsive">
-                        <table class="table table-bordered text-center align-middle" id="voucherTable">
-                            <thead class="table-light">
+                        <table class="to-table" id="voucherTable">
+                            <thead>
                                 <tr>
-                                    <th>Narration</th>
-                                    <th>Account Head</th>
-                                    <th>Account</th>
-                                    <th>Amount</th>
-                                    <th>Action</th>
+                                    <th style="width:3%">#</th>
+                                    <th style="width:29%">Narration</th>
+                                    <th style="width:25%">Account Head</th>
+                                    <th style="width:25%">Account Name</th>
+                                    <th style="width:15%">Amount (Rs.)</th>
+                                    <th style="width:3%"></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr>
+                            <tbody id="voucherRows">
+                                {{-- Row 1 (default) --}}
+                                <tr class="voucher-row">
+                                    <td><div class="row-num">1</div></td>
                                     <td>
-                                        <div class="input-group">
+                                        <div class="d-flex flex-nowrap gap-1">
                                             <input type="hidden" name="narration_text[]" class="narrationTextHidden">
-                                            <select name="narration_id[]" class="form-select narrationSelect">
-                                                <option value="">Select / Add New</option>
-                                                @foreach($narrations as $id => $name)
-                                                <option value="{{ $id }}">{{ $name }}</option>
+                                            <select name="narration_id[]" class="form-select narrationSelect" required>
+                                                <option value="">— Select Narration —</option>
+                                                @foreach ($narrations as $id => $name)
+                                                    <option value="{{ $id }}">{{ $name }}</option>
                                                 @endforeach
                                             </select>
-                                            <input type="text" class="form-control narrationInput" placeholder="Type new narration" style="display:none;">
+                                            <button class="btn btn-outline-primary addNarrationBtn" type="button" title="Create New Narration" style="flex-shrink: 0; color: #dc2626; border-color: #fca5a5;">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
                                         </div>
                                     </td>
                                     <td>
                                         <select name="row_account_head[]" class="form-select rowAccountHead">
-                                            <option value="">Select</option>
-                                            @foreach($AccountHeads as $head)
-                                            <option value="{{ $head->id }}">{{ $head->name }}</option>
+                                            <option value="">— Select Head —</option>
+                                            @foreach ($AccountHeads as $head)
+                                                <option value="{{ $head->id }}">{{ $head->name }}</option>
                                             @endforeach
                                         </select>
                                     </td>
                                     <td>
-                                        <select name="row_account_id[]" class="form-select rowAccountSub">
-                                            <option value="">Select Account</option>
+                                        <select name="row_account_id[]" class="form-select rowAccountSub" required>
+                                            <option value="">— Select Account —</option>
                                         </select>
                                     </td>
-                                    <td><input name="amount[]" type="text" class="form-control text-end amount"></td>
-                                    <td><button class="btn btn-danger btn-sm removeRow"><i class="bi bi-trash"></i></button></td>
+                                    <td><input name="amount[]" type="number" step="0.01" min="0" class="form-control amount" placeholder="0.00" required></td>
+                                    <td>
+                                        <button type="button" class="btn-remove-row removeRow" title="Remove row">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
-                            <tfoot class="table-light">
-                                <tr>
-                                    <th colspan="3" class="text-end">Total:</th>
-                                    <th><input type="text" name="total_amount" class="form-control text-end fw-bold" id="totalAmount" readonly></th>
-                                    <th></th>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
-                    {{-- Footer Buttons --}}
-                    <div class="d-flex  mt-4">
-                        <div>
-                            <button class="btn btn-primary">Save</button>
-                            <button class="btn btn-outline-secondary">Exit</button>
+                    <button type="button" class="add-row-btn" id="addRowBtn">
+                        <i class="bi bi-plus-lg"></i> Add Another Account Row
+                    </button>
+                </div>
+            </div>
+
+            {{-- ─── FOOTER: Tips + Total + Actions ─── --}}
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <div class="rv-card">
+                        <div class="rv-card-header gray"><i class="bi bi-lightbulb"></i> Quick Tips</div>
+                        <div class="rv-card-body" style="padding: 1rem 1.5rem;">
+                            <ul style="margin: 0; padding-left: 1.25rem; color: #64748b; font-size: 0.82rem; line-height: 1.8;">
+                                <li>Select the <strong>Party Type</strong> first — the party list below will update automatically.</li>
+                                <li>A payment to a <strong>Vendor</strong> reduces your payable balance in the ledger.</li>
+                                <li>You can pay from <strong>multiple accounts</strong> (e.g. part Cash, part Bank).</li>
+                                <li>New narrations typed here are <strong>saved for future use</strong>.</li>
+                                <li>Total of all rows must be <strong>greater than zero</strong> to save.</li>
+                            </ul>
                         </div>
                     </div>
-                </form>
-
+                </div>
+                <div class="col-md-5">
+                    <div class="total-box mb-3">
+                        <div class="total-label"><i class="bi bi-cash-stack me-1"></i> Total Expense Amount</div>
+                        <div class="total-value">Rs. <span id="totalAmountDisplay">0.00</span></div>
+                        <input type="hidden" name="total_amount" id="totalAmount" value="0">
+                    </div>
+                    <div class="d-flex flex-column gap-2">
+                        <button type="submit" class="btn-save">
+                            <i class="bi bi-check2-all"></i> Confirm &amp; Save Voucher
+                        </button>
+                        <a href="{{ route('all-expense-vochers') }}" class="btn-outline-link">
+                            <i class="bi bi-list-ul"></i> View All Expenses
+                        </a>
+                    </div>
+                </div>
             </div>
-        </div>
+
+        </form>
     </div>
 </div>
-
 @endsection
 
 @section('js')
 <script>
-    $(document).on('change', '.narrationSelect', function() {
-        let $row = $(this).closest('td');
-        let $input = $row.find('.narrationInput');
+$(document).ready(function () {
 
+    // ─── NARRATION TOGGLE ───────────────────────────────────────────────────
+    $(document).on('change', '.narrationSelect', function () {
+        var $input = $(this).siblings('.narrationInput');
         if ($(this).val() === '') {
-            $input.show().focus();
+            if ($input.length > 0) {
+                $input.show().attr('required', true).focus();
+            }
         } else {
-            $input.hide().val('');
-        }
-    });
-    $(document).on('input', '.narrationInput', function() {
-        $(this).closest('td').find('.narrationTextHidden').val($(this).val());
-    });
-
-    // Type change -> fetch parties
-    $(document).on('change', 'select[name="vendor_type"]', function() {
-        let type = $(this).val();
-        let $vendorSelect = $('select[name="vendor_id"]');
-
-        // ✅ Tel aur remarks reset kar do
-        $('input[name="tel"]').val('');
-        $('#remarks').val('');
-
-        $vendorSelect.empty().append('<option disabled selected>Loading...</option>');
-
-        if (type === 'vendor' || type === 'customer' || type === 'walkin') {
-            // Vendors/Customers/Walkin
-            $.get('{{ route("party.list") }}?type=' + type, function(data) {
-                $vendorSelect.empty().append('<option disabled selected>Select</option>');
-                data.forEach(function(item) {
-                    $vendorSelect.append('<option value="' + item.id + '">' + item.text + '</option>');
-                });
-            });
-        } else if (type) {
-            // Agar Account Head select hua hai to uska ID bhejo
-            let headId = type;
-            $.get('{{ url("get-accounts-by-head") }}/' + headId, function(data) {
-                $vendorSelect.empty().append('<option disabled selected>Select</option>');
-                data.forEach(function(acc) {
-                    $vendorSelect.append(
-                        '<option value="' + acc.id + '" data-code="' + acc.account_code + '">' +
-                        acc.title + ' (' + acc.account_code + ')' +
-                        '</option>'
-                    );
-                });
-            });
+            if ($input.length > 0) {
+                $input.hide().removeAttr('required').val('');
+            }
         }
     });
 
-    $(document).on('change', 'select[name="vendor_id"]', function() {
-        let $selected = $(this).find(':selected');
-        let id = $selected.val();
-        let type = $('select[name="vendor_type"]').val().toLowerCase();
+    // ─── PARTY TYPE → LOAD PARTY LIST (AJAX) ────────────────────────────────
+    $('#vendor_type').on('change', function () {
+        var type = $('#vendor_type').val();
+        var kind = $('#vendor_type').find(':selected').data('kind'); // "party" or "account"
+        var $partySelect = $('#vendor_id');
 
-        if (!id) return;
+        // Toggle Walk-in Name Field
+        if (type === 'walkin') {
+            $('#party_name_container').hide();
+            $('#vendor_id').prop('required', false);
+            
+            $('#walkin_name_container').show();
+            $('#walking_customer_name').prop('required', true);
 
-        // Agar Head select hai (subhead ke option me account_code hota hai)
-        let accountCode = $selected.data('code');
-        if (accountCode) {
-            $('input[name="tel"]').val(accountCode);
-            $('#remarks').val('');
+            // Hide balance, make mobile editable
+            $('#balance_container').hide();
+            $('#tel').prop('readonly', false).attr('placeholder', 'Enter mobile');
+        } else {
+            $('#walkin_name_container').hide();
+            $('#walking_customer_name').val('').prop('required', false);
+            
+            $('#party_name_container').show();
+            $('#vendor_id').prop('required', true);
+
+            // Show balance, make mobile readonly
+            $('#balance_container').show();
+            $('#tel').prop('readonly', true).attr('placeholder', 'Auto-filled');
+        }
+
+        // Reset fields
+        $('#tel').val('');
+        $('#bal').val('');
+        $('#balanceStrip').hide();
+        $('#party_label').html('Select Party / Account <span class="text-danger">*</span>');
+
+        $partySelect.html('<option value="" class="select-loading">Loading...</option>');
+
+        if (!type) {
+            $partySelect.html('<option value="">— First select type above —</option>');
             return;
         }
 
-        // Otherwise Vendor/Customer case
-        $.get('{{ route("customers.show", ["id" => "__ID__"]) }}'.replace('__ID__', id) + '?type=' + type, function(d) {
-            $('input[name="tel"]').val(d.mobile || ''); // ✅ ab value set hogi
-            $('#remarks').val(d.remarks || '');
-        });
+        if (kind === 'party') {
+            $.getJSON('{{ route("receipt.party.list") }}', { type: type }, function (data) {
+                var html = '<option value="">— Select ' + (type === 'vendor' ? 'Vendor' : 'Customer') + ' —</option>';
+                data.forEach(function (item) {
+                    html += '<option value="' + item.id + '" '
+                        + 'data-bal="' + (item.closing_balance || 0) + '" '
+                        + 'data-mobile="' + (item.mobile || '') + '">'
+                        + item.text + '</option>';
+                });
+                $partySelect.html(html);
+                
+                if (type === 'walkin' && data.length > 0) {
+                    $partySelect.val(data[0].id).trigger('change');
+                }
+            }).fail(function () {
+                $partySelect.html('<option value="">Error loading data</option>');
+            });
+        } else if (kind === 'account') {
+            $.getJSON('{{ url("get-accounts-by-head") }}/' + type, function (data) {
+                var html = '<option value="">— Select Account —</option>';
+                data.forEach(function (acc) {
+                    html += '<option value="' + acc.id + '" '
+                        + 'data-bal="' + (acc.opening_balance || 0) + '" '
+                        + 'data-mobile="' + (acc.account_code || '') + '">'
+                        + acc.title + ' (' + (acc.account_code || '') + ')</option>';
+                });
+                $partySelect.html(html);
+            }).fail(function () {
+                $partySelect.html('<option value="">Error loading accounts</option>');
+            });
+        }
     });
 
-    // ✅ Row Calculation
-    function calculateRow(row, manual = false) {
-        let kg = parseFloat(row.find('.kg').val()) || 0;
-        let rate = parseFloat(row.find('.rate').val()) || 0;
-        let discount = parseFloat(row.find('.discountValue').val()) || 0;
-        let baseAmount;
+    // ─── PARTY SELECTED → SHOW BALANCE STRIP ────────────────────────────────
+    $('#vendor_id').on('change', function () {
+        var $opt = $(this).find(':selected');
+        var bal  = parseFloat($opt.data('bal'))    || 0;
+        var mob  = $opt.data('mobile') || '—';
+        var name = $opt.text();
 
-        if (row.find('.baseAmount').length === 0) {
-            row.append('<input type="hidden" class="baseAmount" value="0">');
-        }
+        $('#bal').val(bal.toFixed(2));
+        $('#tel').val(mob);
 
-        if (kg > 0 && rate > 0) {
-            baseAmount = kg * rate;
-        } else if (!manual && rate > 0) {
-            baseAmount = rate;
-        } else if (manual) {
-            baseAmount = parseFloat(row.find('.amount').val()) || 0;
+        $('#strip_name').text(name);
+        $('#strip_mobile').text(mob);
+
+        var $balEl = $('#strip_bal');
+        $balEl.text(formatNum(bal));
+        $balEl.removeClass('text-green text-red');
+        $balEl.addClass(bal >= 0 ? 'text-green' : 'text-red');
+
+        if ($opt.val()) {
+            $('#balanceStrip').show();
         } else {
-            baseAmount = parseFloat(row.find('.baseAmount').val()) || 0;
-        }
-
-        row.find('.baseAmount').val(baseAmount);
-
-        let finalAmount = baseAmount - discount;
-        if (finalAmount < 0) finalAmount = 0;
-
-        // ✅ Sirf tab overwrite karo jab manual == false
-        if (!manual) {
-            row.find('.amount').val(finalAmount.toFixed(2));
-        }
-    }
-
-
-    function calculateTotals() {
-        let total = 0;
-        $('#voucherTable tbody tr').each(function() {
-            total += parseFloat($(this).find('.amount').val()) || 0;
-        });
-        $('#totalAmount').val(total.toFixed(2));
-    }
-
-    // Auto calc
-    $(document).on('input', '.kg, .rate, .discountValue', function() {
-        let row = $(this).closest('tr');
-        calculateRow(row, false);
-        calculateTotals();
-    });
-
-    // Manual amount entry
-    $(document).on('input', '.amount', function() {
-        let row = $(this).closest('tr');
-        calculateRow(row, true);
-        calculateTotals();
-    });
-
-
-    // Add new row on Enter
-    $(document).on('keypress', '.amount', function(e) {
-        if (e.which === 13) {
-            e.preventDefault();
-            let newRow = `<tr>
-               <tr>
-                                    <td>
-                                        <div class="input-group">
-                                            <input type="hidden" name="narration_text[]" class="narrationTextHidden">
-                                            <select name="narration_id[]" class="form-select narrationSelect">
-                                                <option value="">Select / Add New</option>
-                                                @foreach($narrations as $id => $name)
-                                                <option value="{{ $id }}">{{ $name }}</option>
-                                                @endforeach
-                                            </select>
-                                            <input type="text" class="form-control narrationInput" placeholder="Type new narration" style="display:none;">
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <select name="row_account_head[]" class="form-select rowAccountHead">
-                                            <option value="">Select</option>
-                                            @foreach($AccountHeads as $head)
-                                            <option value="{{ $head->id }}">{{ $head->name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <select name="row_account_id[]" class="form-select rowAccountSub">
-                                            <option value="">Select Account</option>
-                                        </select>
-                                    </td>
-                                    <td><input name="amount[]" type="text" class="form-control text-end amount"></td>
-                                    <td><button class="btn btn-danger btn-sm removeRow"><i class="bi bi-trash"></i></button></td>
-                                </tr>`;
-            $('#voucherTable tbody').append(newRow);
+            $('#balanceStrip').hide();
         }
     });
 
-    // Delete row
-    $(document).on('click', '.removeRow', function() {
-        $(this).closest('tr').remove();
-        calculateTotals();
-    });
+    // ─── ACCOUNT HEAD CHANGE → LOAD SUB-ACCOUNTS ────────────────────────────
+    $(document).on('change', '.rowAccountHead', function () {
+        var headId     = $(this).val();
+        var $subSelect = $(this).closest('tr').find('.rowAccountSub');
 
-    // Next button refresh
-    $('#nextBtn').on('click', function() {
-        location.reload();
-    });
-
-    $(document).on('change', '.accountHead', function() {
-        let headId = $(this).val();
-        let $subSelect = $(this).closest('tr').find('.accountSub');
+        $subSelect.html('<option value="" class="select-loading">Loading...</option>');
 
         if (!headId) {
-            $subSelect.html('<option value="" disabled selected>Select Account</option>');
+            $subSelect.html('<option value="">— Select Account —</option>');
             return;
         }
 
+        $.getJSON('{{ url("get-accounts-by-head") }}/' + headId, function (res) {
+            var html = '<option value="">— Select Account —</option>';
+            res.forEach(function (acc) {
+                html += '<option value="' + acc.id + '">' + acc.title + '</option>';
+            });
+            $subSelect.html(html);
+        }).fail(function () {
+            $subSelect.html('<option value="">Error loading</option>');
+        });
+    });
+
+    // ─── AMOUNT CALCULATION ──────────────────────────────────────────────────
+    $(document).on('input', '.amount', function () {
+        calculateTotal();
+    });
+
+    function calculateTotal() {
+        var total = 0;
+        $('.amount').each(function () {
+            total += parseFloat($(this).val()) || 0;
+        });
+        $('#totalAmount').val(total.toFixed(2));
+        $('#totalAmountDisplay').text(formatNum(total));
+    }
+
+    function formatNum(n) {
+        return parseFloat(n).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // ─── ADD ROW ─────────────────────────────────────────────────────────────
+    $('#addRowBtn').on('click', function () {
+        var rowCount = $('.voucher-row').length + 1;
+        var narrationOptions = '';
+        @foreach ($narrations as $id => $name)
+            narrationOptions += '<option value="{{ $id }}">{{ $name }}</option>';
+        @endforeach
+
+        var accountHeadOptions = '';
+        @foreach ($AccountHeads as $head)
+            accountHeadOptions += '<option value="{{ $head->id }}">{{ $head->name }}</option>';
+        @endforeach
+
+        var $newRow = $(`
+            <tr class="voucher-row">
+                <td><div class="row-num">${rowCount}</div></td>
+                <td>
+                    <div class="d-flex flex-nowrap gap-1">
+                        <input type="hidden" name="narration_text[]" class="narrationTextHidden">
+                        <select name="narration_id[]" class="form-select narrationSelect" required>
+                            <option value="">— Select Narration —</option>
+                            ${narrationOptions}
+                        </select>
+                        <button class="btn btn-outline-primary addNarrationBtn" type="button" title="Create New Narration" style="flex-shrink: 0; color: #dc2626; border-color: #fca5a5;">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+                </td>
+                <td>
+                    <select name="row_account_head[]" class="form-select rowAccountHead">
+                        <option value="">— Select Head —</option>
+                        ${accountHeadOptions}
+                    </select>
+                </td>
+                <td>
+                    <select name="row_account_id[]" class="form-select rowAccountSub" required>
+                        <option value="">— Select Account —</option>
+                    </select>
+                </td>
+                <td><input name="amount[]" type="number" step="0.01" min="0" class="form-control amount" placeholder="0.00" required></td>
+                <td>
+                    <button type="button" class="btn-remove-row removeRow" title="Remove row">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                </td>
+            </tr>
+        `);
+
+        $('#voucherRows').append($newRow);
+        renumberRows();
+    });
+
+    // ─── REMOVE ROW ──────────────────────────────────────────────────────────
+    $(document).on('click', '.removeRow', function () {
+        if ($('.voucher-row').length > 1) {
+            $(this).closest('tr').remove();
+            renumberRows();
+            calculateTotal();
+        } else {
+            alert('At least one account row is required.');
+        }
+    });
+
+    function renumberRows() {
+        $('.voucher-row').each(function (i) {
+            $(this).find('.row-num').text(i + 1);
+        });
+    }
+
+    // ─── FORM SUBMIT VALIDATION ──────────────────────────────────────────────
+    $('#expenseForm').on('submit', function () {
+        var total = parseFloat($('#totalAmount').val()) || 0;
+        if (total <= 0) {
+            alert('Total amount must be greater than zero to save the voucher.');
+            return false;
+        }
+        return true;
+    });
+
+    // ─── AJAX NARRATION MODAL ────────────────────────────────────────────────
+    var activeNarrationSelect = null;
+    $(document).on('click', '.addNarrationBtn', function () {
+        activeNarrationSelect = $(this).siblings('.narrationSelect');
+        $('#new_narration_text').val('');
+        $('#addNarrationModal').modal('show');
+    });
+
+    $('#addNarrationForm').on('submit', function (e) {
+        e.preventDefault();
+        var text = $('#new_narration_text').val();
+        var $btn = $(this).find('button[type="submit"]');
+        $btn.prop('disabled', true).text('Saving...');
+
         $.ajax({
-            url: "{{ url('/get-accounts-by-head') }}/" + headId,
-            type: "GET",
-            success: function(res) {
-                let html = '<option value="" disabled selected>Select Account</option>';
-                res.forEach(acc => {
-                    html += `<option value="${acc.id}">${acc.title}</option>`;
-                });
-                $subSelect.html(html);
+            url: '{{ route("store.narration.ajax") }}',
+            type: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                narration: text
+            },
+            success: function (res) {
+                if (res.success) {
+                    var newOption = '<option value="' + res.id + '">' + res.text + '</option>';
+                    $('.narrationSelect').append(newOption);
+                    if (activeNarrationSelect) {
+                        activeNarrationSelect.val(res.id).trigger('change');
+                    }
+                    $('#addNarrationModal').modal('hide');
+                } else {
+                    alert('Error adding narration');
+                }
+            },
+            error: function () {
+                alert('Server error while adding narration.');
+            },
+            complete: function () {
+                $btn.prop('disabled', false).text('Save Narration');
             }
         });
     });
 
-    $(document).on('change', '.rowAccountHead', function() {
-        let headId = $(this).val();
-        let $subSelect = $(this).closest('tr').find('.rowAccountSub');
-
-        if (!headId) {
-            $subSelect.html('<option value="">Select Account</option>');
-            return;
-        }
-
-        $.get('{{ url("get-accounts-by-head") }}/' + headId, function(res) {
-            let html = '<option value="">Select Account</option>';
-            res.forEach(acc => {
-                html += `<option value="${acc.id}">${acc.title}</option>`;
-            });
-            $subSelect.html(html);
-        });
-    });
-
-    function calculateAccountsTotal() {
-        let total = 0;
-        $('.accountAmount').each(function() {
-            total += parseFloat($(this).val()) || 0;
-        });
-        $('#accountsTotal').val(total.toFixed(2));
-    }
-
-    // Trigger when account amount changes
-    $(document).on('input', '.accountAmount', function() {
-        calculateAccountsTotal();
-    });
-
-    // Trigger when account row removed
-    $(document).on('click', '.removeAccountRow', function() {
-        $(this).closest('tr').remove();
-        calculateAccountsTotal();
-    });
-
-    // Trigger after adding new row
-    $('#addAccountRow').on('click', function() {
-        let newRow = `
-        <tr>
-            <td>
-                <select name="account_head_id[]" class="form-control form-control-sm accountHead">
-                    <option value="" disabled selected>Select Head</option>
-                    @foreach ($AccountHeads as $head)
-                        <option value="{{ $head->id }}">{{ $head->name }}</option>
-                    @endforeach
-                </select>
-            </td>
-            <td>
-                <select name="account_id[]" class="form-control form-control-sm accountSub">
-                    <option value="" disabled selected>Select Account</option>
-                </select>
-            </td>
-            <td>
-                <input type="number" step="0.01" name="account_amount[]" class="form-control form-control-sm accountAmount" value="0">
-            </td>
-            <td>
-                <button type="button" class="btn btn-sm btn-danger removeAccountRow">X</button>
-            </td>
-        </tr>`;
-        $('#accountsTable tbody').append(newRow);
-
-        // recalc after adding
-        calculateAccountsTotal();
-    });
+});
 </script>
 
+{{-- Add Narration Modal --}}
+<div class="modal fade" id="addNarrationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="addNarrationForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Narration</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Narration Text <span class="text-danger">*</span></label>
+                    <input type="text" id="new_narration_text" class="form-control" placeholder="Enter Narration Text" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background: #dc2626; border-color: #dc2626;">Save Narration</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

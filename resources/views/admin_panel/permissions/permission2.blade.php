@@ -235,6 +235,35 @@
             padding: 16px 20px;
         }
 
+        .branch-submodule-header {
+            background: #f8fafc;
+            padding: 10px 16px;
+            border-radius: 8px;
+            border-left: 4px solid var(--perm-primary);
+            display: flex;
+            align-items: center;
+        }
+        .branch-submodule-header .submodule-icon {
+            color: var(--perm-primary);
+            font-size: 1.1rem;
+        }
+        .branch-submodule-header h6 {
+            font-weight: 600;
+            color: var(--perm-text);
+            font-size: 0.95rem;
+            margin: 0;
+            margin-left: 12px;
+        }
+        .branch-submodule-header .submodule-count {
+            background: #e2e8f0;
+            color: var(--perm-text);
+            font-size: 0.75rem;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
         .perm-list {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -523,10 +552,18 @@
 
                 <!-- Stats Row -->
                 @php
-                   $groupedPerms = $permissions->groupBy(function ($p) {
+                   $allBranches = \App\Models\Branch::pluck('name', 'id')->toArray();
+                   $groupedPerms = $permissions->groupBy(function ($p) use ($allBranches) {
 
     // 1️⃣ Normalize: space → dot
     $name = str_replace(' ', '.', strtolower($p->name));
+    
+    // Check for branch prefix
+    if (preg_match('/^branch:(\d+):(.*)$/', $name, $matches)) {
+        $branchId = $matches[1];
+        $branchName = $allBranches[$branchId] ?? "Unknown Branch";
+        return "Branch: " . $branchName;
+    }
 
     // 2️⃣ Split by dot
     $parts = explode('.', $name);
@@ -634,40 +671,67 @@
                                     <span class="perm-group-count">{{ $perms->count() }} permissions</span>
                                 </div>
                                 <div class="perm-group-body">
-                                    <div class="perm-list">
-                                        @foreach ($perms as $perm)
-                                            @php
-                                                $action = collect(explode('.', $perm->name))->last();
-                                                $actionClass = in_array($action, ['view', 'read']) ? 'view' :
-                                                              (in_array($action, ['create', 'add']) ? 'create' :
-                                                              (in_array($action, ['edit', 'update']) ? 'edit' :
-                                                              (in_array($action, ['delete', 'remove']) ? 'delete' :
-                                                              (in_array($action, ['approve']) ? 'approve' :
-                                                              (in_array($action, ['mark']) ? 'mark' :
-                                                              (in_array($action, ['print']) ? 'print' :
-                                                              (in_array($action, ['export']) ? 'export' : 'other')))))));
-                                            @endphp
-                                            <div class="perm-item" data-id="{{ $perm->id }}"
-                                                data-name="{{ strtolower($perm->name) }}">
-                                                <div class="d-flex align-items-center gap-3">
-                                                    <span class="perm-name">{{ $perm->name }}</span>
-                                                    <span
-                                                        class="perm-action-badge {{ $actionClass }}">{{ $action }}</span>
-                                                </div>
-                                                <div class="perm-actions">
-                                                    <button class="btn btn-edit edit-perm-btn"
-                                                        data-id="{{ $perm->id }}" data-name="{{ $perm->name }}"
-                                                        title="Edit">
-                                                        <i class="fa fa-pen"></i>
-                                                    </button>
-                                                    <button class="btn btn-delete delete-perm-btn"
-                                                        data-id="{{ $perm->id }}" title="Delete">
-                                                        <i class="fa fa-trash"></i>
-                                                    </button>
-                                                </div>
+                                    @php
+                                        $isBranch = str_starts_with($module, 'Branch:');
+                                        $subGroups = $perms->groupBy(function($p) use ($isBranch) {
+                                            if (!$isBranch) return 'all';
+                                            
+                                            $name = str_replace(' ', '.', strtolower($p->name));
+                                            if (preg_match('/^branch:\d+:(.*)$/', $name, $matches)) {
+                                                $basePerm = $matches[1];
+                                                $parts = explode('.', $basePerm);
+                                                if (count($parts) > 1) {
+                                                    array_pop($parts);
+                                                    return ucfirst(str_replace('.', ' ', implode('.', $parts)));
+                                                }
+                                            }
+                                            return 'General';
+                                        })->sortKeys();
+                                    @endphp
+
+                                    @foreach($subGroups as $subGroupName => $subPerms)
+                                        @if($isBranch)
+                                            <div class="branch-submodule-header mt-4 mb-3">
+                                                <div class="submodule-icon"><i class="fa fa-folder-open"></i></div>
+                                                <h6>{{ $subGroupName }}</h6>
+                                                <div class="submodule-count">{{ $subPerms->count() }} permissions</div>
                                             </div>
-                                        @endforeach
-                                    </div>
+                                        @endif
+                                        <div class="perm-list">
+                                            @foreach ($subPerms as $perm)
+                                                @php
+                                                    $action = collect(explode('.', $perm->name))->last();
+                                                    $actionClass = in_array($action, ['view', 'read']) ? 'view' :
+                                                                  (in_array($action, ['create', 'add']) ? 'create' :
+                                                                  (in_array($action, ['edit', 'update']) ? 'edit' :
+                                                                  (in_array($action, ['delete', 'remove']) ? 'delete' :
+                                                                  (in_array($action, ['approve']) ? 'approve' :
+                                                                  (in_array($action, ['mark']) ? 'mark' :
+                                                                  (in_array($action, ['print']) ? 'print' :
+                                                                  (in_array($action, ['export']) ? 'export' : 'other')))))));
+                                                @endphp
+                                                <div class="perm-item" data-id="{{ $perm->id }}"
+                                                    data-name="{{ strtolower($perm->name) }}">
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <span class="perm-name">{{ $perm->name }}</span>
+                                                        <span
+                                                            class="perm-action-badge {{ $actionClass }}">{{ $action }}</span>
+                                                    </div>
+                                                    <div class="perm-actions">
+                                                        <button class="btn btn-edit edit-perm-btn"
+                                                            data-id="{{ $perm->id }}" data-name="{{ $perm->name }}"
+                                                            title="Edit">
+                                                            <i class="fa fa-pen"></i>
+                                                        </button>
+                                                        <button class="btn btn-delete delete-perm-btn"
+                                                            data-id="{{ $perm->id }}" title="Delete">
+                                                            <i class="fa fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
                                 </div>
                             </div>
                         @empty

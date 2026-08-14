@@ -348,57 +348,68 @@
             </div>
         </div>
 
-        <!-- View Toggle Buttons -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-primary active" id="btnProductView" onclick="switchView('product')">
-                    <i class="fas fa-cube me-2"></i> Product View
-                </button>
-                <button type="button" class="btn btn-outline-secondary" id="btnWarehouseView" onclick="switchView('warehouse')">
-                    <i class="fas fa-warehouse me-2"></i> Warehouse View
-                </button>
-                <button type="button" class="btn btn-outline-danger" id="btnDamagedView" onclick="switchView('damaged')">
-                    <i class="fas fa-dumpster me-2"></i> Damaged Stock View
-                </button>
-            </div>
-            <div class="d-flex gap-2 align-items-center flex-wrap">
-                <!-- ✅ ERP STOCK FILTERS -->
-                <form action="{{ route('warehouse_stocks.index') }}" method="GET" class="d-flex gap-2 align-items-center me-2">
-                    @if($isSuperAdmin)
-                        <select name="branch_id" id="filter_branch_id" class="form-select form-select-sm" style="min-width: 150px; height: 38px; border-radius: 8px;">
-                            <option value="">All Branches</option>
-                            @foreach($branches as $branch)
-                                <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                            @endforeach
-                        </select>
-                    @endif
-                    
-                    <select name="warehouse_id" id="filter_warehouse_id" class="form-select form-select-sm" style="min-width: 180px; height: 38px; border-radius: 8px;">
-                        <option value="">All Locations</option>
-                        @if($hasDirectStock)
-                            <option value="shop" {{ $selectedWarehouseId === 'shop' ? 'selected' : '' }}>Direct Branch/Shop</option>
-                        @endif
-                        @foreach($warehouses as $wh)
-                            <option value="{{ $wh->id }}" {{ $selectedWarehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->warehouse_name }}</option>
-                        @endforeach
-                    </select>
-                    
-                    <button type="submit" class="btn btn-primary btn-sm" style="height: 38px; width: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-filter"></i>
-                    </button>
-                    
-                    @if($selectedBranchId || $selectedWarehouseId)
-                        <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-light border btn-sm" style="height: 38px; width: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center;" title="Clear Filters">
-                            <i class="fas fa-times"></i>
-                        </a>
-                    @endif
-                </form>
-
-                <div class="search-box">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="searchProducts" placeholder="Search product or code...">
+        <!-- View Toggle & Filter Toolbar -->
+        <div class="card border-0 shadow-sm mb-4" style="background: #ffffff; border-radius: 12px; padding: 12px 16px;">
+            <div class="row g-2 align-items-center">
+                <!-- View Switcher Tabs (Left) -->
+                <div class="col-xl-4 col-lg-5 col-md-12">
+                    <div class="btn-group w-100" role="group" style="border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
+                        <button type="button" class="btn btn-primary active py-2 px-2 fw-600" id="btnProductView" onclick="switchView('product')" style="font-size: 12px; white-space: nowrap;">
+                            <i class="fas fa-cube me-1"></i> Products
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary py-2 px-2 fw-600" id="btnWarehouseView" onclick="switchView('warehouse')" style="font-size: 12px; white-space: nowrap;">
+                            <i class="fas fa-warehouse me-1"></i> Warehouses
+                        </button>
+                        <button type="button" class="btn btn-outline-danger py-2 px-2 fw-600" id="btnDamagedView" onclick="switchView('damaged')" style="font-size: 12px; white-space: nowrap;">
+                            <i class="fas fa-dumpster me-1"></i> Damaged
+                        </button>
+                    </div>
                 </div>
 
+                <!-- Search & Branch/Location Filters (Right) -->
+                <div class="col-xl-8 col-lg-7 col-md-12">
+                    <div class="d-flex align-items-center gap-2 flex-wrap flex-md-nowrap justify-content-lg-end">
+                        
+                        <!-- Search Box -->
+                        <div class="search-box flex-grow-1" style="min-width: 170px; margin-bottom: 0; position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; z-index: 5;"></i>
+                            <input type="text" id="searchProducts" class="form-control" placeholder="Search product or code..." style="height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; padding-left: 34px !important; font-size: 12.5px;">
+                        </div>
+
+                        <!-- Branch & Location Filter Form -->
+                        <form action="{{ route('warehouse_stocks.index') }}" method="GET" class="d-flex align-items-center gap-2 mb-0 flex-shrink-0">
+                            @if($isSuperAdmin)
+                                <select name="branch_id" id="filter_branch_id" class="form-select form-select-sm" style="min-width: 125px; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px;">
+                                    <option value="">All Branches</option>
+                                    @foreach($branches as $branch)
+                                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                                    @endforeach
+                                </select>
+                            @endif
+
+                            <select name="warehouse_id" id="filter_warehouse_id" class="form-select form-select-sm" style="min-width: 135px; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px;">
+                                <option value="">All Locations</option>
+                                @if($hasDirectStock)
+                                    <option value="shop" {{ $selectedWarehouseId === 'shop' ? 'selected' : '' }}>Direct Branch/Shop</option>
+                                @endif
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}" {{ $selectedWarehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->warehouse_name }}</option>
+                                @endforeach
+                            </select>
+
+                            <button type="submit" class="btn btn-primary px-3" style="height: 38px; border-radius: 8px; font-size: 12.5px;" title="Apply Filter">
+                                <i class="fas fa-filter"></i>
+                            </button>
+
+                            @if($selectedBranchId || $selectedWarehouseId)
+                                <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-outline-secondary px-3" style="height: 38px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12.5px;" title="Clear Filters">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            @endif
+                        </form>
+
+                    </div>
+                </div>
             </div>
         </div>
 

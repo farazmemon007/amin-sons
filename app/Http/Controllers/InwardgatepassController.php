@@ -279,6 +279,7 @@ class InwardgatepassController extends Controller
                 'dispatch_date'  => $request->dispatch_date,
                 'delivery_challan_no' => $request->delivery_challan_no,
                 'freight_charges'=> $request->freight_charges,
+                'freight_vendor_id' => $request->freight_vendor_id,
                 'created_by'     => auth()->id(),
                 'status'         => 'pending',
             ]);
@@ -305,6 +306,37 @@ class InwardgatepassController extends Controller
                     $this->processStockMovement($gatepass, $pid, $receivedQty, $request->branch_id, $request->warehouse_id, $purchaseId, $poId, $request->vendor_id, null);
                 }
             }
+
+            // --- FREIGHT CHARGES AUDIT / PAYABLE LOGIC ---
+            if ($request->freight_charges > 0 && $request->freight_vendor_id) {
+                // 1. Credit the Freight Vendor Ledger (Liability increases)
+                $lastVendorLedger = \App\Models\VendorLedger::where('vendor_id', $request->freight_vendor_id)
+                    ->where('branch_id', $request->branch_id)
+                    ->orderBy('id', 'desc')
+                    ->first();
+                $previousBalance = $lastVendorLedger ? (float)$lastVendorLedger->closing_balance : (float)(\App\Models\Vendor::find($request->freight_vendor_id)->opening_balance ?? 0);
+                
+                \App\Models\VendorLedger::create([
+                    'vendor_id'        => $request->freight_vendor_id,
+                    'branch_id'        => $request->branch_id,
+                    'admin_or_user_id' => auth()->id(),
+                    'transaction_date' => $request->gatepass_date,
+                    'description'      => "Freight Charges for Inward Gatepass #{$gatepass->id}",
+                    'opening_balance'  => $previousBalance,
+                    'previous_balance' => $previousBalance,
+                    'debit_amount'     => 0,
+                    'credit_amount'    => $request->freight_charges, // We owe them this amount
+                    'closing_balance'  => $previousBalance + $request->freight_charges,
+                ]);
+
+                // 2. Debit the Freight Inward Expense Account
+                $freightExpenseAcc = \App\Models\Account::where('account_code', 'EXP-FRT-001')->first();
+                if ($freightExpenseAcc) {
+                    $freightExpenseAcc->opening_balance += $request->freight_charges;
+                    $freightExpenseAcc->save();
+                }
+            }
+
         });
 
         return redirect()->route('InwardGatepass.home')->with('success','Inward Gatepass Created Successfully');

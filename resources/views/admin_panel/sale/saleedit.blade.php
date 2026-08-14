@@ -541,7 +541,7 @@
                         </div>
 
                         <div class="text-end mt-3">
-                            <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary">Clear</button>
+                            <button id="clearCustomerData" type="button" class="btn btn-sm btn-secondary" style="color:#ffffff !important;"><i class="fas fa-eraser"></i> Clear</button>
                         </div>
                     </div>
 
@@ -558,13 +558,14 @@
 
                                 <thead>
                                     <tr>
-                                        <th style="width:10px">Product</th>
-                                        <th style="width:10px">Stock</th>
-                                        <th style="width:10px">Qty</th>
-                                        <th style="width:10px">Retail Price</th>
-                                        <th style="width:10px">Disc %</th>
-                                        <th style="width:10px">Disc Amt</th>
-                                        <th style="width:10px">Amount</th>
+                                        <th class="product-col">Product</th>
+                                        <th class="stock-col">Stock</th>
+                                        <th class="qty-col">Qty</th>
+                                        <th class="price-col">Retail Price</th>
+                                        <th class="disc-col">Disc %</th>
+                                        <th class="discamt-col">Disc Amt</th>
+                                        <th class="amount-col">Amount</th>
+                                        <th class="action-col"></th>
                                     </tr>
                                 </thead>
                                 <tbody id="salesTableBody">
@@ -574,6 +575,7 @@
                                     <tr>
                                         <td colspan="6" class="text-end fw-bold">Total:</td>
                                         <td class="text-end fw-bold"><span id="totalAmount">0.00</span></td>
+                                        <td></td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -659,12 +661,12 @@
                 </div>
 
                 {{-- Buttons --}}
-                <div class="d-flex flex-wrap gap-2 justify-content-center p-3 mt-3 border-top">
-                    <button type="button" class="btn btn-sm btn-warning" id="btnRevert">Revert</button>
-                    <button type="submit" class="btn btn-sm btn-success" id="btnSave">Update</button>
-                    <button type="button" class="btn btn-sm btn-secondary" id="btnPrint">Print</button>
-                    <button type="button" class="btn btn-sm btn-danger" id="btnDelete">Delete</button>
-                    <button type="button" class="btn btn-sm btn-dark" id="btnExit">Exit</button>
+                <div class="d-flex flex-wrap align-items-center justify-content-center p-3 mt-3 border-top" style="gap:10px !important;">
+                    <button type="button" class="btn btn-sm btn-warning btn-action" id="btnRevert"><i class="fas fa-undo"></i> Revert</button>
+                    <button type="submit" class="btn btn-sm btn-success btn-action" id="btnSave"><i class="fas fa-save"></i> Update</button>
+                    <button type="button" class="btn btn-sm btn-secondary btn-action" id="btnPrint"><i class="fas fa-print"></i> Print</button>
+                    <button type="button" class="btn btn-sm btn-danger btn-action" id="btnDelete"><i class="fas fa-trash-alt"></i> Delete</button>
+                    <button type="button" class="btn btn-sm btn-dark btn-action" id="btnExit"><i class="fas fa-times-circle"></i> Exit</button>
                 </div>
             </form>
 

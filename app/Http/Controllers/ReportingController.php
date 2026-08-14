@@ -606,19 +606,21 @@ class ReportingController extends Controller
     public function vendorsByBranch(Request $request)
     {
         $branchId = $request->branch_id ?? null;
-        if (!$branchId) {
-            return response()->json([], 200);
+        $query = \App\Models\Vendor::query();
+
+        if ($branchId && $branchId !== 'all') {
+            $query->where('branch_id', $branchId);
         }
 
-        $vendors = \App\Models\Vendor::where('branch_id', $branchId)
-            ->select('id', 'name', 'phone')
+        $vendors = $query->select('id', 'name', 'phone')
             ->orderBy('name')
             ->get();
             
-        // Map to match customer format
+        // Map to match customer format & standard format
         $result = $vendors->map(function($v) {
             return [
                 'id' => $v->id,
+                'name' => $v->name,
                 'customer_name' => $v->name, // Using customer_name key so JS doesn't break
                 'customer_type' => '-'
             ];

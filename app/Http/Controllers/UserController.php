@@ -252,4 +252,124 @@ class UserController extends Controller
             'reload'  => true,
         ]);
     }
+
+    /**
+     * ERP: Get cross-branch permission state for a user (super admin only).
+     * Returns all branches (excluding user's own) with per-module permission state.
+     */
+    public function getCrossbranchPerms(int $userId)
+    {
+        abort_unless(Auth::user()->hasRole('super admin'), 403, 'Super Admin only.');
+
+        $user = User::findOrFail($userId);
+
+        // Load config modules
+        $modules = config('permissions', []);
+
+        // All branches except user's own
+        $branches = Branch::where('id', '!=', $user->branch_id)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        // Build state: for each branch, for each module, which perms does user have?
+        $branchData = $branches->map(function ($branch) use ($user, $modules) {
+            $moduleData = [];
+            foreach ($modules as $moduleKey => $module) {
+                if (empty($module['cross_branch'])) continue; // only cross_branch modules
+
+                $perms = [];
+                foreach ($module['permissions'] as $permName => $label) {
+                    $crossPermName = "branch:{$branch->id}:{$permName}";
+                    $perms[] = [
+                        'key'     => $permName,
+                        'label'   => $label,
+                        'checked' => $user->hasDirectPermission($crossPermName),
+                    ];
+                }
+
+                $moduleData[] = [
+                    'key'   => $moduleKey,
+                    'label' => $module['label'],
+                    'icon'  => $module['icon'],
+                    'perms' => $perms,
+                ];
+            }
+
+            return [
+                'id'      => $branch->id,
+                'name'    => $branch->name,
+                'modules' => $moduleData,
+            ];
+        });
+
+        return response()->json([
+            'user_id'   => $user->id,
+            'user_name' => $user->name,
+            'own_branch_id' => $user->branch_id,
+            'branches'  => $branchData,
+        ]);
+    }
+
+    /**
+     * ERP: Save cross-branch permissions for a user (super admin only).
+     * Expects: { user_id, granted: ["branch:{id}:permission.name", ...] }
+     */
+    public function saveCrossbranchPerms(Request $request)
+    {
+        abort_unless(Auth::user()->hasRole('super admin'), 403, 'Super Admin only.');
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'granted' => 'nullable|array',
+        ]);
+
+        $user    = User::findOrFail($request->user_id);
+        $modules = config('permissions', []);
+        $granted = $request->granted ?? [];
+
+        // Collect all cross-branch modules and their permissions
+        $crossModulePerms = [];
+        foreach ($modules as $moduleKey => $module) {
+            if (empty($module['cross_branch'])) continue;
+            foreach ($module['permissions'] as $permName => $label) {
+                $crossModulePerms[] = $permName;
+            }
+        }
+
+        // Get all branches except user's own
+        $branches = Branch::where('id', '!=', $user->branch_id)->pluck('id');
+
+        // For each branch × cross-perm, grant or revoke
+        foreach ($branches as $branchId) {
+            foreach ($crossModulePerms as $permName) {
+                $crossPermName = "branch:{$branchId}:{$permName}";
+
+                if (in_array($crossPermName, $granted)) {
+                    // Grant: ensure permission exists and is given
+                    $perm = Permission::firstOrCreate([
+                        'name'       => $crossPermName,
+                        'guard_name' => 'web',
+                    ]);
+                    if (!$user->hasDirectPermission($crossPermName)) {
+                        $user->givePermissionTo($perm);
+                    }
+                } else {
+                    // Revoke if user has it
+                    $perm = Permission::where('name', $crossPermName)->where('guard_name', 'web')->first();
+                    if ($perm && $user->hasDirectPermission($crossPermName)) {
+                        $user->revokePermissionTo($perm);
+                    }
+                }
+            }
+        }
+
+        // Clear Spatie's permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        return response()->json([
+            'success' => "Cross-branch permissions updated for {$user->name}.",
+            'reload'  => true,
+        ]);
+    }
 }
+
