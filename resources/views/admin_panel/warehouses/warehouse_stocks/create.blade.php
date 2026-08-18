@@ -10,7 +10,7 @@
             @csrf
             <div class="mb-3">
                 <label>Branch</label>
-                @if(auth()->user()->hasRole('super admin'))
+                @if(auth()->user()->hasRole('super admin') || (isset($branches) && $branches->count() > 1))
                     <select name="branch_id" id="branch_select" class="form-control mb-2">
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}">{{ $branch->name ?? 'Branch '.$branch->id }}</option>

@@ -854,12 +854,30 @@
                                 data-name="{{ strtolower($role->name) }}"
                                 data-permissions="{{ json_encode($role->getPermissionNames()) }}">
                                 <div class="role-card-header">
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-start flex-grow-1">
                                         <div class="role-avatar">{{ strtoupper(substr($role->name, 0, 2)) }}</div>
                                         <div class="role-info">
                                             <h4 class="role-name">{{ $role->name }}</h4>
                                             <div class="role-meta">ID: {{ $role->id }} • Created
                                                 {{ $role->created_at?->diffForHumans() ?? 'N/A' }}</div>
+                                            <div class="role-users-list mt-1">
+                                                @if($role->users->count() > 0)
+                                                    @foreach($role->users as $u)
+                                                        <div class="d-flex align-items-center gap-1 flex-wrap mb-1 text-muted" title="User: {{ $u->name }}">
+                                                            <span class="d-inline-flex align-items-center text-dark fw-semibold" style="font-size: 0.78rem;">
+                                                                <i class="fa fa-envelope text-primary me-1" style="font-size: 0.7rem;"></i>{{ $u->email }}
+                                                            </span>
+                                                            <span class="badge" style="background:#e0f2fe;color:#0369a1;font-size:0.68rem;padding:2px 6px;border-radius:4px;">
+                                                                <i class="fa fa-building text-secondary me-1"></i>{{ $u->branch?->name ?? 'Global / Super' }}
+                                                            </span>
+                                                        </div>
+                                                    @endforeach
+                                                @else
+                                                    <div class="text-muted small fst-italic" style="font-size: 0.72rem;">
+                                                        <i class="fa fa-info-circle me-1"></i>No users assigned
+                                                    </div>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="role-actions">
@@ -967,44 +985,82 @@
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+
+                {{-- Tab Navigation for Standard vs Cross-Branch Permissions --}}
+                <ul class="nav nav-pills px-4 pt-3 pb-2" id="rolePermTabs" role="tablist" style="background:#ffffff;border-bottom:1px solid #e2e8f0;gap:8px;">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold py-2 px-3" id="standard-perms-tab" data-bs-toggle="pill" data-bs-target="#standard-perms-pane" type="button" role="tab" style="border-radius:8px;font-size:13px;">
+                            <i class="fa fa-layer-group me-1"></i> Standard Permissions (Home Branch)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold py-2 px-3" id="crossbranch-perms-tab" data-bs-toggle="pill" data-bs-target="#crossbranch-perms-pane" type="button" role="tab" style="border-radius:8px;font-size:13px;">
+                            <i class="fa fa-globe me-1"></i> Cross-Branch Permissions (Other Branches)
+                            <span class="badge bg-primary ms-1" id="crossBranchBadgeCount">0</span>
+                        </button>
+                    </li>
+                </ul>
+
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto; background: #f8fafc;">
                     <form id="permissionForm" action="{{ route('roles.update.permission') }}" method="POST">
                         @csrf
                         <input type="hidden" name="edit_id" id="permEditId">
                         <input type="hidden" name="name" id="permRoleNameInput">
 
-                        <!-- Search and Controls -->
-                        <div class="perm-controls-bar d-flex align-items-center" style="gap:12px;">
-                            <div style="min-width:260px;">
-                                <label class="form-label small mb-1">Module</label>
-                                <div class="perm-search-box">
-                                    <i class="fa fa-th-large"></i>
-                                    <select id="permModuleSelect" class="form-control" style="width:100%"></select>
+                        <div class="tab-content" id="rolePermTabContent">
+                            <!-- TAB 1: Standard Permissions -->
+                            <div class="tab-pane fade show active" id="standard-perms-pane" role="tabpanel">
+                                <!-- Search and Controls -->
+                                <div class="perm-controls-bar d-flex align-items-center mb-3" style="gap:12px;">
+                                    <div style="min-width:260px;">
+                                        <label class="form-label small mb-1">Module</label>
+                                        <div class="perm-search-box">
+                                            <i class="fa fa-th-large"></i>
+                                            <select id="permModuleSelect" class="form-control" style="width:100%"></select>
+                                        </div>
+                                    </div>
+
+                                    <div class="perm-search-wrapper flex-grow-1">
+                                        <div class="perm-search-box">
+                                            <i class="fa fa-search"></i>
+                                            <input type="search" id="permSearch" placeholder="Search standard permissions...">
+                                        </div>
+                                    </div>
+
+                                    <div class="perm-actions-wrapper">
+                                        <label class="select-all-toggle">
+                                            <input type="checkbox" id="selectAllPerms">
+                                            <span class="toggle-label">Select All</span>
+                                        </label>
+                                        <span class="selected-badge" id="selectedCount">
+                                            <i class="fa fa-check-circle"></i>
+                                            <span>0 selected</span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Permission Groups Container -->
+                                <div id="permissionGroupsContainer">
+                                    <!-- Will be populated by JS -->
                                 </div>
                             </div>
 
-                            <div class="perm-search-wrapper flex-grow-1">
-                                <div class="perm-search-box">
+                            <!-- TAB 2: Cross-Branch Permissions -->
+                            <div class="tab-pane fade" id="crossbranch-perms-pane" role="tabpanel">
+                                <div class="alert border-0 mb-3" style="background:#dbeafe;color:#1e40af;border-radius:10px;">
+                                    <i class="fa fa-info-circle me-2"></i>
+                                    <strong>Cross-Branch Permissions:</strong> Grant users with this role access to view / monitor data (stocks, sales, purchases, reports, etc.) across other specific branches.
+                                </div>
+
+                                <div class="perm-search-box mb-3">
                                     <i class="fa fa-search"></i>
-                                    <input type="search" id="permSearch" placeholder="Search permissions...">
+                                    <input type="search" id="crossBranchSearch" placeholder="Search branch or module...">
+                                </div>
+
+                                <div id="crossBranchGroupsContainer">
+                                    <!-- Will be populated by JS -->
                                 </div>
                             </div>
-
-                            <div class="perm-actions-wrapper">
-                                <label class="select-all-toggle">
-                                    <input type="checkbox" id="selectAllPerms">
-                                    <span class="toggle-label">Select All</span>
-                                </label>
-                                <span class="selected-badge" id="selectedCount">
-                                    <i class="fa fa-check-circle"></i>
-                                    <span>0 selected</span>
-                                </span>
-                            </div>
-                        </div>
-
-                        <!-- Permission Groups Container -->
-                        <div id="permissionGroupsContainer">
-                            <!-- Will be populated by JS -->
                         </div>
                     </form>
                 </div>
@@ -1032,10 +1088,11 @@
         const allPermissions = @json($allPermissions);
         // Config-based modules for clean grouping
         const permissionModules = @json($permissionModules);
+        const branchesList = @json($branches ?? []);
+        const crossBranchModules = @json($crossBranchModules ?? []);
 
         $(document).ready(function() {
             // Initialize module select2 and load modules from server
-            // Title overrides for certain module keys to show friendly headings
             var moduleTitleMap = {
                 'productbranch.view': 'Branch Wise Product View',
                 'branch.wise.product.view': 'Branch Wise Product View'
@@ -1065,7 +1122,6 @@
 
                 // Also attempt to include server-side modules if available
                 try {
-                    // If route exists and returns JSON, merge it
                     $.getJSON('{{ route('modules.list') }}')
                         .done(function(res) {
                             (res || []).forEach(function(m) { modulesMap[m] = true; });
@@ -1105,11 +1161,10 @@
             $(document).on('change', '#permModuleSelect', function() {
                 var selected = $(this).val() || [];
                 if (!selected || selected.length === 0) {
-                    $('.permission-group').show();
+                    $('#permissionGroupsContainer .permission-group').show();
                 } else {
-                    // normalize to array
                     if (!Array.isArray(selected)) selected = [selected];
-                    $('.permission-group').each(function() {
+                    $('#permissionGroupsContainer .permission-group').each(function() {
                         var module = $(this).data('module');
                         $(this).toggle(selected.includes(module));
                     });
@@ -1188,6 +1243,9 @@
                 $('#permRoleName').text('Role: ' + name);
                 $('#permRoleNameInput').val(name);
 
+                // Reset tabs to standard
+                $('#standard-perms-tab').tab('show');
+
                 // Clear module select so it does not show a prefilled module
                 var $moduleSel = $('#permModuleSelect');
                 if ($moduleSel.length) {
@@ -1199,7 +1257,7 @@
             });
 
 
-            // Build Permission Groups UI — uses config/permissions.php for clean module grouping
+            // Build Permission Groups UI — Standard & Cross-Branch
             function buildPermissionGroups(assignedPerms) {
                 var container = $('#permissionGroupsContainer');
                 container.empty();
@@ -1310,9 +1368,110 @@
                     container.append(oHtml);
                 }
 
+                // ── BUILD TAB 2: CROSS-BRANCH GROUPS ──
+                var cbContainer = $('#crossBranchGroupsContainer');
+                cbContainer.empty();
+
+                if (!branchesList || branchesList.length === 0) {
+                    cbContainer.html('<p class="text-muted p-3">No branches available.</p>');
+                } else {
+                    var cbHtml = '<div class="accordion" id="roleCrossBranchAccordion">';
+                    branchesList.forEach(function(branch) {
+                        var branchCheckedCount = 0;
+                        var branchModulesHtml = '';
+
+                        Object.keys(crossBranchModules).forEach(function(modKey) {
+                            var modDef = crossBranchModules[modKey];
+                            var modPerms = [];
+
+                            Object.keys(modDef.permissions).forEach(function(permName) {
+                                var permLabel = modDef.permissions[permName];
+                                var crossPermName = "branch:" + branch.id + ":" + permName;
+                                var checked = assignedPerms.includes(crossPermName);
+                                if (checked) branchCheckedCount++;
+
+                                modPerms.push({
+                                    name: crossPermName,
+                                    label: permLabel,
+                                    checked: checked,
+                                    action: permName.split('.').pop()
+                                });
+                            });
+
+                            var icon = modDef.icon || 'fa-folder';
+                            var color = modDef.color || '#2563eb';
+                            var title = modDef.label || modKey;
+
+                            branchModulesHtml += `
+                                <div class="permission-group mb-3 border rounded-3 p-3 bg-white" data-cb-module="${modKey}">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="module-icon" style="background:${color};width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;"><i class="fa ${icon}"></i></span>
+                                            <span class="fw-bold" style="font-size:13px;">${title}</span>
+                                        </div>
+                                        <label class="form-check-label small fw-semibold cursor-pointer mb-0">
+                                            <input type="checkbox" class="form-check-input cb-mod-select" data-branch="${branch.id}" data-mod="${modKey}">
+                                            All
+                                        </label>
+                                    </div>
+                                    <div class="row g-2">
+                            `;
+
+                            modPerms.forEach(function(p) {
+                                var knownActions = ['view','create','edit','delete','print','export','ledger','report'];
+                                var actionClass = knownActions.includes(p.action) ? p.action : 'other';
+                                var safeId = 'cb_' + branch.id + '_' + p.name.replace(/[^a-zA-Z0-9]/g, '_');
+
+                                branchModulesHtml += `
+                                    <div class="col-12 col-md-6 col-lg-4 perm-item-wrapper" data-name="${p.name.toLowerCase()} ${p.label.toLowerCase()} ${branch.name.toLowerCase()}">
+                                        <div class="perm-item ${p.checked ? 'checked' : ''}" onclick="toggleCbPerm('${safeId}')">
+                                            <input type="checkbox" name="permissions[]" value="${p.name}" id="${safeId}" class="cb-perm-input" data-branch="${branch.id}" data-mod="${modKey}" ${p.checked ? 'checked' : ''} onclick="event.stopPropagation()">
+                                            <label for="${safeId}" onclick="event.stopPropagation(); toggleCbPerm('${safeId}')">${p.label}</label>
+                                            <span class="perm-action-badge ${actionClass}">${p.action}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            branchModulesHtml += `</div></div>`;
+                        });
+
+                        cbHtml += `
+                            <div class="accordion-item mb-3" style="border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                                <h2 class="accordion-header" id="cbHeading_${branch.id}">
+                                    <button class="accordion-button ${branchCheckedCount > 0 ? '' : 'collapsed'} py-3 px-4 fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#cbCollapse_${branch.id}" style="background:#f8fafc;font-size:14px;color:#1e293b;">
+                                        <span class="badge bg-primary me-2">🏢</span>
+                                        <span>${branch.name}</span>
+                                        <span class="ms-auto badge ${branchCheckedCount > 0 ? 'bg-success text-white' : 'bg-white text-muted border'} me-3 cb-branch-active-count" id="cbActiveCount_${branch.id}">${branchCheckedCount} active</span>
+                                    </button>
+                                </h2>
+                                <div id="cbCollapse_${branch.id}" class="accordion-collapse collapse ${branchCheckedCount > 0 ? 'show' : ''}" data-bs-parent="#roleCrossBranchAccordion">
+                                    <div class="accordion-body p-3" style="background:#f8fafc;">
+                                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom bg-white p-2 rounded">
+                                            <span class="text-muted small fw-semibold"><i class="fa fa-info-circle me-1 text-primary"></i>Permissions for <strong>${branch.name}</strong></span>
+                                            <label class="form-check-label small fw-bold d-flex align-items-center gap-1 cursor-pointer mb-0">
+                                                <input class="form-check-input cb-branch-all-toggle" type="checkbox" data-branch="${branch.id}">
+                                                Select All for this Branch
+                                            </label>
+                                        </div>
+                                        ${branchModulesHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    cbHtml += '</div>';
+                    cbContainer.html(cbHtml);
+                }
+
                 // togglePerm global helper
                 window.togglePerm = function(id) {
                     var checkbox = $('#perm-' + id);
+                    checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
+                };
+
+                window.toggleCbPerm = function(safeId) {
+                    var checkbox = $('#' + safeId);
                     checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');
                 };
 
@@ -1323,15 +1482,39 @@
 
             // Update selected count
             function updateSelectedCount() {
-                var count = $('#permissionGroupsContainer input[type="checkbox"][name="permissions[]"]:checked')
-                    .length;
-                $('#selectedCount span').text(count + ' selected');
+                var standardCount = $('#permissionGroupsContainer input[type="checkbox"][name="permissions[]"]:checked').length;
+                var cbCount = $('#crossBranchGroupsContainer input[type="checkbox"][name="permissions[]"]:checked').length;
+                var totalCount = standardCount + cbCount;
+
+                $('#selectedCount span').text(totalCount + ' selected');
+                $('#crossBranchBadgeCount').text(cbCount);
+
+                // Update branch-specific active count badges
+                branchesList.forEach(function(branch) {
+                    var bChecked = $('#crossBranchGroupsContainer .cb-perm-input[data-branch="' + branch.id + '"]:checked').length;
+                    var bTotal = $('#crossBranchGroupsContainer .cb-perm-input[data-branch="' + branch.id + '"]').length;
+                    var badge = $('#cbActiveCount_' + branch.id);
+                    badge.text(bChecked + ' active');
+                    if (bChecked > 0) {
+                        badge.removeClass('bg-white text-muted border').addClass('bg-success text-white');
+                    } else {
+                        badge.removeClass('bg-success text-white').addClass('bg-white text-muted border');
+                    }
+
+                    var bToggle = $('.cb-branch-all-toggle[data-branch="' + branch.id + '"]');
+                    if (bChecked === 0) {
+                        bToggle.prop('checked', false).prop('indeterminate', false);
+                    } else if (bChecked === bTotal) {
+                        bToggle.prop('checked', true).prop('indeterminate', false);
+                    } else {
+                        bToggle.prop('checked', false).prop('indeterminate', true);
+                    }
+                });
             }
 
             // Update module select states
             function updateModuleSelectStates() {
-                $('.permission-group').each(function() {
-                    var module = $(this).data('module');
+                $('#permissionGroupsContainer .permission-group').each(function() {
                     var total = $(this).find('input[name="permissions[]"]').length;
                     var checked = $(this).find('input[name="permissions[]"]:checked').length;
                     var $select = $(this).find('.module-select');
@@ -1346,16 +1529,15 @@
                 });
             }
 
-            // Permission checkbox change
+            // Permission checkbox change (standard or cross-branch)
             $(document).on('change', 'input[name="permissions[]"]', function() {
                 $(this).closest('.perm-item').toggleClass('checked', $(this).is(':checked'));
                 updateSelectedCount();
                 updateModuleSelectStates();
             });
 
-            // Module select all
+            // Module select all (standard)
             $(document).on('change', '.module-select', function() {
-                var module = $(this).data('module');
                 var checked = $(this).is(':checked');
                 $(this).closest('.permission-group').find('input[name="permissions[]"]').prop('checked',
                     checked).each(function() {
@@ -1364,7 +1546,33 @@
                 updateSelectedCount();
             });
 
-            // Select all permissions
+            // Cross-branch module select all
+            $(document).on('change', '.cb-mod-select', function() {
+                var branchId = $(this).data('branch');
+                var modKey = $(this).data('mod');
+                var checked = $(this).is(':checked');
+
+                var perms = $('#crossBranchGroupsContainer .cb-perm-input[data-branch="' + branchId + '"][data-mod="' + modKey + '"]');
+                perms.prop('checked', checked).each(function() {
+                    $(this).closest('.perm-item').toggleClass('checked', checked);
+                });
+                updateSelectedCount();
+            });
+
+            // Cross-branch branch select all
+            $(document).on('change', '.cb-branch-all-toggle', function() {
+                var branchId = $(this).data('branch');
+                var checked = $(this).is(':checked');
+
+                var perms = $('#crossBranchGroupsContainer .cb-perm-input[data-branch="' + branchId + '"]');
+                perms.prop('checked', checked).each(function() {
+                    $(this).closest('.perm-item').toggleClass('checked', checked);
+                });
+                $('.cb-mod-select[data-branch="' + branchId + '"]').prop('checked', checked);
+                updateSelectedCount();
+            });
+
+            // Select all permissions (Standard tab)
             $('#selectAllPerms').change(function() {
                 var checked = $(this).is(':checked');
                 $('#permissionGroupsContainer input[name="permissions[]"]').prop('checked', checked).each(
@@ -1375,10 +1583,19 @@
                 updateModuleSelectStates();
             });
 
-            // Search permissions
+            // Search permissions (Standard tab)
             $('#permSearch').on('input', function() {
                 var q = $(this).val().toLowerCase();
-                $('.perm-item-wrapper').each(function() {
+                $('#permissionGroupsContainer .perm-item-wrapper').each(function() {
+                    var name = $(this).data('name') || '';
+                    $(this).toggle(name.indexOf(q) !== -1);
+                });
+            });
+
+            // Search cross-branch permissions
+            $('#crossBranchSearch').on('input', function() {
+                var q = $(this).val().toLowerCase();
+                $('#crossBranchGroupsContainer .perm-item-wrapper').each(function() {
                     var name = $(this).data('name') || '';
                     $(this).toggle(name.indexOf(q) !== -1);
                 });
@@ -1390,7 +1607,8 @@
                 $('.role-card').each(function() {
                     var name = $(this).data('name') || '';
                     var perms = JSON.stringify($(this).data('permissions') || []).toLowerCase();
-                    $(this).toggle(name.indexOf(q) !== -1 || perms.indexOf(q) !== -1);
+                    var cardText = $(this).text().toLowerCase();
+                    $(this).toggle(name.indexOf(q) !== -1 || perms.indexOf(q) !== -1 || cardText.indexOf(q) !== -1);
                 });
             });
 

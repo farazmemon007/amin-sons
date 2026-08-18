@@ -378,7 +378,7 @@
 
                         <!-- Branch & Location Filter Form -->
                         <form action="{{ route('warehouse_stocks.index') }}" method="GET" class="d-flex align-items-center gap-2 mb-0 flex-shrink-0">
-                            @if($isSuperAdmin)
+                            @if(!empty($showBranchFilter) || $isSuperAdmin || (isset($branches) && $branches->count() > 1))
                                 <select name="branch_id" id="filter_branch_id" class="form-select form-select-sm" style="min-width: 125px; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px;">
                                     <option value="">All Branches</option>
                                     @foreach($branches as $branch)

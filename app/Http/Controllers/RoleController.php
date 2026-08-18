@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Branch;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
@@ -13,7 +14,7 @@ class RoleController extends Controller
 {
      public function index()
     {
-        $roles = Role::all();
+        $roles = Role::with(['users.branch'])->get();
 
         // Only show standard (non-cross-branch) permissions — exclude branch:{id}:* dynamic ones
         $allPermissions = Permission::where('name', 'not like', 'branch:%:%')
@@ -23,7 +24,21 @@ class RoleController extends Controller
         // Pass config-based module definitions to the view for clean grouping
         $permissionModules = config('permissions', []);
 
-        return view('admin_panel.roles.role', compact(['roles', 'allPermissions', 'permissionModules']));
+        // Pass all branches for cross-branch assignment
+        $branches = Branch::orderBy('name')->get(['id', 'name']);
+        
+        // Filter cross-branch allowed modules
+        $crossBranchModules = collect($permissionModules)
+            ->filter(fn($m) => !empty($m['cross_branch']))
+            ->toArray();
+
+        return view('admin_panel.roles.role', compact([
+            'roles', 
+            'allPermissions', 
+            'permissionModules', 
+            'branches', 
+            'crossBranchModules'
+        ]));
     }
 
 
@@ -38,36 +53,21 @@ class RoleController extends Controller
             return ['errors' => $validator->errors()];
         }
 
-
-      
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()]);
         }
 
-        // Step 2: Check for user_id uniqueness (exclude self in edit)
-        // $userExists = Branch::where('user_id', $request->user_id)
-        //     ->when($editId, fn($q) => $q->where('id', '!=', $editId))
-        //     ->exists();
-
-        // if ($userExists) {
-        //     return response()->json([
-        //         'errors' => [
-        //             'user_id' => ['This user is already assigned to another branch.']
-        //         ]
-        //     ]);
-        // }
-
-        // Step 3: Save or update logic
+        // Save or update logic
         if (!empty($editId)) {
-            $role = role::find($editId);
+            $role = Role::find($editId);
             $msg = [
-                'success' => 'Roles Updated Successfully',
+                'success' => 'Role Updated Successfully',
                 'reload' => true
             ];
         } else {
-            $role = new role();
+            $role = new Role();
             $msg = [
-                'success' => 'Roles Created Successfully',
+                'success' => 'Role Created Successfully',
                 'redirect' => route('roles.index')
             ];
         }
@@ -76,13 +76,8 @@ class RoleController extends Controller
         $role->save();
 
         return response()->json($msg);
-        
     }
 
-    /**
-     * Display the specified resource.
-     */
-  
     /**
      * Remove the specified resource from storage.
      */
@@ -92,21 +87,30 @@ class RoleController extends Controller
         $role->delete();
 
         return redirect()->route('roles.index')->with('success', 'Role deleted successfully.');
-
     }
 
     public function updatePermissions(Request $request)
     {
-        // $request->validate([
-        //     'edit_id' => 'required|exists:roles,id',
-        //     'permissions' => 'array',
-        //     'permissions.*' => 'exists:permissions,name'
-        // ]);
-        // dd($request->toArray());
         $role = Role::findOrFail($request->edit_id);
+        $permissions = $request->permissions ?? [];
 
-        // Assign new roles (by name)
-        $role->syncPermissions($request->permissions ?? []);
+        // Ensure all submitted permissions (including dynamic branch:{id}:{perm}) exist in DB
+        foreach ($permissions as $permName) {
+            Permission::firstOrCreate([
+                'name' => $permName,
+                'guard_name' => 'web'
+            ]);
+        }
+
+        // Sync permissions
+        $role->syncPermissions($permissions);
+
+        // Clear Spatie permission cache
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => 'Role permissions updated successfully!']);
+        }
 
         return back()->with('success', 'Role permissions updated successfully!');
     }
