@@ -401,43 +401,7 @@ class StockRequestController extends Controller
                             \Log::warning('Stock entry not found in stocks table for Branch-' . $sendingBranchId . ', Product-' . $item->product_id);
                         }
 
-                        // ENSURE PRODUCT EXISTS IN RECEIVING BRANCH - Create if needed
-                        $product = Product::where('id', $item->product_id)
-                            ->where('branch_id', $receivingBranchId)
-                            ->first();
-                        
-                        if (!$product) {
-                            \Log::warning('Product not found in branch ' . $receivingBranchId . '. Creating product: ' . $item->product_id);
-                            // Create product FOR THIS BRANCH with all details from source product
-                            $sourceProduct = Product::find($item->product_id);
-                            
-                            $product = Product::create([
-                                'branch_id' => $receivingBranchId,
-                                'item_name' => $sourceProduct->item_name ?? 'Product #' . $item->product_id,
-                                'item_code' => $sourceProduct->item_code ?? 'P-' . $item->product_id,
-                                'category_id' => $sourceProduct->category_id ?? null,
-                                'sub_category_id' => $sourceProduct->sub_category_id ?? null,
-                                'brand_id' => $sourceProduct->brand_id ?? null,
-                                'unit_id' => $sourceProduct->unit_id ?? null,
-                                'price' => $item->unit_price ?? 0,
-                                'wholesale_price' => $sourceProduct->wholesale_price ?? 0,
-                                'color' => $sourceProduct->color ?? null,
-                                'alert_quantity' => $sourceProduct->alert_quantity ?? 10,
-                                'initial_stock' => 0,
-                                'is_part' => $sourceProduct->is_part ?? 0,
-                                'is_assembled' => $sourceProduct->is_assembled ?? 0,
-                                'model' => $sourceProduct->model ?? 'N/A',
-                                'hs_code' => $sourceProduct->hs_code ?? null,
-                                'pack_type' => $sourceProduct->pack_type ?? null,
-                                'pack_qty' => $sourceProduct->pack_qty ?? null,
-                                'piece_per_pack' => $sourceProduct->piece_per_pack ?? null,
-                                'loose_piece' => $sourceProduct->loose_piece ?? null,
-                                'type_id' => $sourceProduct->type_id ?? null,
-                                'barcode_path' => $sourceProduct->barcode_path ?? null,
-                                'image' => $sourceProduct->image ?? null,
-                            ]);
-                            \Log::info('Product created in branch ' . $receivingBranchId . ': ' . $product->id);
-                        }
+
 
                         // ✅ STEP 3: ADD to receiving warehouse_stocks table
                         $destWarehouseStock = WarehouseStock::where('branch_id', $receivingBranchId)

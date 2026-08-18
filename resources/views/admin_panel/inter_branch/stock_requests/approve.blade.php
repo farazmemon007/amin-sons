@@ -1,214 +1,309 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
-    <div class="container-fluid">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-success text-white">
-                <h5 class="mb-0">✓ Approve Stock Request - Stock Request #{{ $stockRequest->id }}</h5>
-            </div>
-            <div class="card-body">
-                @if ($errors->any())
-                    <div class="alert alert-danger">
-                        <strong>Validation Errors:</strong>
-                        <ul>
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+<style>
+    /* Premium Table & Field Fixes for Stock Approval */
+    .table-approve-custom {
+        min-width: 1320px;
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+    
+    .table-approve-custom th {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        padding: 14px 12px !important;
+        vertical-align: middle !important;
+        white-space: nowrap;
+        border-bottom: 2px solid #0f172a !important;
+    }
+    
+    .table-approve-custom td {
+        padding: 12px 10px !important;
+        vertical-align: middle !important;
+        border-color: #e2e8f0;
+        background-color: #ffffff;
+    }
 
-                <!-- Request Summary -->
-                <div class="alert alert-info">
-                    <strong>Request from:</strong>
-                    {{ $stockRequest->fromBranch->name ?? 'Branch #' . $stockRequest->from_branch_id }} <br>
-                    <strong>Requested on:</strong> {{ $stockRequest->created_at->format('M d, Y H:i') }} <br>
-                    <strong>Remarks:</strong> {{ $stockRequest->remarks ?? 'None' }}
+    /* Fixed Select & Input Field Heights, Widths, and Padding */
+    .table-approve-custom select.form-control,
+    .table-approve-custom input.form-control {
+        height: 40px !important;
+        min-height: 40px !important;
+        line-height: 1.4 !important;
+        padding: 6px 10px !important;
+        font-size: 0.88rem !important;
+        border-radius: 6px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+    }
+
+    .table-approve-custom select.form-control:focus,
+    .table-approve-custom input.form-control:focus {
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.2) !important;
+        border-color: #2563eb !important;
+        outline: none !important;
+    }
+
+    .warehouse-select {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
+        font-weight: 500 !important;
+    }
+
+    .warehouse-stock {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+    }
+
+    .approved-qty {
+        background-color: #ffffff !important;
+        border: 1.5px solid #94a3b8 !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+    }
+
+    .unit-price {
+        background-color: #fffbeb !important;
+        border: 1.5px solid #fde68a !important;
+        font-weight: 700 !important;
+        color: #b45309 !important;
+    }
+
+    .delivery-charges {
+        background-color: #fff7ed !important;
+        border: 1.5px solid #ffedd5 !important;
+        font-weight: 700 !important;
+        color: #c2410c !important;
+    }
+
+    .destination-warehouse-select {
+        background-color: #f0fdf4 !important;
+        border: 1.5px solid #bbf7d0 !important;
+        font-weight: 600 !important;
+        color: #15803d !important;
+    }
+
+    /* Request Summary Card Styling */
+    .request-summary-card {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        color: #ffffff;
+        border-radius: 10px;
+        padding: 18px 24px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .request-summary-card .summary-label {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        opacity: 0.9;
+        margin-bottom: 3px;
+        font-weight: 600;
+    }
+
+    .request-summary-card .summary-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white py-3">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-check-circle me-2"></i> Approve Stock Request - Stock Request #{{ $stockRequest->id }}</h5>
+        </div>
+        <div class="card-body p-4">
+            @if ($errors->any())
+                <div class="alert alert-danger mb-4">
+                    <strong>Validation Errors:</strong>
+                    <ul class="mb-0 mt-1">
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
+            @endif
 
-                <form id="approveForm" action="{{ route('inter_branch_stock_requests.approve', $stockRequest) }}"
-                    method="POST">
-                    @csrf
+            <!-- Request Summary Card -->
+            <div class="request-summary-card mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-4 mb-2 mb-md-0">
+                        <div class="summary-label"><i class="fas fa-store me-1"></i> Request From</div>
+                        <div class="summary-value">{{ $stockRequest->fromBranch->name ?? 'Branch #' . $stockRequest->from_branch_id }}</div>
+                    </div>
+                    <div class="col-md-4 mb-2 mb-md-0">
+                        <div class="summary-label"><i class="fas fa-calendar-alt me-1"></i> Requested On</div>
+                        <div class="summary-value">{{ $stockRequest->created_at->format('M d, Y H:i') }}</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="summary-label"><i class="fas fa-comment-alt me-1"></i> Remarks</div>
+                        <div class="summary-value">{{ $stockRequest->remarks ?? 'None' }}</div>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Approval Table -->
-                    <div class="table-responsive mb-4">
-                        <table class="table table-bordered">
-                            <thead class="table-light">
+            <form id="approveForm" action="{{ route('inter_branch_stock_requests.approve', $stockRequest) }}" method="POST">
+                @csrf
+
+                <!-- Approval Table -->
+                <div class="table-responsive mb-4 shadow-sm rounded" style="border: 1px solid #cbd5e1;">
+                    <table class="table table-bordered align-middle table-approve-custom mb-0">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 230px;">Product Details</th>
+                                <th style="min-width: 90px;" class="text-center">Req Qty</th>
+                                <th style="min-width: 190px;">Select Source Warehouse</th>
+                                <th style="min-width: 120px;" class="text-center">Available Stock</th>
+                                <th style="min-width: 120px;" class="text-center">Approve Qty</th>
+                                <th style="min-width: 135px;" class="text-end">Unit Price</th>
+                                <th style="min-width: 145px;" class="text-end">Delivery Charges</th>
+                                <th style="min-width: 200px;">Destination Warehouse</th>
+                                <th style="min-width: 140px;" class="text-end">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($items as $item)
                                 <tr>
-                                    <th width="10%">Product</th>
-                                    <th width="8%">Requested Qty</th>
-                                    <th width="12%">Select Warehouse</th>
-                                    <th width="5%">Available Stock</th>
-                                    <th width="9%">Approve Qty</th>
-                                    <th width="7%">Unit Price</th>
-                                    <th width="8%">Delivery Charges</th>
-                                    <th width="12%">Destination branch Warehouse</th>
-                                    <th width="10%">Total Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach ($items as $item)
-                                    <tr>
-                                        <td>
-                                            <strong>{{ $item->product->item_name ?? 'Product #' . $item->product_id }}</strong>
-                                            <br>
-                                            <small class="text-muted">(Code:
-                                                {{ $item->product->item_code ?? 'N/A' }})</small>
-                                            <input type="hidden" name="item_id[]" value="{{ $item->id }}">
-                                            <input type="hidden" name="requested_branch"
-                                                value="{{ $stockRequest->from_branch_id }}">
-                                        </td>
+                                    <td>
+                                        <strong class="d-block text-dark mb-1" style="font-size: 0.92rem; line-height: 1.3;">{{ $item->product->item_name ?? 'Product #' . $item->product_id }}</strong>
+                                        <span class="badge bg-light text-secondary border">(Code: {{ $item->product->item_code ?? 'N/A' }})</span>
+                                        <input type="hidden" name="item_id[]" value="{{ $item->id }}">
+                                        <input type="hidden" name="requested_branch" value="{{ $stockRequest->from_branch_id }}">
+                                    </td>
 
-                                        <td class="text-center">
-                                            <span class="badge bg-primary">{{ $item->requested_qty }}</span>
-                                        </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary px-3 py-2 fs-6" style="font-weight: 700;">{{ $item->requested_qty }}</span>
+                                    </td>
 
-                                        <td>
-                                           
- <select name="warehouse_id[]"
-                                                class="form-control form-control-sm warehouse-select" required
-                                                data-product-id="{{ $item->product_id }}"
-                                                data-item-index="{{ $loop->index }}">
-                                                <option value="">-- Select Destination --</option>
-                                                @foreach ($sourceWarehouses as $warehouse)
-                                                    <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}
-                                                    </option>
-                                                @endforeach
+                                    <td>
+                                        <select name="warehouse_id[]"
+                                            class="form-control warehouse-select" required
+                                            data-product-id="{{ $item->product_id }}"
+                                            data-item-index="{{ $loop->index }}">
+                                            <option value="">-- Select Source --</option>
+                                            @foreach ($sourceWarehouses as $warehouse)
+                                                <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
 
+                                    <td>
+                                        <input type="number"
+                                            class="form-control warehouse-stock text-center" readonly
+                                            value="0">
+                                    </td>
 
+                                    <td>
+                                        <input type="text" name="approved_qty[]"
+                                            class="form-control approved-qty text-center" required
+                                            min="0" value="" placeholder="Enter Qty"
+                                            data-item-id="{{ $item->id }}">
+                                    </td>
 
+                                    <td>
+                                        <input type="number" name="unit_price[]"
+                                            class="form-control unit-price text-end"
+                                            step="0.01" min="0" value="{{ number_format($item->defaultUnitPrice ?? ($item->product->wholesale_price ?: $item->product->price ?: 0), 2, '.', '') }}">
+                                    </td>
 
-                                        </td>
+                                    <td>
+                                        <input type="text" name="delivery_charges[]"
+                                            class="form-control delivery-charges text-end"
+                                            min="0" step="0.01" value="" placeholder="Enter Charges">
+                                    </td>
 
-                                        <td>
-                                            <input type="number"
-                                                class="form-control form-control-sm warehouse-stock text-center" readonly
-                                                value="0"
-                                                style="background-color: #e8f4f8; border-color: #80deea; font-weight: 600;">
-                                        </td>
+                                    <td>
+                                        <select name="destination_warehouse_id[]"
+                                            class="form-control destination-warehouse-select" required>
+                                            <option value="">-- Select Warehouse --</option>
+                                            @foreach ($destinationWarehouses as $warehouse)
+                                                <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </td>
 
-                                        <td>
-                                            <input type="text" name="approved_qty[]"
-                                                class="form-control form-control-sm approved-qty text-center" required
-                                                min="0" value="" placeholder="Enter Qty"
-                                                data-item-id="{{ $item->id }}">
-                                        </td>
-
-                                        <td>
-                                            <input type="number" name="unit_price[]"
-                                                class="form-control form-control-sm unit-price text-end"
-                                                step="0.01" min="0" value="{{ number_format($item->defaultUnitPrice ?? ($item->product->wholesale_price ?: $item->product->price ?: 0), 2, '.', '') }}"
-                                                style="background-color: #fff3cd; border-color: #ffc107; font-weight: 600;">
-                                        </td>
-
-                                        <td class="text-end">
-                                            <input type="text" name="delivery_charges[]"
-                                                class="form-control form-control-sm delivery-charges text-end"
-                                                min="0" step="0.01" value="" placeholder="Enter Charges"
-                                                style="background-color: #f0f0f0; border-color: #ff9800; font-weight: 600;">
-
-
-                                        </td>
-
-
-
-                                        <td>
-                                             <select name="destination_warehouse_id[]"
-                                                class="form-control form-control-sm destination-warehouse-select" required
-                                                style="background-color: #e8f9f5; border-color: #4caf50; font-weight: 500;">
-                                                <option value="">-- Select Warehouse --</option>
-                                                @foreach ($destinationWarehouses as $warehouse)
-                                                    <option value="{{ $warehouse->id }}">{{ $warehouse->warehouse_name }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-
-
-
-                                                                                       </select>
-                                        </td>
-                                        <td>
-                                            <strong class="total-amount"
-                                                style="font-size: 1.15em; color: #28a745;">0.00</strong>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                            <tfoot>
-                                <tr style="background-color: #f9f9f9; border-top: 2px solid #dee2e6;">
-                                    <td colspan="8" class="text-end" style="font-weight: 600; padding-right: 15px;">Items
-                                        Total:</td>
-                                    <td class="text-end"
-                                        style="background-color: #f0f8f6; border-right: 2px solid #dee2e6;">
-                                        <strong id="items-total" style="font-size: 1.15em; color: #28a745;">0.00</strong>
+                                    <td class="text-end">
+                                        <strong class="total-amount text-success fs-6" style="font-weight: 700;">0.00</strong>
                                     </td>
                                 </tr>
-                                <tr style="background-color: #f9f9f9;">
-                                    <td colspan="8" class="text-end" style="font-weight: 600; padding-right: 15px;">
-                                        Delivery Charges:</td>
-                                    <td class="text-end"
-                                        style="background-color: #fff8f0; border-right: 2px solid #dee2e6;">
-                                        <strong id="charges-total" style="font-size: 1.15em; color: #ff9800;">0.00</strong>
-                                    </td>
-                                </tr>
-                                <tr
-                                    style="font-weight: bold; background-color: #e8f5e9; border-top: 2px solid #4caf50; border-bottom: 2px solid #4caf50;">
-                                    <td colspan="8" class="text-end"
-                                        style="color: #1b5e20; font-weight: 600; padding-right: 15px;">GRAND TOTAL:</td>
-                                    <td class="text-end"
-                                        style="background-color: #dcefd9; border-right: 2px solid #4caf50;">
-                                        <strong id="grand-total" style="font-size: 1.25em; color: #1b5e20;">0.00</strong>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-
-                    <!-- Buttons -->
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-success" id="submitBtn">
-                            <i class="fas fa-check-circle"></i> Approve Request
-                        </button>
-                        <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#rejectModal" data-bs-toggle="modal"
-                            data-bs-target="#rejectModal">
-                            <i class="fas fa-times-circle"></i> Reject Request
-                        </button>
-                        <a href="{{ route('inter_branch_stock_requests.index') }}" class="btn btn-secondary">
-                            Back
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Reject Modal -->
-    <div class="modal fade" id="rejectModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Reject Request</h5>
-                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                            @endforeach
+                        </tbody>
+                        <tfoot>
+                            <tr style="background-color: #f8fafc; border-top: 2px solid #cbd5e1;">
+                                <td colspan="8" class="text-end fw-bold py-3" style="padding-right: 18px; color: #334155; font-size: 0.95rem;">Items Total:</td>
+                                <td class="text-end py-3" style="background-color: #f0fdf4;">
+                                    <strong id="items-total" class="text-success fs-6" style="font-weight: 700;">0.00</strong>
+                                </td>
+                            </tr>
+                            <tr style="background-color: #f8fafc;">
+                                <td colspan="8" class="text-end fw-bold py-3" style="padding-right: 18px; color: #334155; font-size: 0.95rem;">Delivery Charges:</td>
+                                <td class="text-end py-3" style="background-color: #fff7ed;">
+                                    <strong id="charges-total" class="fs-6" style="font-weight: 700; color: #ea580c;">0.00</strong>
+                                </td>
+                            </tr>
+                            <tr style="background-color: #ecfdf5; border-top: 2px solid #10b981; border-bottom: 2px solid #10b981;">
+                                <td colspan="8" class="text-end fw-bold py-3" style="color: #065f46; font-size: 1.05rem; padding-right: 18px;">GRAND TOTAL:</td>
+                                <td class="text-end py-3" style="background-color: #d1fae5;">
+                                    <strong id="grand-total" style="font-size: 1.3rem; font-weight: 800; color: #065f46;">0.00</strong>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
-                <form action="{{ route('inter_branch_stock_requests.reject', $stockRequest) }}" method="POST">
-                    @csrf
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Rejection Reason</label>
-                            <textarea name="rejection_reason" class="form-control" rows="3" required
-                                placeholder="Why are you rejecting this request?"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Confirm Rejection</button>
-                    </div>
-                </form>
-            </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success px-4 py-2 fw-bold" id="submitBtn">
+                        <i class="fas fa-check-circle me-1"></i> Approve Request
+                    </button>
+                    <button type="button" class="btn btn-danger px-4 py-2 fw-bold" data-toggle="modal" data-target="#rejectModal" data-bs-toggle="modal" data-bs-target="#rejectModal">
+                        <i class="fas fa-times-circle me-1"></i> Reject Request
+                    </button>
+                    <a href="{{ route('inter_branch_stock_requests.index') }}" class="btn btn-secondary px-4 py-2 fw-bold">
+                        Back
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold">Reject Request</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form action="{{ route('inter_branch_stock_requests.reject', $stockRequest) }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Rejection Reason</label>
+                        <textarea name="rejection_reason" class="form-control" rows="3" required
+                            placeholder="Why are you rejecting this request?"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger fw-bold">Confirm Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('js')
@@ -345,7 +440,6 @@
                         // Clear approve qty and totals for user to enter new value
                         calculateRowTotal($row);
                         calculateGrandTotal();
-                        updateTransferDestinations(); // ✅ Update destination display
                     },
                     error: function(xhr, status, error) {
                         $stockField.val('0');
@@ -354,7 +448,6 @@
                         console.error('Error loading warehouse stock:', error);
                         calculateRowTotal($row);
                         calculateGrandTotal();
-                        updateTransferDestinations(); // ✅ Update destination display
                     }
                 });
             });
@@ -372,7 +465,6 @@
 
                 calculateRowTotal($row);
                 calculateGrandTotal();
-                updateTransferDestinations(); // ✅ Update destination display
             });
 
             // When user enters/updates unit price
@@ -387,107 +479,8 @@
                 calculateGrandTotal();
             });
 
-            // ✅ Initialize destination warehouses
-            const destinationWarehouses = {!! json_encode($destinationWarehouses ?? []) !!};
-
-            // ✅ Initialize warehouse cards
-            function initializeDestinationWarehouses() {
-                if (destinationWarehouses.length === 0) {
-                    return;
-                }
-
-                const container = $('#destinationWarehouses');
-                container.empty();
-
-                destinationWarehouses.forEach(function(warehouse) {
-                    const warehouseId = warehouse.id;
-                    const warehoseName = warehouse.warehouse_name;
-
-                    const card = `
-                <div class="col-md-6 col-lg-4">
-                    <div class="card border-info h-100" style="background-color: #f0f7ff;">
-                        <div class="card-header bg-info text-white" style="padding: 10px 15px;">
-                            <h6 class="mb-0" style="font-size: 0.95rem;">
-                                <i class="fas fa-warehouse"></i> ${warehoseName}
-                            </h6>
-                        </div>
-                        <div class="card-body" style="padding: 12px 15px;">
-                            <div class="transfer-list-${warehouseId}" style="max-height: 250px; overflow-y: auto;">
-                                <!-- Products will be listed here -->
-                            </div>
-                            <div class="no-products-${warehouseId}" class="text-muted small" style="padding: 20px; text-align: center;">
-                                <i class="fas fa-inbox"></i> No products assigned
-                            </div>
-                            <div class="warehouse-total-${warehouseId}" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ccc; display: none;">
-                                <small class="fw-bold">Total Units: <span class="total-units-${warehouseId}">0</span></small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-                    container.append(card);
-                });
-
-                $('#noTransferMsg').hide();
-                updateTransferDestinations();
-            }
-
-            // ✅ Update transfer destinations based on approved quantities
-            function updateTransferDestinations() {
-                let hasTransfers = false;
-
-                destinationWarehouses.forEach(function(warehouse) {
-                    const warehouseId = warehouse.id;
-                    const $productList = $(`.transfer-list-${warehouseId}`);
-                    const $noProducts = $(`.no-products-${warehouseId}`);
-                    const $warehouseTotal = $(`.warehouse-total-${warehouseId}`);
-
-                    let totalUnits = 0;
-                    let productsHtml = '';
-
-                    // Check each row for products going to this warehouse
-                    $('.table tbody tr').each(function() {
-                        const selectedWarehouse = $(this).find('.warehouse-select').val();
-                        const productName = $(this).find('strong').text().trim();
-                        const approvedQty = parseInt($(this).find('.approved-qty').val()) || 0;
-                        const productCode = $(this).find('small.text-muted').text().trim();
-
-                        if (selectedWarehouse == warehouseId && approvedQty > 0) {
-                            hasTransfers = true;
-                            totalUnits += approvedQty;
-
-                            productsHtml += `
-                        <div style="margin-bottom: 8px; padding: 8px; background: white; border-left: 3px solid #0d6efd; border-radius: 3px;">
-                            <small class="d-block fw-bold">${productName}</small>
-                            <small class="text-muted d-block">${productCode}</small>
-                            <small class="badge bg-success">Qty: ${approvedQty}</small>
-                        </div>
-                    `;
-                        }
-                    });
-
-                    if (productsHtml) {
-                        $productList.html(productsHtml);
-                        $noProducts.hide();
-                        $warehouseTotal.show();
-                        $(`.total-units-${warehouseId}`).text(totalUnits);
-                    } else {
-                        $productList.html('');
-                        $noProducts.show();
-                        $warehouseTotal.hide();
-                    }
-                });
-
-                if (hasTransfers) {
-                    $('#noTransferMsg').hide();
-                } else {
-                    $('#noTransferMsg').show();
-                }
-            }
-
-            // Initial calculation and destination setup
+            // Initial calculation
             calculateGrandTotal();
-            initializeDestinationWarehouses();
         });
     </script>
 @endsection
