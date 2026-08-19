@@ -1886,13 +1886,21 @@ class PurchaseController extends Controller
         // Mark as local so store() updates stock immediately
         $request->merge(['purchase_type' => 'local']);
 
-        // Ensure vendor_name is resolved from whichever hidden field is populated
-        // (blade sends vendor_name as either the text input or the hidden field filled by JS)
-        if (!$request->filled('vendor_name') && $request->filled('vendor_id')) {
-            $vendor = Vendor::find($request->vendor_id);
-            if ($vendor) {
-                $request->merge(['vendor_name' => $vendor->name]);
-            }
+        $mode = $request->input('_vendor_mode', 'local');
+        if ($mode === 'vendor' || $request->filled('vendor_id_select') || $request->filled('vendor_id')) {
+            $vid = $request->input('vendor_id_select') ?: $request->input('vendor_id');
+            $vendor = Vendor::find($vid);
+            $request->merge([
+                'vendor_id' => $vendor ? $vendor->id : null,
+                'vendor_name' => $vendor ? $vendor->name : $request->input('vendor_name')
+            ]);
+        } else {
+            // Local market shop name
+            $shopName = $request->input('local_vendor_name') ?: $request->input('vendor_name') ?: $request->input('vendor_name_text');
+            $request->merge([
+                'vendor_id' => null,
+                'vendor_name' => $shopName ? trim($shopName) : 'Local Market'
+            ]);
         }
 
         return $this->store($request);

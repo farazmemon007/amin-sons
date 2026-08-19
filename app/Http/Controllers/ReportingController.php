@@ -23,25 +23,109 @@ use Illuminate\Support\Facades\Schema;
 class ReportingController extends Controller
 {
 
-    public function onhand()
+    public function onhand(Request $request)
     {
-        $rows = Product::leftJoin('v_stock_onhand as soh', 'soh.product_id', '=', 'products.id')
+        $user = Auth::user();
+        $isSuper = $user && $user->hasRole('super admin');
+
+        $branchId = null;
+        if ($isSuper) {
+            $branches = Branch::orderBy('name')->get();
+            if ($request->filled('branch_id') && $request->branch_id !== 'all') {
+                $branchId = (int)$request->branch_id;
+            }
+        } else {
+            $branches = $user->branch_id ? Branch::where('id', $user->branch_id)->get() : collect();
+            $branchId = $user->branch_id;
+        }
+
+        // Fetch Warehouses based on branch
+        if ($branchId) {
+            $warehouses = Warehouse::whereHas('branches', function($q) use ($branchId) {
+                $q->where('branches.id', $branchId);
+            })->orderBy('warehouse_name')->get();
+        } else {
+            $warehouses = Warehouse::orderBy('warehouse_name')->get();
+        }
+
+        $warehouseId = null;
+        if ($request->filled('warehouse_id') && $request->warehouse_id !== 'all') {
+            $warehouseId = (int)$request->warehouse_id;
+        }
+
+        $productId = null;
+        if ($request->filled('product_id') && $request->product_id !== 'all') {
+            $productId = (int)$request->product_id;
+        }
+
+        // Products list for searchable dropdown
+        $allProducts = Product::orderBy('item_name')->get(['id', 'item_name', 'item_code']);
+
+        // Main Query
+        $query = Product::query()
             ->leftJoin('brands', 'brands.id', '=', 'products.brand_id')
-            ->leftJoin('units', 'units.id', '=', 'products.unit_id')
-            ->selectRaw('
+            ->leftJoin('units', 'units.id', '=', 'products.unit_id');
+
+        if ($branchId || $warehouseId) {
+            $query->leftJoin('warehouse_stocks as ws', function($join) use ($branchId, $warehouseId) {
+                $join->on('ws.product_id', '=', 'products.id');
+                if ($branchId) {
+                    $join->where('ws.branch_id', '=', $branchId);
+                }
+                if ($warehouseId) {
+                    $join->where('ws.warehouse_id', '=', $warehouseId);
+                }
+            })
+            ->selectRaw("
                 products.id,
                 products.item_code,
                 products.item_name,
-                COALESCE(brands.name, "") as brand_name,
-                COALESCE(units.name, "") as unit_name,
+                COALESCE(brands.name, '') as brand_name,
+                COALESCE(units.name, '') as unit_name,
+                COALESCE(SUM(ws.quantity), 0) as onhand_qty,
+                products.is_part,
+                products.is_assembled
+            ")
+            ->groupBy(
+                'products.id',
+                'products.item_code',
+                'products.item_name',
+                'brands.name',
+                'units.name',
+                'products.is_part',
+                'products.is_assembled'
+            );
+        } else {
+            $query->leftJoin('v_stock_onhand as soh', 'soh.product_id', '=', 'products.id')
+            ->selectRaw("
+                products.id,
+                products.item_code,
+                products.item_name,
+                COALESCE(brands.name, '') as brand_name,
+                COALESCE(units.name, '') as unit_name,
                 COALESCE(soh.onhand_qty, 0) as onhand_qty,
                 products.is_part,
                 products.is_assembled
-            ')
-            ->orderBy('products.item_name')
-            ->get();
+            ");
+        }
 
-        return view('admin_panel.reporting.onhand', compact('rows'));
+        if ($productId) {
+            $query->where('products.id', $productId);
+        }
+
+        $rows = $query->orderBy('products.item_name')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => $rows,
+                'totalItems' => $rows->count(),
+                'totalQty' => $rows->sum('onhand_qty'),
+                'partsCount' => $rows->where('is_part', 1)->count(),
+                'assembledCount' => $rows->where('is_assembled', 1)->count(),
+            ]);
+        }
+
+        return view('admin_panel.reporting.onhand', compact('rows', 'branches', 'warehouses', 'allProducts', 'isSuper', 'branchId', 'warehouseId', 'productId'));
     }
     public function customer_ledger_new(){
         $user = Auth::user();
@@ -1744,19 +1828,34 @@ class ReportingController extends Controller
                 }
 
                     // ============= FINAL SALE OBJECT =============
+                    $customerName = 'Walk-in Customer';
+                    if ($sale->customer && !empty($sale->customer->customer_name)) {
+                        $customerName = $sale->customer->customer_name;
+                        if (!empty($sale->sub_customer)) {
+                            $customerName .= ' (' . $sale->sub_customer . ')';
+                        }
+                    } elseif (!empty($sale->sub_customer)) {
+                        $customerName = $sale->sub_customer . ' (Walk-in)';
+                    } elseif (!empty($sale->party_type) && ($sale->party_type === 'walking' || $sale->party_type === 'walk_in')) {
+                        $customerName = 'Walk-in Customer';
+                    }
+
+                    $branchName = $sale->branch ? ($sale->branch->name ?? $sale->branch->branch_name ?? '') : '';
+
                 return [
                     'id' => $sale->id,
                     'invoice_no' => $sale->invoice_no,
                     'manual_invoice' => $sale->manual_invoice,
                     'created_at' => $sale->created_at,
                     'customer_id' => $sale->customer_id,
-                    'customer_name' => $sale->customer ? $sale->customer->customer_name : 'N/A',
+                    'customer_name' => $customerName,
+                    'party_type' => $sale->party_type,
                     'address' => $sale->address,
                     'tel' => $sale->tel,
                     'remarks' => $sale->remarks,
                     // Branch info (for super-admin or when available)
                     'branch_id' => $sale->branch_id ?? null,
-                    'branch_name' => $sale->branch ? ($sale->branch->name ?? $sale->branch->branch_name ?? '') : '',
+                    'branch_name' => $branchName,
                     
                     // ============= SALE HEADER AMOUNTS =============
                     'sub_total1' => floatval($sale->sub_total1 ?? 0),
@@ -2006,18 +2105,31 @@ class ReportingController extends Controller
      */
     public function customersByBranch(Request $request)
     {
-        $branchId = $request->branch_id ?? null;
-        $query = Customer::where('status', 'active');
+        try {
+            $branchId = $request->branch_id ?? null;
+            $query = Customer::query();
 
-        if ($branchId) {
-            $query->where('branch_id', $branchId);
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
+
+            // Exclude inactive only if status is explicitly inactive
+            $query->where(function($q) {
+                $q->whereNull('status')
+                  ->orWhere('status', '!=', 'inactive')
+                  ->orWhere('status', 'active')
+                  ->orWhere('status', '1');
+            });
+
+            $customers = $query->select('id', 'customer_name', 'customer_type', 'credit_limit', 'address', 'mobile')
+                ->orderBy('customer_name')
+                ->get();
+
+            return response()->json($customers);
+        } catch (\Exception $e) {
+            \Log::error('customersByBranch error: ' . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        $customers = $query->select('id', 'customer_name', 'customer_type', 'credit_limit', 'address', 'mobile')
-            ->orderBy('customer_name')
-            ->get();
-
-        return response()->json($customers);
     }
 
     /**
@@ -2504,21 +2616,70 @@ class ReportingController extends Controller
         $user = auth()->user();
         if ($user->hasRole('super admin')) {
             $branches = Branch::orderBy('name')->get();
+            $shops = DB::table('purchases')
+                ->where(function($q) {
+                    $q->where('purchase_type', 'local')
+                      ->orWhereNull('vendor_id');
+                })
+                ->whereNotNull('vendor_name')
+                ->where('vendor_name', '!=', '')
+                ->distinct()
+                ->orderBy('vendor_name')
+                ->pluck('vendor_name');
         } else {
             $branches = Branch::where('id', $user->branch_id)->get();
+            $shops = DB::table('purchases')
+                ->where(function($q) {
+                    $q->where('purchase_type', 'local')
+                      ->orWhereNull('vendor_id');
+                })
+                ->where('branch_id', $user->branch_id)
+                ->whereNotNull('vendor_name')
+                ->where('vendor_name', '!=', '')
+                ->distinct()
+                ->orderBy('vendor_name')
+                ->pluck('vendor_name');
         }
 
         $startDate = date('Y-m-01');
         $endDate   = date('Y-m-d');
 
-        // ✅ Get accounts for payment modal
-        $bankAccounts = \App\Models\Account::where('status', 'active');
+        // ✅ Get account heads and accounts for payment modal
+        $accountHeads = \App\Models\AccountHead::whereIn('status', [1, '1', 'active'])->orderBy('name')->get();
+        $accountQuery = \App\Models\Account::with('head')->whereIn('status', [1, '1', 'active']);
         if (!$user->hasRole('super admin')) {
-            $bankAccounts->where('branch_id', $user->branch_id);
+            $accountQuery->where('branch_id', $user->branch_id);
         }
-        $bankAccounts = $bankAccounts->orderBy('title')->get();
+        $bankAccounts = $accountQuery->orderBy('title')->get();
 
-        return view('admin_panel.reporting.local_purchase_report', compact('branches', 'startDate', 'endDate', 'bankAccounts'));
+        return view('admin_panel.reporting.local_purchase_report', compact('branches', 'shops', 'startDate', 'endDate', 'bankAccounts', 'accountHeads'));
+    }
+
+    /**
+     * ✅ NEW: Fetch Local Shops by Branch (AJAX)
+     */
+    public function shopsByBranch(Request $request)
+    {
+        $user = auth()->user();
+        $branchId = $request->branch_id;
+
+        $query = DB::table('purchases')
+            ->where(function($q) {
+                $q->where('purchase_type', 'local')
+                  ->orWhereNull('vendor_id');
+            })
+            ->whereNotNull('vendor_name')
+            ->where('vendor_name', '!=', '');
+
+        if (!$user->hasRole('super admin')) {
+            $query->where('branch_id', $user->branch_id);
+        } elseif (!empty($branchId)) {
+            $query->where('branch_id', $branchId);
+        }
+
+        $shops = $query->distinct()->orderBy('vendor_name')->pluck('vendor_name');
+
+        return response()->json($shops);
     }
 
     /**
@@ -2533,17 +2694,22 @@ class ReportingController extends Controller
         $shopName  = $request->shop_name;
 
         $query = DB::table('purchases')
-            ->whereNull('vendor_id')
-            ->where(function($q) use ($shopName) {
-                if ($shopName) {
-                    $q->where('vendor_name', 'LIKE', "%{$shopName}%");
-                }
-            })
-            ->whereBetween(DB::raw('DATE(purchase_date)'), [$start, $end]);
+            ->where(function($q) {
+                $q->where('purchase_type', 'local')
+                  ->orWhereNull('vendor_id');
+            });
+
+        if (!empty($shopName)) {
+            $query->where('vendor_name', $shopName);
+        }
+
+        if ($start && $end) {
+            $query->whereBetween(DB::raw('DATE(purchase_date)'), [$start, $end]);
+        }
 
         if (!$user->hasRole('super admin')) {
             $query->where('branch_id', $user->branch_id);
-        } elseif ($branchId) {
+        } elseif (!empty($branchId)) {
             $query->where('branch_id', $branchId);
         }
 

@@ -487,16 +487,14 @@ return [
     ],
 
     // ─── BRANCHES ─────────────────────────────────────────────────────────
+    // ─── BRANCHES ─────────────────────────────────────────────────────────
     'branches' => [
-        'label'        => 'Branches',
+        'label'        => 'Branches (Read-Only)',
         'icon'         => 'fa-code-branch',
         'color'        => '#334155',
         'cross_branch' => false,
         'permissions'  => [
-            'branch.view'   => 'View',
-            'branch.create' => 'Create',
-            'branch.edit'   => 'Edit',
-            'branch.delete' => 'Delete',
+            'branch.view' => 'View Branches',
         ],
     ],
 

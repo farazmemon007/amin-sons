@@ -379,9 +379,17 @@ class VoucherInterBranchController extends Controller
         }
     }
 
-    // View voucher details
+    // View / Print voucher receipt
     public function show(Voucher $voucher)
     {
+        $voucher->load([
+            'fromBranch',
+            'toBranch',
+            'fromAccount.head',
+            'toAccount.head',
+            'createdBy'
+        ]);
+
         return view('admin_panel.inter_branch.vouchers.show', compact('voucher'));
     }
 
@@ -389,16 +397,11 @@ class VoucherInterBranchController extends Controller
     // AJAX APIs for Cascading Dropdowns
     // ==========================================
 
-    // Get Account Heads for a Branch
+    // Get Account Heads for a Branch (Strictly for this branch)
     public function getBranchHeads($branchId)
     {
         $headIds = Account::where('branch_id', $branchId)->pluck('head_id')->unique()->filter()->toArray();
         $heads = AccountHead::whereIn('id', $headIds)->get(['id', 'name']);
-        
-        // If branch has no accounts set up, fallback to all active heads
-        if ($heads->isEmpty()) {
-            $heads = AccountHead::get(['id', 'name']);
-        }
 
         return response()->json([
             'success' => true,
@@ -406,29 +409,19 @@ class VoucherInterBranchController extends Controller
         ]);
     }
 
-    // Get Accounts under a specific Head & Branch
+    // Get Accounts under a specific Head & Branch (Strictly for this branch)
     public function getHeadAccounts($branchId = null, $headId = null)
     {
-        $query = Account::query();
-
-        if ($headId) {
-            $query->where('head_id', $headId);
+        if (!$branchId || !$headId) {
+            return response()->json([
+                'success' => true,
+                'accounts' => [],
+            ]);
         }
 
-        if ($branchId) {
-            $query->where(function($q) use ($branchId) {
-                $q->where('branch_id', $branchId)
-                  ->orWhereNull('branch_id')
-                  ->orWhere('branch_id', 0);
-            });
-        }
-
-        $accounts = $query->get();
-
-        // If no accounts found for that specific branch+head combination, fallback to all accounts under that head
-        if ($accounts->isEmpty() && $headId) {
-            $accounts = Account::where('head_id', $headId)->get();
-        }
+        $accounts = Account::where('branch_id', $branchId)
+            ->where('head_id', $headId)
+            ->get();
 
         $formattedAccounts = $accounts->map(function ($acc) {
             $lastEntry = AccountLedgerEntry::where('account_id', $acc->id)->latest('id')->first();

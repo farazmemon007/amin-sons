@@ -40,16 +40,25 @@ class BranchController extends Controller
         return view('admin_panel.branch.branch', compact('branches', 'users'));
     }
 
-   // STORE (Create)
+   // STORE (Create) - Super Admin Only
     public function store(Request $request)
     {
+        if (!Auth::check() || !Auth::user()->hasRole('super admin')) {
+            return response()->json([
+                'error' => 'Unauthorized. Only Super Admin has permission to create branches.'
+            ], 403);
+        }
+
         $request->validate([
             'name'    => 'required|unique:branches,name',
             'address' => 'required',
             'number'  => 'required',
+            'status'  => 'nullable|in:active,inactive',
         ]);
 
-        Branch::create($request->only('name','address','number'));
+        Branch::create(array_merge($request->only('name','address','number'), [
+            'status' => $request->status ?? 'active'
+        ]));
 
         return response()->json([
             'success'  => 'Branch Created Successfully',
@@ -57,18 +66,27 @@ class BranchController extends Controller
         ]);
     }
 
-    // UPDATE
+    // UPDATE - Super Admin Only
     public function update(Request $request, $id)
     {
+        if (!Auth::check() || !Auth::user()->hasRole('super admin')) {
+            return response()->json([
+                'error' => 'Unauthorized. Only Super Admin has permission to edit branches.'
+            ], 403);
+        }
+
         $branch = Branch::findOrFail($id);
 
         $request->validate([
             'name'    => 'required|unique:branches,name,' . $branch->id,
             'address' => 'required',
             'number'  => 'required',
+            'status'  => 'nullable|in:active,inactive',
         ]);
 
-        $branch->update($request->only('name','address','number'));
+        $branch->update(array_merge($request->only('name','address','number'), [
+            'status' => $request->status ?? 'active'
+        ]));
 
         return response()->json([
             'success' => 'Branch Updated Successfully',
@@ -77,18 +95,17 @@ class BranchController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-  
-    /**
      * Remove the specified resource from storage.
      */
     public function delete(string $id)
     {
+        if (!Auth::check() || !Auth::user()->hasRole('super admin')) {
+            return redirect()->back()->with('error', 'Unauthorized. Only Super Admin has permission to delete branches.');
+        }
+
         $branch = Branch::findOrFail($id);
         $branch->delete();
 
         return redirect()->route('branch.index')->with('success', 'Branch deleted successfully.');
-
     }
 }

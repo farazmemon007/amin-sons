@@ -192,7 +192,7 @@ class BranchLedgerController extends Controller
         $authUser = auth()->user();
         if (!$authUser->hasRole('super admin')) {
             // Regular users see only their own branch
-            return redirect()->route('branch_ledger.view', $authUser->branch_id)
+            return redirect()->route('branch_ledger_view_branch', $authUser->branch_id)
                 ->with('info', 'You can only view your own branch ledger.');
         }
 
@@ -220,7 +220,7 @@ class BranchLedgerController extends Controller
     }
 
     // View detailed ledger for a specific branch
-    public function viewBranchLedger($branchId)
+    public function viewBranchLedger(Request $request, $branchId)
     {
         // Authorization: User can only view their own branch, super admin can view any
         $authUser = auth()->user();
@@ -231,17 +231,30 @@ class BranchLedgerController extends Controller
         $branch = Branch::findOrFail($branchId);
         $account = BranchAccount::where('branch_id', $branchId)->first();
 
-        // Get all transactions
-        $transactions = BranchTransaction::where('branch_id', $branchId)
+        // Build query with filters
+        $query = BranchTransaction::where('branch_id', $branchId)
             ->with(['relatedBranch', 'createdBy'])
-            ->orderByDesc('created_at')
-            ->paginate(50);
+            ->orderByDesc('created_at');
 
-        // Summary statistics (calculated using display_amount)
-        $allTx = BranchTransaction::where('branch_id', $branchId)->get();
+        // Apply filters
+        if ($request->filled('type') && in_array($request->type, ['debit', 'credit'])) {
+            $query->where('type', $request->type);
+        }
+        if ($request->filled('from_date')) {
+            $query->whereDate('created_at', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->whereDate('created_at', '<=', $request->to_date);
+        }
+
+        // Summary statistics (calculated using display_amount for all matching transactions)
+        $allTx = (clone $query)->get();
         $totalDebit = $allTx->sum(fn($t) => $t->isDebit() ? $t->display_amount : 0);
         $totalCredit = $allTx->sum(fn($t) => $t->isCredit() ? $t->display_amount : 0);
         $balance = $totalCredit - $totalDebit;
+
+        // Paginated transactions with query string preserved
+        $transactions = $query->paginate(50)->withQueryString();
 
         return view('admin_panel.branch_ledger.view_branch', compact(
             'branch',
@@ -282,13 +295,12 @@ class BranchLedgerController extends Controller
 
         $transfers = $query->paginate(50);
 
-        // Calculate totals
+        // Calculate totals using model accessors
         $totalQuantity = 0;
         $totalValue = 0;
-        
         foreach ($transfers as $transfer) {
-            $totalQuantity += $transfer->quantity;
-            $totalValue += $transfer->total_value;
+            $totalQuantity += (float)$transfer->quantity;
+            $totalValue += (float)$transfer->total_value;
         }
 
         return view('admin_panel.branch_ledger.transfer_details', compact(
@@ -302,10 +314,11 @@ class BranchLedgerController extends Controller
     // Generate PDF report
     public function report(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
-        
-        if (auth()->user()->hasRole('super admin')) {
-            $branchId = $request->input('branch_id', $branchId);
+        $authUser = auth()->user();
+        if ($authUser->hasRole('super admin')) {
+            $branchId = $request->input('branch_id', $authUser->branch_id);
+        } else {
+            $branchId = $authUser->branch_id;
         }
 
         if (!$branchId) {
@@ -318,6 +331,9 @@ class BranchLedgerController extends Controller
         $query = BranchTransaction::where('branch_id', $branchId)
             ->with(['relatedBranch', 'createdBy']);
 
+        if ($request->filled('type') && in_array($request->type, ['debit', 'credit'])) {
+            $query->where('type', $request->type);
+        }
         if ($request->filled('from_date')) {
             $query->whereDate('created_at', '>=', $request->from_date);
         }
@@ -341,6 +357,7 @@ class BranchLedgerController extends Controller
             'balance'
         ));
 
-        return $pdf->download("branch_ledger_{$branchId}_" . now()->format('Y-m-d') . ".pdf");
+        $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $currentBranch->name ?? $currentBranch->branch_name ?? "branch_{$branchId}");
+        return $pdf->download("branch_ledger_{$safeName}_" . now()->format('Y-m-d') . ".pdf");
     }
 }

@@ -13,7 +13,7 @@ class Voucher extends Model
         'voucher_type', 'date', 'sales_officer', 'type', 'person',
         'sub_head', 'narration', 'amount',
         // New fields for inter-branch system
-        'from_branch_id', 'to_branch_id', 'method', 'reference', 'created_by', 'remarks'
+        'from_branch_id', 'to_branch_id', 'from_account_id', 'to_account_id', 'method', 'reference', 'created_by', 'remarks', 'status'
     ];
 
     protected $casts = [
@@ -30,6 +30,16 @@ class Voucher extends Model
     public function toBranch()
     {
         return $this->belongsTo(Branch::class, 'to_branch_id');
+    }
+
+    public function fromAccount()
+    {
+        return $this->belongsTo(Account::class, 'from_account_id');
+    }
+
+    public function toAccount()
+    {
+        return $this->belongsTo(Account::class, 'to_account_id');
     }
 
     public function createdBy()

@@ -289,6 +289,11 @@
 @section('js')
 <script>
     $(document).ready(function() {
+        // Base API URLs (dynamic and portable across localhost subfolder and live hosting)
+        const API_BRANCH_HEADS = "{{ url('api/branch-heads') }}";
+        const API_BRANCH_HEAD_ACCOUNTS = "{{ url('api/branch-head-accounts') }}";
+        const API_ACCOUNT_BALANCE = "{{ url('api/account-balance') }}";
+
         // Initialize Select2
         $('.select2').select2({
             placeholder: "-- Select Option --",
@@ -311,7 +316,7 @@
             }
 
             $.ajax({
-                url: `/api/branch-heads/${branchId}`,
+                url: `${API_BRANCH_HEADS}/${branchId}`,
                 type: 'GET',
                 dataType: 'json',
                 success: function(res) {
@@ -320,6 +325,8 @@
                         res.heads.forEach(h => {
                             options += `<option value="${h.id}">${h.name}</option>`;
                         });
+                    } else {
+                        options = '<option value="">No account heads setup for this branch</option>';
                     }
                     $headSelect.html(options).trigger('change');
                 }
@@ -335,7 +342,7 @@
                 return;
             }
 
-            const url = branchId ? `/api/branch-head-accounts/${branchId}/${headId}` : `/api/branch-head-accounts/0/${headId}`;
+            const url = branchId ? `${API_BRANCH_HEAD_ACCOUNTS}/${branchId}/${headId}` : `${API_BRANCH_HEAD_ACCOUNTS}/0/${headId}`;
 
             $.ajax({
                 url: url,
@@ -375,7 +382,7 @@
                 return;
             }
             $.ajax({
-                url: `/api/account-balance/${accountId}`,
+                url: `${API_ACCOUNT_BALANCE}/${accountId}`,
                 type: 'GET',
                 dataType: 'json',
                 success: function(res) {
@@ -402,7 +409,7 @@
             }
 
             $.ajax({
-                url: `/api/branch-heads/${branchId}`,
+                url: `${API_BRANCH_HEADS}/${branchId}`,
                 type: 'GET',
                 dataType: 'json',
                 success: function(res) {
@@ -411,6 +418,8 @@
                         res.heads.forEach(h => {
                             options += `<option value="${h.id}">${h.name}</option>`;
                         });
+                    } else {
+                        options = '<option value="">No account heads setup for this branch</option>';
                     }
                     $headSelect.html(options).trigger('change');
                 }
@@ -426,7 +435,7 @@
                 return;
             }
 
-            const url = branchId ? `/api/branch-head-accounts/${branchId}/${headId}` : `/api/branch-head-accounts/0/${headId}`;
+            const url = branchId ? `${API_BRANCH_HEAD_ACCOUNTS}/${branchId}/${headId}` : `${API_BRANCH_HEAD_ACCOUNTS}/0/${headId}`;
 
             $.ajax({
                 url: url,
@@ -466,7 +475,7 @@
                 return;
             }
             $.ajax({
-                url: `/api/account-balance/${accountId}`,
+                url: `${API_ACCOUNT_BALANCE}/${accountId}`,
                 type: 'GET',
                 dataType: 'json',
                 success: function(res) {

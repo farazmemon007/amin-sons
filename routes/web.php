@@ -298,12 +298,11 @@ Route::get('/check-product-name', [ProductController::class, 'checkProductName']
     Route::put('/admin/branch-warehouse/{branch}', [BranchWarehouseController::class, 'update'])->name('branch.warehouse.update')->middleware('permission:warehouse.manage');
     Route::get('/admin/branch-warehouse/check-products/{branchId}/{warehouseId}', [BranchWarehouseController::class, 'getWarehouseProducts'])->middleware('permission:warehouse.manage');
 
-    // Branches
-    // index (view) requires branch.view
-    Route::get('/branch', [BranchController::class, 'index'])->middleware('permission:branch.view')->name('branch.index');
-    // store (create/update) requires create or edit permission
-    Route::post('/branch', [BranchController::class, 'store'])->middleware('permission:branch.create|branch.edit')->name('branch.store');
-    Route::get('/branch/delete/{id}', [BranchController::class, 'delete'])->middleware('permission:branch.delete')->name('branch.delete');
+    // Branches (Strictly Super Admin for creation, edit, deletion)
+    Route::get('/branch', [BranchController::class, 'index'])->middleware('permission:branch.view|role:super admin')->name('branch.index');
+    Route::post('/branch', [BranchController::class, 'store'])->middleware('role:super admin')->name('branch.store');
+    Route::put('/branch/{id}', [BranchController::class, 'update'])->middleware('role:super admin')->name('branch.update');
+    Route::get('/branch/delete/{id}', [BranchController::class, 'delete'])->middleware('role:super admin')->name('branch.delete');
 
 
 
@@ -669,6 +668,7 @@ Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expensepri
 
     Route::get('report/local-purchase', [ReportingController::class, 'local_purchase_report'])->middleware('permission:report.purchase.view')->name('report.local_purchase');
     Route::get('report/local-purchase/fetch', [ReportingController::class, 'fetch_local_purchase_report'])->middleware('permission:report.purchase.view')->name('report.local_purchase.fetch');
+    Route::get('report/local-purchase/shops-by-branch', [ReportingController::class, 'shopsByBranch'])->middleware('permission:report.purchase.view')->name('report.local_purchase.shops');
     Route::post('report/local-purchase/pay', [PurchaseController::class, 'payLocalPurchase'])->middleware('permission:purchase.create')->name('report.local_purchase.pay');
 
     // ✅ PO vs Gatepass Report
@@ -682,7 +682,7 @@ Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expensepri
     Route::get('report/customer/ledger', [ReportingController::class, 'customer_ledger_report'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger');
     Route::get('report/customer-ledger/fetch', [ReportingController::class, 'fetch_customer_ledger'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger.fetch');
     Route::get('report/customer-ledger/fetch-detailed', [ReportingController::class, 'fetch_customer_ledger_detailed'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger.fetch.detailed');
-    Route::get('report/customers-by-branch', [ReportingController::class, 'customersByBranch'])->middleware('permission:report.customer.ledger.view')->name('report.customers.byBranch');
+    Route::get('report/customers-by-branch', [ReportingController::class, 'customersByBranch'])->middleware('permission:report.customer.ledger.view|customer.ledger|customer.view')->name('report.customers.byBranch');
 Route::get('testing',[ReportingController::class, 'customer_ledger_new'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger.new');
 Route::get('report/customer-ledger/fetch-new', [ReportingController::class, 'fetch_customer_ledger_new'])->middleware('permission:report.customer.ledger.view')->name('report.customer.ledger.fetch.new');
 
@@ -694,7 +694,7 @@ Route::get('report/customer-ledger/fetch-new', [ReportingController::class, 'fet
     Route::get('report/vendor-ledger-new', [ReportingController::class, 'vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.new');
     Route::get('report/vendor-ledger/fetch-new', [ReportingController::class, 'fetch_vendor_ledger_new'])->middleware('permission:report.vendor.ledger.view')->name('report.vendor.ledger.fetch.new');
     Route::get('report/vendors-by-branch', [ReportingController::class, 'vendorsByBranch'])->middleware('permission:report.vendor.ledger.view|report.purchase.view|vendor.ledger')->name('vendors-by-branch');
-    Route::get('/warehouses-by-branch', [App\Http\Controllers\WarehouseController::class, 'warehousesByBranch'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit|purchase.create')->name('warehouses-by-branch');
+    Route::get('/warehouses-by-branch', [App\Http\Controllers\WarehouseController::class, 'warehousesByBranch'])->middleware('permission:inward.gatepass.create|inward.gatepass.edit|purchase.create|report.inventory.onhand.view|warehouse.view')->name('warehouses-by-branch');
     Route::get('reports/onhand', [ReportingController::class, 'onhand'])->middleware('permission:report.inventory.onhand.view')->name('reports.onhand');
     
     // ✅ Stock Hold Audit Report (ERP Compliance)

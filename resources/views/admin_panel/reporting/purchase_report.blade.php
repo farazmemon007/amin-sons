@@ -1,27 +1,185 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+    :root {
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-border: #e2e8f0;
+    }
+
+    .rpt-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .rpt-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 16px 22px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
+    }
+
+    .rpt-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
+    }
+
+    .rpt-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .rpt-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 3px;
+    }
+
+    .rpt-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    @media (max-width: 992px) {
+        .rpt-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .rpt-kpi-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 13px 16px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .rpt-kpi-card.highlight {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border-color: #a7f3d0;
+    }
+
+    .rpt-kpi-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+
+    .rpt-kpi-val {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--coa-navy);
+        font-family: monospace;
+    }
+
+    .rpt-kpi-val.emerald { color: #047857; }
+    .rpt-kpi-val.crimson { color: #dc2626; }
+    .rpt-kpi-val.amber { color: #d97706; }
+
+    .rpt-kpi-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon-blue { background: #e0f2fe; color: #0284c7; }
+    .kpi-icon-emerald { background: #d1fae5; color: #059669; }
+    .kpi-icon-red { background: #fee2e2; color: #dc2626; }
+    .kpi-icon-amber { background: #fef3c7; color: #d97706; }
+
+    .f-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #475569;
+        letter-spacing: 0.03em;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    #purchaseTable th {
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 10px 8px;
+        border: 1px solid #1e3a5f;
+    }
+</style>
+
 <div class="main-content">
-    <div class="main-content-inner">
-        <div class="container-fluid px-4">
+    <div class="rpt-wrapper">
+        <div class="container-fluid px-2">
             
-            {{-- PAGE HEADER --}}
-            <div class="row mb-3 align-items-center mt-3">
-                <div class="col">
-                    <h4 class="mb-0 fw-bold" style="color:#1a1a2e;">
-                        <i class="fas fa-file-invoice-dollar me-2" style="color:#0066cc;"></i>
-                        Purchase Report
-                    </h4>
-                    <small class="text-muted">ERP Standard &mdash; Detailed Purchase History & Analytical View</small>
+            {{-- 1. Corporate Header Bar --}}
+            <div class="rpt-header-bar">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rpt-header-icon">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                    </div>
+                    <div>
+                        <h4 class="rpt-header-title">Purchase Report</h4>
+                        <div class="rpt-header-sub">
+                            <span><i class="fas fa-truck-loading mr-1" style="color: var(--coa-gold);"></i> Detailed Purchase History & Analytical View &mdash; Ameen & Sons Corporate ERP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-sm btn-outline-light font-weight-bold" style="background: rgba(37, 211, 102, 0.2); border-color: #25D366; color: #25D366;">
+                        <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                    </button>
+                    <button type="button" onclick="showExportOptions()" class="btn btn-sm btn-light font-weight-bold text-dark border">
+                        <i class="fas fa-download mr-1 text-primary"></i> Export
+                    </button>
+                    <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-light font-weight-bold">
+                        <i class="fas fa-print mr-1"></i> Print
+                    </button>
                 </div>
             </div>
 
-            {{-- FILTER CARD --}}
-            <div class="card shadow-sm mb-3" style="border-radius:10px;border:none;">
-                <div class="card-body py-3">
-                    <form id="purchaseFilterForm" class="row g-3 align-items-end">
-                        <div class="col-md-2" id="branch_container" @if(!$user->hasRole('super admin')) style="display:none;" @endif>
-                            <label class="form-label fw-semibold mb-1">Select Branch</label>
+            {{-- 2. Filter Card --}}
+            <div class="card shadow-sm mb-3 border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;">
+                <div class="card-body p-3">
+                    <form id="purchaseFilterForm" class="row g-2 align-items-end mb-0">
+                        <div class="col-md-3" id="branch_container" @if(!$user->hasRole('super admin')) style="display:none;" @endif>
+                            <label class="f-label">Select Branch</label>
                             <select name="branch_id" id="branch_id" class="form-control form-control-sm select2">
                                 @if($user->hasRole('super admin'))
                                     <option value="all">-- All Branches --</option>
@@ -31,8 +189,8 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Select Vendor</label>
+                        <div class="col-md-{{ $user->hasRole('super admin') ? '3' : '4' }}">
+                            <label class="f-label">Select Vendor</label>
                             <select name="vendor_id" id="vendor_id" class="form-control form-control-sm select2">
                                 <option value="all">-- All Vendors --</option>
                                 @foreach($vendors as $v)
@@ -41,73 +199,69 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}">
+                            <label class="f-label">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">End Date</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}">
+                            <label class="f-label">End Date</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
                         <div class="col-md-2">
-                            <button type="button" id="btnSearch" class="btn btn-primary btn-sm w-100" style="background:#0066cc;border-color:#0066cc;padding:7px;">
-                                <i class="fas fa-search me-1"></i> Search
-                            </button>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-outline-success btn-sm shadow-sm me-1" style="border-color:#25D366; color:#25D366; background: #fff;">
-                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                            </button>
-                            <button type="button" onclick="showExportOptions()" class="btn btn-outline-info btn-sm shadow-sm" style="background: #fff; border-color: #17a2b8; color: #17a2b8;">
-                                <i class="fas fa-download me-1"></i> Export
+                            <button type="button" id="btnSearch" class="btn btn-sm btn-primary w-100 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy);">
+                                <i class="fas fa-search mr-1"></i> Search
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            {{-- SUMMARY CARDS --}}
-            <div id="summaryCards" class="row mb-3 g-3" style="display:none;">
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-primary text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Net Purchases</div>
-                            <div id="stat_net" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+            {{-- 3. Summary Cards --}}
+            <div id="summaryCards" class="rpt-kpi-grid" style="display:none;">
+                <div class="rpt-kpi-card highlight">
+                    <div>
+                        <div class="rpt-kpi-label" style="color: #047857;">Net Purchases</div>
+                        <div id="stat_net" class="rpt-kpi-val emerald">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-emerald">
+                        <i class="fas fa-boxes"></i>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-success text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Total Paid</div>
-                            <div id="stat_paid" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+                <div class="rpt-kpi-card">
+                    <div>
+                        <div class="rpt-kpi-label">Total Paid</div>
+                        <div id="stat_paid" class="rpt-kpi-val">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-blue">
+                        <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-danger text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Total Balance</div>
-                            <div id="stat_due" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+                <div class="rpt-kpi-card">
+                    <div>
+                        <div class="rpt-kpi-label">Total Balance</div>
+                        <div id="stat_due" class="rpt-kpi-val crimson">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-red">
+                        <i class="fas fa-exclamation-triangle"></i>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-info text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Total Discount</div>
-                            <div id="stat_disc" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+                <div class="rpt-kpi-card">
+                    <div>
+                        <div class="rpt-kpi-label">Total Discount</div>
+                        <div id="stat_disc" class="rpt-kpi-val amber">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-amber">
+                        <i class="fas fa-tag"></i>
                     </div>
                 </div>
             </div>
 
-            {{-- REPORT TABLE --}}
-            <div class="card shadow-sm border-0" style="border-radius:10px;" id="reportContent">
-                <div class="card-body p-4">
+            {{-- 4. Report Table --}}
+            <div class="card shadow-sm border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;" id="reportContent">
+                <div class="card-body p-3">
                     
                     {{-- PDF HEADER (HIDDEN ON SCREEN) --}}
-                    <div id="pdfHeader" style="display:none; text-align:center; margin-bottom:20px; border-bottom:2px solid #1a1a2e; padding-bottom:10px;">
-                        <h2 style="margin:0; color:#1a1a2e; text-transform:uppercase; letter-spacing:1px;">Purchase Report</h2>
+                    <div id="pdfHeader" style="display:none; text-align:center; margin-bottom:20px; border-bottom:2px solid #0f1f38; padding-bottom:10px;">
+                        <h2 style="margin:0; color:#0f1f38; text-transform:uppercase; letter-spacing:1px;">Purchase Report</h2>
                         <p style="margin:5px 0; font-size:14px; color:#333;">
                             <strong>Period:</strong> <span id="pdfPeriod"></span> | 
                             <strong>Vendor:</strong> <span id="pdfVendorName">All Vendors</span>
@@ -117,26 +271,26 @@
 
                     <div id="loader" style="display:none;text-align:center;padding:40px;">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted mt-2">Aggregating purchase data...</p>
+                        <p class="text-muted mt-2 small font-weight-bold">Aggregating purchase data...</p>
                     </div>
 
                     <div class="table-responsive">
-                        <table id="purchaseTable" class="table table-bordered mb-0" style="font-size:13px;border-collapse:collapse;">
+                        <table id="purchaseTable" class="table table-bordered mb-0" style="font-size:12px; border-collapse:collapse;">
                             <thead>
-                                <tr style="background:#1a1a2e;color:#fff;">
-                                    <th class="text-center" style="padding:15px 5px;">#</th>
-                                    <th style="padding:15px 5px;">Date</th>
-                                    <th style="padding:15px 5px;">Invoice</th>
-                                    <th style="padding:15px 5px;">Vendor</th>
-                                    <th style="padding:15px 5px;">Item</th>
-                                    <th class="text-end" style="padding:15px 5px;">Qty</th>
-                                    <th class="text-end" style="padding:15px 5px;">Price</th>
-                                    <th class="text-end" style="padding:15px 5px;">Item Disc</th>
-                                    <th class="text-end" style="padding:15px 5px;background:#2d4a6e;">Net Item</th>
-                                    <th class="text-end" style="padding:15px 5px;">Bill Disc</th>
-                                    <th class="text-end" style="padding:15px 5px;background:#1b5e20;">Total Net</th>
-                                    <th class="text-end" style="padding:15px 5px;">Paid</th>
-                                    <th class="text-end" style="padding:15px 5px;">Due</th>
+                                <tr>
+                                    <th class="text-center" style="width: 35px;">#</th>
+                                    <th style="width: 90px; white-space: nowrap;">Date</th>
+                                    <th style="width: 105px; white-space: nowrap;">Invoice</th>
+                                    <th style="min-width: 130px; width: 13%;">Vendor</th>
+                                    <th style="min-width: 260px; width: 25%;">Item / Product Details</th>
+                                    <th class="text-end" style="width: 75px; white-space: nowrap;">Qty</th>
+                                    <th class="text-end" style="width: 85px; white-space: nowrap;">Price</th>
+                                    <th class="text-end" style="width: 80px; white-space: nowrap;">Item Disc</th>
+                                    <th class="text-end" style="width: 95px; white-space: nowrap;">Net Item</th>
+                                    <th class="text-end" style="width: 80px; white-space: nowrap;">Bill Disc</th>
+                                    <th class="text-end" style="width: 105px; white-space: nowrap;">Total Net</th>
+                                    <th class="text-end" style="width: 85px; white-space: nowrap;">Paid</th>
+                                    <th class="text-end" style="width: 95px; white-space: nowrap;">Due</th>
                                 </tr>
                             </thead>
                             <tbody id="reportBody"></tbody>
@@ -152,26 +306,30 @@
 @section('css')
 <style>
     .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-    #purchaseTable { border: 2px solid #1a1a2e; }
+    #purchaseTable { border: 1px solid #cbd5e1; }
     #purchaseTable th { 
         vertical-align: middle; 
-        border: 1px solid #444; 
-        text-transform: uppercase; 
-        letter-spacing: 0.5px;
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
         font-weight: 700;
+        text-transform: uppercase; 
+        letter-spacing: 0.04em;
+        padding: 10px 8px;
+        border: 1px solid #1e3a5f;
     }
     #purchaseTable td { 
         vertical-align: middle; 
-        border: 1px solid #ccc; 
-        padding: 10px 8px; 
+        border: 1px solid #e2e8f0; 
+        padding: 8px 8px; 
         font-weight: 500;
-        color: #1a1a2e;
+        color: #1e293b;
     }
-    #purchaseTable tbody tr:nth-child(even) { background-color: #f9f9f9; }
-    #purchaseTable tbody tr:hover { background-color: #f0f4ff !important; transition: 0.2s; }
+    #purchaseTable tbody tr:nth-child(even) { background-color: #f8fafc; }
+    #purchaseTable tbody tr:hover { background-color: #f1f5f9 !important; transition: 0.15s; }
     
-    .invoice-no { color: #0066cc; font-weight: 700; font-size: 14px; }
-    .item-name { font-weight: 700; color: #333; font-size: 14px; }
+    .invoice-no { color: #1e3a5f; font-weight: 700; font-family: monospace; font-size: 12px; }
+    .item-name { font-weight: 700; color: #0f172a; font-size: 12.5px; line-height: 1.35; }
     
     @media print {
         #purchaseFilterForm, #btnSearch, .btn { display: none !important; }
@@ -210,29 +368,31 @@
                     let colorList = r.colors.split(', ');
                     colorList.forEach(color => {
                         if (color && color.trim() !== '') {
-                            colorBadges += `<span class="badge bg-light text-primary border border-primary px-1 me-1" style="font-size:9px;">${color.toUpperCase()}</span>`;
+                            colorBadges += `<span class="badge" style="background:#e2e8f0; color:#334155; font-size:9.5px; font-weight:600; padding:2px 5px; border-radius:3px;">${color.toUpperCase()}</span>`;
                         }
                     });
                 }
 
                 tableContent += `<tr>
-                    <td class="text-center">${idx + 1}</td>
-                    <td style="white-space:nowrap;">${r.purchase_date}</td>
-                    <td class="invoice-no">${r.invoice_no}</td>
-                    <td class="fw-bold">${r.vendor_name}</td>
+                    <td class="text-center text-muted" style="font-size:11px;">${idx + 1}</td>
+                    <td style="white-space:nowrap; font-size:11.5px;">${r.purchase_date}</td>
+                    <td><span class="invoice-no">${r.invoice_no}</span></td>
+                    <td><strong class="text-dark" style="font-size:12px;">${r.vendor_name}</strong></td>
                     <td>
-                        <div class="item-name">${r.item_name}</div>
-                        <div class="mb-1">${colorBadges}</div>
-                        <code class="text-muted" style="font-size:11px;">${r.item_code}</code>
+                        <div class="item-name mb-1">${r.item_name}</div>
+                        <div class="d-flex align-items-center flex-wrap gap-1">
+                            ${colorBadges}
+                            <span class="badge badge-light border text-muted" style="font-size:9.5px; font-family:monospace; padding:1px 4px;">${r.item_code}</span>
+                        </div>
                     </td>
-                    <td class="text-end fw-bold" style="font-size:13px;">${n(r.qty).toFixed(2)} <small>${r.unit}</small></td>
-                    <td class="text-end">${fmt(r.price)}</td>
-                    <td class="text-end text-danger fw-bold">${fmt(r.item_discount)}</td>
-                    <td class="text-end fw-bold text-primary" style="background:#f0f7ff; font-size:13px;">${fmt(r.line_total)}</td>
-                    <td class="text-end text-danger fw-bold">${fmt(r.discount)}</td>
-                    <td class="text-end fw-bold text-success" style="background:#f0fff0; font-size:14px;">${fmt(r.net_amount)}</td>
-                    <td class="text-end">${fmt(r.paid_amount)}</td>
-                    <td class="text-end fw-bold ${n(r.due_amount) > 0 ? 'text-danger' : 'text-success'}" style="font-size:13px;">${fmt(r.due_amount)}</td>
+                    <td class="text-end font-monospace" style="font-weight:700; font-size:12px; white-space:nowrap;">${n(r.qty).toFixed(2)} <small class="text-muted font-weight-normal">${r.unit || ''}</small></td>
+                    <td class="text-end font-monospace" style="font-size:12px;">${fmt(r.price)}</td>
+                    <td class="text-end font-monospace ${n(r.item_discount) > 0 ? 'text-danger font-weight-bold' : 'text-muted'}" style="font-size:12px;">${fmt(r.item_discount)}</td>
+                    <td class="text-end font-monospace font-weight-bold" style="background:rgba(30, 58, 95, 0.04); color:#1e3a5f; font-size:12px;">${fmt(r.line_total)}</td>
+                    <td class="text-end font-monospace ${n(r.discount) > 0 ? 'text-danger font-weight-bold' : 'text-muted'}" style="font-size:12px;">${fmt(r.discount)}</td>
+                    <td class="text-end font-monospace font-weight-bold" style="background:rgba(13, 159, 110, 0.08); color:#047857; font-size:12.5px;">${fmt(r.net_amount)}</td>
+                    <td class="text-end font-monospace text-dark" style="font-size:12px;">${fmt(r.paid_amount)}</td>
+                    <td class="text-end font-monospace font-weight-bold ${n(r.due_amount) > 0 ? 'text-danger' : 'text-success'}" style="font-size:12.5px;">${fmt(r.due_amount)}</td>
                 </tr>`;
 
                 // Add item-level discount to grand total
@@ -256,11 +416,11 @@
             $('#summaryCards').fadeIn();
 
             // Grand total row
-            tableContent += `<tr class="fw-bold bg-light">
-                <td colspan="10" class="text-end" style="font-size:14px;">Total Summary (Unique Invoices):</td>
-                <td class="text-end text-success" style="font-size:14px; background:#e8f5e9;">${fmt(grandNet)}</td>
-                <td class="text-end" style="font-size:14px;">${fmt(grandPaid)}</td>
-                <td class="text-end text-danger" style="font-size:14px;">${fmt(grandDue)}</td>
+            tableContent += `<tr class="font-weight-bold bg-light" style="font-family: monospace; font-size: 13px;">
+                <td colspan="10" class="text-end font-weight-bold" style="font-family: sans-serif;">Total Summary (Unique Invoices):</td>
+                <td class="text-end text-success font-weight-bold" style="background:rgba(13, 159, 110, 0.12);">${fmt(grandNet)}</td>
+                <td class="text-end text-dark font-weight-bold">${fmt(grandPaid)}</td>
+                <td class="text-end text-danger font-weight-bold">${fmt(grandDue)}</td>
             </tr>`;
 
             $('#reportBody').html(tableContent);

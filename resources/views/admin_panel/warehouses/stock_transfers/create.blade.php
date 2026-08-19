@@ -2,102 +2,103 @@
 
 @section('content')
 <style>
-/* ── ERP Stock Transfer Form ── */
-.st-wrapper { max-width: 1200px; margin: 0 auto; }
-.st-card { border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 2px 12px rgba(0,0,0,.08); background:#fff; overflow:hidden; }
-.st-header { background: linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%); color:#fff; padding:22px 28px; }
-.st-header h4 { margin:0; font-weight:700; font-size:1.15rem; letter-spacing:.01em; }
-.st-header p  { margin:4px 0 0; opacity:.85; font-size:.85rem; }
+/* ── Corporate ERP Stock Transfer Form ── */
+.st-wrapper { max-width: 1200px; margin: 0 auto; padding: 12px 0 30px 0; }
+.st-card { border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 4px 15px rgba(15, 31, 56, 0.05); background:#fff; overflow:hidden; }
+.st-header { background: linear-gradient(135deg, #0f1f38 0%, #1e3a5f 60%, #2c5282 100%); color:#ffffff; padding:18px 24px; }
+.st-header h4 { margin:0; font-weight:800; font-size:1.15rem; color:#ffffff !important; letter-spacing:-0.01em; }
+.st-header p  { margin:4px 0 0; opacity:.85; font-size:.82rem; color: rgba(255,255,255,0.85); }
 
 /* section boxes */
-.st-section { padding:22px 28px; border-bottom:1px solid #f0f0f0; }
+.st-section { padding:20px 24px; border-bottom:1px solid #f1f5f9; }
 .st-section:last-child { border-bottom:none; }
-.st-section-title { font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; margin-bottom:18px; display:flex; align-items:center; gap:10px; }
-.st-section-title .badge-num { width:22px; height:22px; border-radius:50%; background:#4f46e5; color:#fff; font-size:.7rem; font-weight:700; display:inline-flex; align-items:center; justify-content:center; }
+.st-section-title { font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#64748b; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
+.st-section-title .badge-num { width:22px; height:22px; border-radius:50%; background:#1e3a5f; color:#ffffff; font-size:.7rem; font-weight:800; display:inline-flex; align-items:center; justify-content:center; border: 1px solid rgba(200, 151, 58, 0.4); }
 
 /* form controls */
-.f-label { font-size:.82rem; font-weight:600; color:#374151; margin-bottom:5px; display:block; }
-.f-control { border:1px solid #d1d5db; border-radius:8px; padding:9px 12px; font-size:.88rem; width:100%; background:#fff; transition:border-color .2s,box-shadow .2s; }
-.f-control:focus { outline:none; border-color:#4f46e5; box-shadow:0 0 0 3px rgba(79,70,229,.12); }
+.f-label { font-size:.82rem; font-weight:700; color:#1e293b; margin-bottom:5px; display:block; }
+.f-control { border:1.5px solid #cbd5e1; border-radius:6px; padding:8px 12px; font-size:.88rem; width:100%; background:#fff; transition:border-color .2s,box-shadow .2s; }
+.f-control:focus { outline:none; border-color:#1e3a5f; box-shadow:0 0 0 3px rgba(30,58,95,.12); }
 select.f-control { cursor:pointer; }
 textarea.f-control { resize:vertical; }
 
 /* radio pills */
 .type-pills { display:flex; gap:10px; }
-.type-pill { padding:9px 16px; border:2px solid #e5e7eb; border-radius:8px; cursor:pointer; font-size:.88rem; display:flex; align-items:center; gap:7px; transition:all .2s; background:#fff; user-select:none; }
-.type-pill:hover { border-color:#4f46e5; background:#f5f4ff; }
-.type-pill input[type=radio] { accent-color:#4f46e5; }
-.type-pill.selected { border-color:#4f46e5; background:#eef2ff; color:#4338ca; font-weight:600; }
+.type-pill { padding:9px 16px; border:1.5px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:.86rem; display:flex; align-items:center; gap:7px; transition:all .2s; background:#fff; user-select:none; }
+.type-pill:hover { border-color:#1e3a5f; background:#f8fafc; }
+.type-pill input[type=radio] { accent-color:#1e3a5f; }
+.type-pill.selected { border-color:#1e3a5f; background:#eff6ff; color:#1e3a5f; font-weight:700; }
 
 /* items table */
 .items-table { width:100%; border-collapse:collapse; }
 .items-table thead tr { background:#f8fafc; }
-.items-table th { padding:10px 12px; text-align:left; font-size:.74rem; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid #e5e7eb; }
-.items-table td { padding:9px 10px; border-bottom:1px solid #f3f4f6; vertical-align:middle; }
+.items-table th { padding:10px 12px; text-align:left; font-size:.74rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.05em; border-bottom:1.5px solid #cbd5e1; }
+.items-table td { padding:9px 10px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
 .items-table tr:last-child td { border-bottom:none; }
-.items-table input,.items-table select { border:1px solid #d1d5db; border-radius:6px; padding:7px 10px; font-size:.86rem; width:100%; background:#fff; }
-.items-table input:focus,.items-table select:focus { outline:none; border-color:#4f46e5; background:#f9f8ff; }
+.items-table input,.items-table select { border:1.5px solid #cbd5e1; border-radius:6px; padding:7px 10px; font-size:.86rem; width:100%; background:#fff; }
+.items-table input:focus,.items-table select:focus { outline:none; border-color:#1e3a5f; background:#f8fafc; }
 .cell-stock input { background:#f8fafc !important; font-weight:700; text-align:right; cursor:default; color:#374151; }
-.cell-stock input.has-stock { background:#dcfce7 !important; color:#166534 !important; border-color:#86efac !important; }
+.cell-stock input.has-stock { background:#ecfdf5 !important; color:#047857 !important; border-color:#a7f3d0 !important; }
 .cell-stock input.no-stock  { background:#fee2e2 !important; color:#991b1b !important; border-color:#fca5a5 !important; }
 
 /* add row btn */
-.btn-add-row { padding:10px 18px; background:#fff; border:2px dashed #4f46e5; border-radius:8px; color:#4f46e5; cursor:pointer; font-weight:600; font-size:.88rem; width:100%; margin-top:12px; transition:all .2s; }
-.btn-add-row:hover { background:#eef2ff; }
-.btn-del { padding:5px 10px; border:1px solid #fecaca; border-radius:6px; cursor:pointer; background:#fff; color:#dc2626; transition:all .2s; }
+.btn-add-row { padding:9px 16px; background:#fff; border:1.5px dashed #1e3a5f; border-radius:6px; color:#1e3a5f; cursor:pointer; font-weight:700; font-size:.86rem; width:100%; margin-top:12px; transition:all .2s; }
+.btn-add-row:hover { background:#eff6ff; }
+.btn-del { padding:5px 10px; border:1px solid #fca5a5; border-radius:5px; cursor:pointer; background:#fff; color:#dc2626; transition:all .2s; }
 .btn-del:hover { background:#fee2e2; }
 
 /* alerts */
-.st-alert { border-radius:8px; padding:11px 14px; font-size:.87rem; display:none; margin-bottom:14px; }
+.st-alert { border-radius:6px; padding:11px 14px; font-size:.87rem; display:none; margin-bottom:14px; }
 .st-alert-warn { background:#fef3c7; border:1px solid #fcd34d; color:#92400e; }
 .st-alert-err  { background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; }
 .st-alert-info { background:#e0f2fe; border:1px solid #7dd3fc; color:#0c4a6e; }
 
 /* submit area */
-.btn-submit { background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; padding:11px 32px; border:none; border-radius:8px; font-weight:700; cursor:pointer; font-size:.92rem; transition:opacity .2s; }
-.btn-submit:hover { opacity:.88; }
-.btn-cancel { background:#fff; color:#6b7280; padding:11px 28px; border:1px solid #d1d5db; border-radius:8px; font-weight:600; cursor:pointer; font-size:.92rem; text-decoration:none; display:inline-flex; align-items:center; }
-.btn-cancel:hover { background:#f9fafb; color:#374151; }
+.btn-submit { background:linear-gradient(135deg,#0d9f6e,#059669); color:#fff; padding:10px 28px; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:.9rem; transition:all .15s; }
+.btn-submit:hover { background:linear-gradient(135deg,#059669,#047857); transform:translateY(-1px); }
+.btn-cancel { background:#fff; color:#64748b; padding:10px 24px; border:1px solid #cbd5e1; border-radius:6px; font-weight:700; cursor:pointer; font-size:.9rem; text-decoration:none; display:inline-flex; align-items:center; }
+.btn-cancel:hover { background:#f8fafc; color:#1e293b; }
 
 /* select2 overrides */
-.select2-container--default .select2-selection--single { border:1px solid #d1d5db; border-radius:6px; height:36px; }
+.select2-container--default .select2-selection--single { border:1.5px solid #cbd5e1; border-radius:6px; height:36px; }
 .select2-container--default .select2-selection--single .select2-selection__rendered { line-height:36px; font-size:.86rem; padding-left:10px; }
 .select2-container--default .select2-selection--single .select2-selection__arrow { height:34px; }
 .select2-container { width:100% !important; }
-.select2-container--default .select2-results__option--highlighted { background:#4f46e5; }
-.select2-dropdown { border:1px solid #d1d5db; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.12); }
+.select2-container--default .select2-results__option--highlighted { background:#1e3a5f; }
+.select2-dropdown { border:1.5px solid #cbd5e1; border-radius:6px; box-shadow:0 4px 16px rgba(0,0,0,.08); }
 </style>
 
-<div class="container-fluid py-4">
-<div class="st-wrapper">
-<div class="st-card">
+<div class="main-content">
+    <div class="container-fluid px-2">
+        <div class="st-wrapper">
+            <div class="st-card">
 
-    {{-- HEADER --}}
-    <div class="st-header">
-        <h4><i class="fas fa-exchange-alt me-2"></i> New Stock Transfer</h4>
-        <p>Transfer inventory between warehouses and branch shops &mdash; ERP controlled</p>
-    </div>
+                {{-- HEADER --}}
+                <div class="st-header">
+                    <h4><i class="fas fa-exchange-alt mr-2" style="color: #c8973a;"></i> New Stock Transfer</h4>
+                    <p>Transfer inventory between warehouses and branch shops &mdash; Ameen & Sons Corporate ERP</p>
+                </div>
 
-    {{-- FLASH MESSAGES --}}
-    @if(session('error'))
-    <div class="st-alert st-alert-err" style="display:block; margin:16px 28px 0;">
-        <i class="fas fa-times-circle me-1"></i> {{ session('error') }}
-    </div>
-    @endif
+                {{-- FLASH MESSAGES --}}
+                @if(session('error'))
+                <div class="st-alert st-alert-err" style="display:block; margin:16px 24px 0;">
+                    <i class="fas fa-times-circle me-1"></i> {{ session('error') }}
+                </div>
+                @endif
 
-    <form action="{{ route('stock_transfers.store') }}" method="POST" id="transferForm" autocomplete="off">
-    @csrf
+                <form action="{{ route('stock_transfers.store') }}" method="POST" id="transferForm" autocomplete="off">
+                @csrf
 
-    {{-- ══════════ SECTION 1: BRANCH (Super Admin only) ══════════ --}}
-    @if($isSuperAdmin)
-    <div class="st-section">
-        <div class="st-section-title">
-            <span class="badge-num">1</span> Branch Selection
-        </div>
-        <div class="row g-3">
-            <div class="col-md-5">
-                <label class="f-label"><i class="fas fa-code-branch me-1 text-indigo-500"></i> Select Branch <span class="text-danger">*</span></label>
-                <select name="branch_id" id="branch_id_select" class="f-control" required>
+                {{-- ══════════ SECTION 1: BRANCH (Super Admin only) ══════════ --}}
+                @if($isSuperAdmin)
+                <div class="st-section">
+                    <div class="st-section-title">
+                        <span class="badge-num">1</span> Branch Selection
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="f-label"><i class="fas fa-code-branch me-1 text-primary"></i> Select Branch <span class="text-danger">*</span></label>
+                            <select name="branch_id" id="branch_id_select" class="f-control" required>
                     <option value="">— Select Branch —</option>
                     @foreach($branches as $b)
                         <option value="{{ $b->id }}">🏪 {{ $b->name ?? $b->branch_name ?? 'Branch #'.$b->id }}</option>
@@ -235,6 +236,7 @@ textarea.f-control { resize:vertical; }
 </div>{{-- st-card --}}
 </div>{{-- st-wrapper --}}
 </div>{{-- container --}}
+</div>{{-- main-content --}}
 
 {{-- ── Row Template ── --}}
 <template id="row_tpl">

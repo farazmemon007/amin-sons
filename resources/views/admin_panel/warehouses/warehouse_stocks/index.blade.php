@@ -3,121 +3,222 @@
 @section('content')
 <style>
     :root {
-        --primary: #6366f1;
-        --success: #22c55e;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --info: #0ea5e9;
-        --light: #f8fafc;
-        --dark: #1e293b;
-        --muted: #64748b;
-        --border: #e2e8f0;
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-emerald-light: #ecfdf5;
+        --coa-crimson: #dc2626;
+        --coa-crimson-light: #fee2e2;
+        --coa-bg: #f8fafc;
+        --coa-border: #e2e8f0;
     }
 
-    .warehouse-header {
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
-        color: white;
-        padding: 40px 0;
-        margin-bottom: 40px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+    .wh-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    .warehouse-title {
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin-bottom: 10px;
+    /* ── 1. Corporate Header Bar ── */
+    .wh-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 16px 22px;
+        color: #ffffff;
         display: flex;
         align-items: center;
+        justify-content: space-between;
         gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
     }
 
-    .warehouse-title i {
-        font-size: 1.4rem;
+    .wh-header-left {
+        display: flex;
+        align-items: center;
+        gap: 14px;
     }
 
-    .warehouse-subtitle {
-        font-size: 0.75rem;
-        opacity: 0.9;
+    .wh-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
     }
 
-    .stats-container {
+    .wh-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin: 0;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+    }
+
+    .wh-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.82);
+        margin-top: 3px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* ── 2. KPI Summary Grid ── */
+    .wh-kpi-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-bottom: 40px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
     }
 
-    .stat-card {
-        background: white;
-        padding: 18px;
-        border-radius: 12px;
-        border-left: 4px solid var(--primary);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
+    @media (max-width: 768px) {
+        .wh-kpi-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    .wh-kpi-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 13px 16px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: transform 0.15s, box-shadow 0.15s;
     }
 
-    .stat-card.success {
-        border-left-color: var(--success);
+    .wh-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     }
 
-    .stat-card.warning {
-        border-left-color: var(--warning);
+    .wh-kpi-card.highlight {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border-color: #a7f3d0;
     }
 
-    .stat-label {
-        font-size: 0.65rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 6px;
-        font-weight: 600;
-    }
-
-    .stat-value {
-        font-size: 1.2rem;
+    .wh-kpi-label {
+        font-size: 11px;
         font-weight: 700;
-        color: var(--dark);
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
     }
 
+    .wh-kpi-val {
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--coa-navy);
+        line-height: 1.2;
+    }
+
+    .wh-kpi-val.emerald {
+        color: #047857;
+        font-family: monospace;
+        font-size: 20px;
+    }
+
+    .wh-kpi-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon-blue { background: #e0f2fe; color: #0284c7; }
+    .kpi-icon-emerald { background: #d1fae5; color: #059669; }
+    .kpi-icon-gold { background: #fef3c7; color: #d97706; }
+
+    /* ── 3. Toolbar & View Tabs ── */
+    .wh-toolbar {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 10px 16px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        margin-bottom: 18px;
+    }
+
+    .wh-tab-btn {
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .wh-tab-btn.active {
+        background: var(--coa-navy);
+        color: #ffffff;
+        border-color: var(--coa-navy);
+    }
+
+    .wh-tab-btn.damaged.active {
+        background: var(--coa-crimson);
+        color: #ffffff;
+        border-color: var(--coa-crimson);
+    }
+
+    /* ── 4. Products Grid & Cards ── */
     .products-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 18px;
-        margin-bottom: 40px;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
     }
 
     .product-card {
-        background: white;
-        border-radius: 12px;
+        background: #ffffff;
+        border-radius: 8px;
         overflow: hidden;
-        border: 1px solid var(--border);
-        transition: all 0.3s ease;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--coa-border);
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
     }
 
     .product-card:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-        border-color: var(--primary);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+        border-color: #cbd5e1;
     }
 
     .product-image {
         width: 100%;
-        height: 200px;
-        background: linear-gradient(135deg, var(--light), var(--border));
+        height: 150px;
+        background: #f8fafc;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 3rem;
-        color: var(--muted);
+        font-size: 2.2rem;
+        color: #94a3b8;
         overflow: hidden;
+        border-bottom: 1px solid var(--coa-border);
     }
 
     .product-image img {
@@ -127,55 +228,65 @@
     }
 
     .product-image.no-image {
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
-        color: white;
-        font-size: 2.5rem;
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 100%);
+        color: var(--coa-gold);
     }
 
     .product-info {
-        padding: 15px;
+        padding: 12px 14px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .product-code {
-        font-size: 0.65rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        margin-bottom: 4px;
+        font-family: monospace;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--coa-navy);
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 5px;
+        border: 1px solid #cbd5e1;
     }
 
     .product-name {
-        font-size: 0.85rem;
+        font-size: 13px;
         font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 6px;
+        color: #0f172a;
+        margin-bottom: 4px;
         line-height: 1.3;
-        min-height: 30px;
+        min-height: 34px;
     }
 
     .product-category {
-        font-size: 0.75rem;
-        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+        color: #0284c7;
         margin-bottom: 10px;
         display: inline-block;
-        background: var(--light);
-        padding: 3px 8px;
+        background: #e0f2fe;
+        padding: 2px 7px;
         border-radius: 4px;
     }
 
     .product-stock {
-        background: var(--light);
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 12px;
+        background: #f8fafc;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid #f1f5f9;
+        margin-bottom: 10px;
     }
 
     .stock-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 8px;
-        font-size: 0.95rem;
+        margin-bottom: 4px;
+        font-size: 12px;
     }
 
     .stock-row:last-child {
@@ -183,417 +294,380 @@
     }
 
     .stock-label {
-        color: var(--muted);
-        font-weight: 500;
-        font-size: 0.8rem;
+        color: #64748b;
+        font-weight: 600;
     }
 
     .stock-value {
-        font-weight: 700;
-        color: var(--dark);
-        font-size: 0.95rem;
+        font-family: monospace;
+        font-weight: 800;
+        font-size: 13px;
     }
 
     .stock-value.quantity {
-        color: var(--success);
+        color: #047857;
     }
 
     .stock-value.warehouses {
-        color: var(--info);
+        color: #0284c7;
     }
 
     .product-price {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: var(--primary);
+        font-family: monospace;
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--coa-navy);
         margin-bottom: 10px;
     }
 
-    .product-actions {
-        display: flex;
-        gap: 8px;
-    }
-
     .btn-view {
-        flex: 1;
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
-        color: white;
-        border: none;
+        background: var(--coa-navy);
+        color: #ffffff !important;
+        border: 1px solid var(--coa-navy);
         padding: 6px 12px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
+        border-radius: 5px;
+        font-weight: 700;
+        font-size: 11.5px;
         text-align: center;
-        text-decoration: none;
+        text-decoration: none !important;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 4px;
-        font-size: 0.8rem;
+        gap: 5px;
+        transition: all 0.15s;
     }
 
     .btn-view:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(99, 102, 241, 0.3);
-        color: white;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: var(--muted);
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        margin-bottom: 20px;
-        color: var(--border);
-    }
-
-    .empty-state p {
-        font-size: 1.1rem;
-        margin-bottom: 20px;
-    }
-
-    .empty-state a {
-        background: var(--primary);
-        color: white;
-        padding: 12px 24px;
-        border-radius: 8px;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .search-filter {
-        display: flex;
-        gap: 16px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-    }
-
-    .search-box {
-        flex: 1;
-        min-width: 250px;
-        position: relative;
-    }
-
-    .search-box input {
-        width: 100%;
-        padding: 12px 16px 12px 40px;
-        border: 2px solid var(--border);
-        border-radius: 8px;
-        font-size: 1rem;
-        transition: all 0.2s;
-    }
-
-    .search-box input:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-    }
-
-    .search-box i {
-        position: absolute;
-        left: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--muted);
-    }
-
-    @media (max-width: 768px) {
-        .products-grid {
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 16px;
-        }
-
-        .warehouse-title {
-            font-size: 1.5rem;
-        }
-
-        .stats-container {
-            grid-template-columns: repeat(2, 1fr);
-        }
+        background: var(--coa-navy-dark);
+        color: #ffffff !important;
+        transform: translateY(-1px);
     }
 </style>
 
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="warehouse-header">
-        <div class="container">
-            <div class="warehouse-title">
-                <i class="fas fa-warehouse"></i>
-                <div>
-                    <div>Warehouse Inventory Management</div>
-                    <small class="warehouse-subtitle">Real-time stock levels across all warehouses</small>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="main-content">
+    <div class="wh-wrapper">
+        <div class="container-fluid px-2">
 
-    <div class="container">
-        <!-- Statistics Cards -->
-        <div class="stats-container">
-            <div class="stat-card">
-                <div class="stat-label"><i class="fas fa-cube"></i> Total Products</div>
-                <div class="stat-value">{{ $stats['totalProducts'] }}</div>
-            </div>
-            <div class="stat-card success">
-                <div class="stat-label"><i class="fas fa-boxes"></i> Total Quantity</div>
-                <div class="stat-value">{{ number_format($stats['totalQuantity']) }}</div>
-            </div>
-            <div class="stat-card warning">
-                <div class="stat-label"><i class="fas fa-building"></i> Warehouses</div>
-                <div class="stat-value">{{ $stats['warehouses'] }}</div>
-            </div>
-        </div>
-
-        <!-- View Toggle & Filter Toolbar -->
-        <div class="card border-0 shadow-sm mb-4" style="background: #ffffff; border-radius: 12px; padding: 12px 16px;">
-            <div class="row g-2 align-items-center">
-                <!-- View Switcher Tabs (Left) -->
-                <div class="col-xl-4 col-lg-5 col-md-12">
-                    <div class="btn-group w-100" role="group" style="border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
-                        <button type="button" class="btn btn-primary active py-2 px-2 fw-600" id="btnProductView" onclick="switchView('product')" style="font-size: 12px; white-space: nowrap;">
-                            <i class="fas fa-cube me-1"></i> Products
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary py-2 px-2 fw-600" id="btnWarehouseView" onclick="switchView('warehouse')" style="font-size: 12px; white-space: nowrap;">
-                            <i class="fas fa-warehouse me-1"></i> Warehouses
-                        </button>
-                        <button type="button" class="btn btn-outline-danger py-2 px-2 fw-600" id="btnDamagedView" onclick="switchView('damaged')" style="font-size: 12px; white-space: nowrap;">
-                            <i class="fas fa-dumpster me-1"></i> Damaged
-                        </button>
+            {{-- 1. Corporate Header Bar --}}
+            <div class="wh-header-bar">
+                <div class="wh-header-left">
+                    <div class="wh-header-icon">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                    <div>
+                        <h4 class="wh-header-title">Warehouse Inventory Management</h4>
+                        <div class="wh-header-sub">
+                            <span><i class="fas fa-cubes" style="color: var(--coa-gold);"></i> Real-time multi-location stock levels & product distribution</span>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Search & Branch/Location Filters (Right) -->
-                <div class="col-xl-8 col-lg-7 col-md-12">
-                    <div class="d-flex align-items-center gap-2 flex-wrap flex-md-nowrap justify-content-lg-end">
-                        
-                        <!-- Search Box -->
-                        <div class="search-box flex-grow-1" style="min-width: 170px; margin-bottom: 0; position: relative;">
-                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; z-index: 5;"></i>
-                            <input type="text" id="searchProducts" class="form-control" placeholder="Search product or code..." style="height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; padding-left: 34px !important; font-size: 12.5px;">
+            {{-- 2. KPI Summary Grid --}}
+            <div class="wh-kpi-grid">
+                <div class="wh-kpi-card">
+                    <div>
+                        <div class="wh-kpi-label">Total Products</div>
+                        <div class="wh-kpi-val">{{ $stats['totalProducts'] }}</div>
+                    </div>
+                    <div class="wh-kpi-icon kpi-icon-blue">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                </div>
+                <div class="wh-kpi-card highlight">
+                    <div>
+                        <div class="wh-kpi-label" style="color: #047857;">Total Stock Quantity</div>
+                        <div class="wh-kpi-val emerald">{{ number_format($stats['totalQuantity']) }} <small style="font-size: 11px;">Units</small></div>
+                    </div>
+                    <div class="wh-kpi-icon kpi-icon-emerald">
+                        <i class="fas fa-cubes"></i>
+                    </div>
+                </div>
+                <div class="wh-kpi-card">
+                    <div>
+                        <div class="wh-kpi-label">Active Warehouses</div>
+                        <div class="wh-kpi-val">{{ $stats['warehouses'] }}</div>
+                    </div>
+                    <div class="wh-kpi-icon kpi-icon-gold">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 3. Toolbar: View Switcher Tabs + Search & Filters --}}
+            <div class="wh-toolbar">
+                <div class="row g-2 align-items-center">
+                    <!-- Left: View Switcher Tabs -->
+                    <div class="col-xl-4 col-lg-5 col-md-12">
+                        <div class="d-flex align-items-center" style="gap: 8px;">
+                            <button type="button" class="wh-tab-btn active" id="btnProductView" onclick="switchView('product')">
+                                <i class="fas fa-cube mr-1"></i> Products
+                            </button>
+                            <button type="button" class="wh-tab-btn" id="btnWarehouseView" onclick="switchView('warehouse')">
+                                <i class="fas fa-warehouse mr-1"></i> Warehouses
+                            </button>
+                            <button type="button" class="wh-tab-btn damaged" id="btnDamagedView" onclick="switchView('damaged')">
+                                <i class="fas fa-dumpster mr-1"></i> Damaged
+                            </button>
                         </div>
+                    </div>
 
-                        <!-- Branch & Location Filter Form -->
-                        <form action="{{ route('warehouse_stocks.index') }}" method="GET" class="d-flex align-items-center gap-2 mb-0 flex-shrink-0">
-                            @if(!empty($showBranchFilter) || $isSuperAdmin || (isset($branches) && $branches->count() > 1))
-                                <select name="branch_id" id="filter_branch_id" class="form-select form-select-sm" style="min-width: 125px; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px;">
-                                    <option value="">All Branches</option>
-                                    @foreach($branches as $branch)
-                                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    <!-- Right: Search & Branch/Warehouse Filters -->
+                    <div class="col-xl-8 col-lg-7 col-md-12">
+                        <div class="d-flex align-items-center flex-wrap flex-md-nowrap justify-content-lg-end" style="gap: 10px;">
+                            <!-- Search Box -->
+                            <div class="flex-grow-1" style="min-width: 170px; position: relative;">
+                                <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none; z-index: 2;"></i>
+                                <input type="text" id="searchProducts" class="form-control" placeholder="Search product or code..." style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1; padding-left: 34px !important; font-size: 12.5px;">
+                            </div>
+
+                            <!-- Filter Form -->
+                            <form action="{{ route('warehouse_stocks.index') }}" method="GET" class="d-flex align-items-center mb-0 flex-shrink-0" style="gap: 8px;">
+                                @if(!empty($showBranchFilter) || $isSuperAdmin || (isset($branches) && $branches->count() > 1))
+                                    <select name="branch_id" id="filter_branch_id" class="form-control form-control-sm" style="min-width: 140px; height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 12.5px; padding: 4px 10px;">
+                                        <option value="">All Branches</option>
+                                        @foreach($branches as $branch)
+                                            <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+
+                                <select name="warehouse_id" id="filter_warehouse_id" class="form-control form-control-sm" style="min-width: 145px; height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-size: 12.5px; padding: 4px 10px;">
+                                    <option value="">All Locations</option>
+                                    @if($hasDirectStock)
+                                        <option value="shop" {{ $selectedWarehouseId === 'shop' ? 'selected' : '' }}>Direct Branch/Shop</option>
+                                    @endif
+                                    @foreach($warehouses as $wh)
+                                        <option value="{{ $wh->id }}" {{ $selectedWarehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->warehouse_name }}</option>
                                     @endforeach
                                 </select>
-                            @endif
 
-                            <select name="warehouse_id" id="filter_warehouse_id" class="form-select form-select-sm" style="min-width: 135px; height: 38px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 12.5px;">
-                                <option value="">All Locations</option>
-                                @if($hasDirectStock)
-                                    <option value="shop" {{ $selectedWarehouseId === 'shop' ? 'selected' : '' }}>Direct Branch/Shop</option>
+                                <button type="submit" class="btn btn-sm btn-primary px-3 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy); font-size: 12.5px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;" title="Apply Filter">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+
+                                @if($selectedBranchId || $selectedWarehouseId)
+                                    <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-light border px-3" style="height: 38px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: 12.5px; color: #64748b;" title="Clear Filters">
+                                        <i class="fas fa-times"></i>
+                                    </a>
                                 @endif
-                                @foreach($warehouses as $wh)
-                                    <option value="{{ $wh->id }}" {{ $selectedWarehouseId == $wh->id ? 'selected' : '' }}>{{ $wh->warehouse_name }}</option>
-                                @endforeach
-                            </select>
-
-                            <button type="submit" class="btn btn-primary px-3" style="height: 38px; border-radius: 8px; font-size: 12.5px;" title="Apply Filter">
-                                <i class="fas fa-filter"></i>
-                            </button>
-
-                            @if($selectedBranchId || $selectedWarehouseId)
-                                <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-outline-secondary px-3" style="height: 38px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12.5px;" title="Clear Filters">
-                                    <i class="fas fa-times"></i>
-                                </a>
-                            @endif
-                        </form>
-
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- PRODUCT VIEW -->
-        <div id="productViewSection">
-            <div class="products-grid" id="productsGrid">
-                @forelse($products as $product)
-                    <div class="product-card" data-product-name="{{ strtolower($product['product_name']) }}" data-product-code="{{ strtolower($product['product_code']) }}">
-                        <div class="product-image {{ !$product['image'] ? 'no-image' : '' }}">
-                            @if($product['image'])
-                                <img src="{{ asset('uploads/products/' . $product['image']) }}" alt="{{ $product['product_name'] }}">
-                            @else
-                                <i class="fas fa-cube"></i>
-                            @endif
+            <!-- PRODUCT VIEW -->
+            <div id="productViewSection">
+                <div class="products-grid" id="productsGrid">
+                    @forelse($products as $product)
+                        <div class="product-card" data-product-name="{{ strtolower($product['product_name']) }}" data-product-code="{{ strtolower($product['product_code']) }}">
+                            <div class="product-image {{ !$product['image'] ? 'no-image' : '' }}">
+                                @if($product['image'])
+                                    <img src="{{ asset('uploads/products/' . $product['image']) }}" alt="{{ $product['product_name'] }}">
+                                @else
+                                    <i class="fas fa-cube"></i>
+                                @endif
+                            </div>
+                            <div class="product-info">
+                                <div>
+                                    <div class="product-code">{{ $product['product_code'] }}</div>
+                                    <div class="product-name">{{ $product['product_name'] }}</div>
+                                    <span class="product-category">{{ $product['category'] }}</span>
+                                </div>
+                                <div>
+                                    <div class="product-stock">
+                                        <div class="stock-row">
+                                            <span class="stock-label">Total Quantity:</span>
+                                            <span class="stock-value quantity">{{ number_format($product['total_quantity'], 2) }}</span>
+                                        </div>
+                                        <div class="stock-row">
+                                            <span class="stock-label">In Warehouses:</span>
+                                            <span class="stock-value warehouses">{{ $product['warehouse_count'] }} Locations</span>
+                                        </div>
+                                    </div>
+                                    @if($product['price'] > 0)
+                                        <div class="product-price">PKR {{ number_format($product['price'], 2) }}</div>
+                                    @endif
+                                    <a href="{{ route('warehouse_stocks.show', $product['product_id']) }}" class="btn-view">
+                                        <i class="fas fa-eye"></i> View Distribution
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="product-info">
-                            <div class="product-code">{{ $product['product_code'] }}</div>
-                            <div class="product-name">{{ $product['product_name'] }}</div>
-                            <span class="product-category">{{ $product['category'] }}</span>
-                            <div class="product-stock">
-                                <div class="stock-row">
-                                    <span class="stock-label">Total Qty:</span>
-                                    <span class="stock-value quantity">{{ number_format($product['total_quantity'], 2) }}</span>
-                                </div>
-                                <div class="stock-row">
-                                    <span class="stock-label">In Warehouses:</span>
-                                    <span class="stock-value warehouses">{{ $product['warehouse_count'] }}</span>
-                                </div>
+                    @empty
+                        <div class="p-5 text-center bg-white rounded border" style="grid-column: 1/-1;">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3 opacity-50"></i>
+                            <h6 class="font-weight-bold text-dark mb-1">No products found in warehouse inventory</h6>
+                            <small class="text-muted">Ensure opening stock or purchase orders are recorded.</small>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+
+                <!-- WAREHOUSE VIEW -->
+            <div id="warehouseViewSection" style="display:none;">
+                @forelse($warehouseGroups as $whIdx => $wh)
+                <div class="card mb-3" style="border: 1px solid var(--coa-border); border-radius: 9px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03); overflow: hidden; background: white;">
+                    <!-- Warehouse Header -->
+                    <div style="padding: 14px 18px; border-bottom: 1px solid var(--coa-border); background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 100%); color: #ffffff; display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleWarehouse(this.querySelector('.btn-wh-toggle'), 'wh-body-{{ $whIdx }}')">
+                        <div class="d-flex align-items-center gap-3">
+                            <div style="background: rgba(255, 255, 255, 0.12); border: 1px solid rgba(200, 151, 58, 0.3); border-radius: 6px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: var(--coa-gold);">
+                                <i class="fas fa-warehouse"></i>
                             </div>
-                            @if($product['price'] > 0)
-                                <div class="product-price">PKR {{ number_format($product['price']) }}</div>
-                            @endif
-                            <div class="product-actions">
-                                <a href="{{ route('warehouse_stocks.show', $product['product_id']) }}" class="btn-view">
-                                    <i class="fas fa-eye"></i> View Distribution
-                                </a>
+                            <div>
+                                <h5 class="mb-0 font-weight-bold" style="color: #ffffff !important; font-size: 14px;">{{ $wh['warehouse_name'] }}</h5>
+                                <small style="color: rgba(255, 255, 255, 0.8); font-size: 11px;"><i class="fas fa-map-marker-alt me-1" style="color: var(--coa-gold);"></i>{{ $wh['branch_name'] }}</small>
                             </div>
+                        </div>
+                        <div class="d-flex gap-3 align-items-center">
+                            <div class="text-right mr-3">
+                                <div style="font-size: 15px; font-weight: 800; color: #34d399; font-family: monospace;">{{ number_format($wh['total_quantity']) }}</div>
+                                <small style="color: rgba(255, 255, 255, 0.7); font-size: 10px; text-transform: uppercase;">Total Units</small>
+                            </div>
+                            <div class="text-right mr-3">
+                                <div style="font-size: 15px; font-weight: 800; color: #ffffff;">{{ $wh['product_count'] }}</div>
+                                <small style="color: rgba(255, 255, 255, 0.7); font-size: 10px; text-transform: uppercase;">Products</small>
+                            </div>
+                            <button class="btn btn-wh-toggle p-0 text-white" style="border: none; background: transparent; font-size: 14px; transition: transform 0.2s;">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
                         </div>
                     </div>
+
+                    <!-- Products Body -->
+                    <div id="wh-body-{{ $whIdx }}" class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0" style="font-size: 12.5px;">
+                                <thead style="background: #f8fafc;">
+                                    <tr>
+                                        <th style="padding: 10px 18px; color: #475569; font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #cbd5e1;">Product</th>
+                                        <th style="padding: 10px 14px; color: #475569; font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #cbd5e1;">Code</th>
+                                        <th style="padding: 10px 14px; color: #475569; font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #cbd5e1; text-align: right;">Quantity</th>
+                                        <th style="padding: 10px 18px; color: #475569; font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1.5px solid #cbd5e1; text-align: center;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($wh['products'] as $p)
+                                    <tr style="transition: background 0.15s; border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 11px 18px; vertical-align: middle;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div style="width: 28px; height: 28px; border-radius: 6px; background: #eff6ff; display: flex; align-items: center; justify-content: center; color: var(--coa-navy); font-size: 11px; font-weight: 800;">
+                                                    {{ strtoupper(substr($p['product_name'], 0, 1)) }}
+                                                </div>
+                                                <span style="font-weight: 700; color: #0f172a;">{{ $p['product_name'] }}</span>
+                                            </div>
+                                        </td>
+                                        <td style="padding: 11px 14px; vertical-align: middle;">
+                                            <span style="font-family: monospace; font-weight: 700; font-size: 11px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; color: var(--coa-navy);">
+                                                {{ $p['product_code'] }}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 11px 14px; vertical-align: middle; text-align: right;">
+                                            <span style="background: #ecfdf5; color: #047857; padding: 3px 10px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 13px; border: 1px solid #a7f3d0;">
+                                                {{ number_format($p['quantity']) }}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 11px 18px; vertical-align: middle; text-align: center;">
+                                            <a href="{{ route('warehouse_stocks.show', $p['product_id']) }}" class="btn btn-sm btn-primary" style="background: var(--coa-navy); border-color: var(--coa-navy); padding: 3px 10px; font-size: 11px; font-weight: 700; border-radius: 4px;">
+                                                <i class="fas fa-eye me-1"></i> View Breakdown
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
                 @empty
-                    <div class="empty-state" style="grid-column: 1/-1;">
-                        <i class="fas fa-inbox"></i>
-                        <p>No products found in warehouse inventory</p>
-
-                    </div>
+                <div class="p-5 text-center bg-white rounded border">
+                    <i class="fas fa-warehouse fa-3x text-muted mb-2 opacity-50"></i>
+                    <p class="text-muted mb-0 font-weight-bold">No warehouse stock data available</p>
+                </div>
                 @endforelse
             </div>
-        </div>
 
-        <!-- WAREHOUSE VIEW -->
-        <div id="warehouseViewSection" style="display:none;">
-            @forelse($warehouseGroups as $whIdx => $wh)
-            <div class="card mb-4" style="border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); overflow: hidden; background: white;">
-                <!-- Warehouse Header -->
-                <div style="padding: 20px 24px; border-bottom: 1px solid var(--border); background: var(--light); display: flex; justify-content: space-between; align-items: center;">
-                    <div class="d-flex align-items-center gap-3">
-                        <div style="background: white; border: 1px solid var(--border); border-radius: 8px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--primary);">
-                            <i class="fas fa-warehouse"></i>
-                        </div>
-                        <div>
-                            <h5 class="mb-1" style="font-weight: 700; color: var(--dark); font-size: 1.1rem;">{{ $wh['warehouse_name'] }}</h5>
-                            <small style="color: var(--muted);"><i class="fas fa-map-marker-alt me-1"></i>{{ $wh['branch_name'] }}</small>
+            <!-- DAMAGED STOCK VIEW (ERP STANDARD) -->
+            <div id="damagedViewSection" style="display:none;">
+                <div class="card shadow-sm" style="border: 1px solid var(--coa-border); border-radius: 9px; overflow: hidden; background: white;">
+                    <div class="card-header py-3 px-4 text-white" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h6 class="mb-0 font-weight-bold" style="color: #ffffff !important;">
+                                <i class="fas fa-dumpster mr-2"></i> Damaged / Defective Stock Inventory
+                            </h6>
+                            <small class="text-white opacity-80">Track damaged goods across all locations</small>
                         </div>
                     </div>
-                    <div class="d-flex gap-4 align-items-center">
-                        <div class="text-center">
-                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">{{ number_format($wh['total_quantity']) }}</div>
-                            <small style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Total Units</small>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table mb-0" style="font-size: 12.5px;">
+                                <thead style="background: #f8fafc;">
+                                    <tr>
+                                        <th style="padding: 11px 18px; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 1.5px solid #cbd5e1;">Branch</th>
+                                        <th style="padding: 11px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 1.5px solid #cbd5e1;">Location Status</th>
+                                        <th style="padding: 11px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 1.5px solid #cbd5e1;">Defective Item</th>
+                                        <th style="padding: 11px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 1.5px solid #cbd5e1;">Item Code</th>
+                                        <th style="padding: 11px 14px; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 1.5px solid #cbd5e1; text-align: right;">Quantity</th>
+                                        <th style="padding: 11px 18px; font-weight: 700; font-size: 11px; text-transform: uppercase; color: #475569; border-bottom: 1.5px solid #cbd5e1; text-align: right;">Last Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($damagedStocksList as $stock)
+                                    @if((float)$stock->quantity > 0)
+                                    <tr class="damaged-stock-row" data-product-name="{{ strtolower($stock->product->item_name ?? '') }}" data-product-code="{{ strtolower($stock->product->item_code ?? '') }}" data-part-name="{{ strtolower($stock->part_name ?? '') }}" data-branch-name="{{ strtolower($stock->branch->name ?? '') }}" data-warehouse-name="{{ strtolower($stock->warehouse->warehouse_name ?? '') }}" style="transition: background 0.15s; border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 12px 18px; vertical-align: middle; font-weight: 700; color: #0f172a;">
+                                            {{ $stock->branch->name ?? 'Head Office' }}
+                                        </td>
+                                        <td style="padding: 12px 14px; vertical-align: middle;">
+                                            @if($stock->warehouse_id === null)
+                                                <span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 4px; font-weight: 700; font-size: 11px; padding: 3px 8px;">
+                                                    <i class="fas fa-store mr-1"></i>Held at Shop
+                                                </span>
+                                            @else
+                                                <span class="badge" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; border-radius: 4px; font-weight: 700; font-size: 11px; padding: 3px 8px;">
+                                                    <i class="fas fa-warehouse mr-1"></i>Warehouse: {{ $stock->warehouse->warehouse_name ?? '-' }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td style="padding: 12px 14px; vertical-align: middle;">
+                                            <strong style="color: #0f172a;">{{ $stock->product->item_name ?? 'N/A' }}</strong>
+                                            @if($stock->is_part && $stock->part_name)
+                                                <span class="badge d-block mt-1 font-weight-bold" style="background: #fef3c7; color: #92400e; max-width: fit-content; font-size: 10.5px;">
+                                                    <i class="fas fa-puzzle-piece mr-1"></i>Part: {{ $stock->part_name }}
+                                                </span>
+                                            @else
+                                                <span class="badge d-block mt-1 font-weight-bold" style="background: #ecfdf5; color: #065f46; max-width: fit-content; font-size: 10.5px;">
+                                                    <i class="fas fa-box mr-1"></i>Complete Product
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td style="padding: 12px 14px; vertical-align: middle;">
+                                            <span style="font-family: monospace; font-weight: 700; font-size: 11px; color: var(--coa-navy);">
+                                                {{ $stock->product->item_code ?? 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 12px 14px; vertical-align: middle; text-align: right;">
+                                            <span style="background: #fee2e2; color: #b91c1c; padding: 3px 10px; border-radius: 4px; font-weight: 800; font-family: monospace; font-size: 13px; border: 1px solid #fca5a5;">
+                                                {{ number_format($stock->quantity, 2) }}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 12px 18px; vertical-align: middle; text-align: right; color: #64748b; font-size: 11.5px;">
+                                            {{ $stock->updated_at->format('d M Y, H:i') }}
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center py-5 text-muted">
+                                            <i class="fas fa-dumpster" style="font-size:36px; opacity:0.3;"></i>
+                                            <div class="mt-2 font-weight-bold">No damaged stock recorded in these locations.</div>
+                                        </td>
+                                    </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
-                        <div class="text-center">
-                            <div style="font-size: 1.2rem; font-weight: 700; color: var(--dark);">{{ $wh['product_count'] }}</div>
-                            <small style="color: var(--muted); font-size: 0.75rem; text-transform: uppercase;">Products</small>
-                        </div>
-                        <button class="btn" onclick="toggleWarehouse(this, 'wh-body-{{ $whIdx }}')" style="border: none; background: transparent; color: var(--muted); font-size: 1.2rem; transition: transform 0.3s; padding: 0;">
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Products Body -->
-                <div id="wh-body-{{ $whIdx }}" class="card-body p-0">
-                    <table class="table mb-0" style="font-size: 0.9rem;">
-                        <thead style="background: white;">
-                            <tr>
-                                <th style="padding: 14px 24px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none;">Product</th>
-                                <th style="padding: 14px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none;">Code</th>
-                                <th style="padding: 14px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none; text-align: right;">Quantity</th>
-                                <th style="padding: 14px 24px; color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 1px solid var(--border); border-top: none; text-align: center;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($wh['products'] as $p)
-                            <tr style="transition: background 0.2s;" onmouseover="this.style.background='var(--light)'" onmouseout="this.style.background=''">
-                                <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border);">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div style="width: 36px; height: 36px; border-radius: 8px; background: var(--light); display: flex; align-items: center; justify-content: center; color: var(--primary); font-size: 0.85rem; font-weight: 700;">
-                                            {{ strtoupper(substr($p['product_name'], 0, 1)) }}
-                                        </div>
-                                        <span style="font-weight: 600; color: var(--dark);">{{ $p['product_name'] }}</span>
-                                    </div>
-                                </td>
-                                <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); color: var(--muted);">{{ $p['product_code'] }}</td>
-                                <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: right;">
-                                    <span style="background: rgba(34, 197, 94, 0.1); color: var(--success); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">{{ number_format($p['quantity']) }}</span>
-                                </td>
-                                <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: center;">
-                                    <a href="{{ route('warehouse_stocks.show', $p['product_id']) }}" class="btn-view" style="display: inline-flex; width: auto; padding: 4px 12px; font-size: 0.75rem;">
-                                        <i class="fas fa-eye me-1"></i> View
-                                    </a>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            @empty
-            <div class="empty-state">
-                <i class="fas fa-inbox"></i>
-                <p>No warehouse stock data available</p>
-            </div>
-            @endforelse
-        </div>
-        </div>
-
-        <!-- DAMAGED STOCK VIEW (ERP STANDARD) -->
-        <div id="damagedViewSection" style="display:none;">
-            <div class="card shadow-sm" style="border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: white; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table mb-0" style="font-size: 0.9rem;">
-                            <thead style="background: linear-gradient(135deg, #c0392b, #d35400); color: white;">
-                                <tr>
-                                    <th style="padding: 14px 24px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Branch</th>
-                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Location Status</th>
-                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Defective Item</th>
-                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;">Item Code</th>
-                                    <th style="padding: 14px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; text-align: right;">Quantity</th>
-                                    <th style="padding: 14px 24px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; text-align: right;">Last Updated</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($damagedStocksList as $stock)
-                                @if((float)$stock->quantity > 0)
-                                <tr class="damaged-stock-row" data-product-name="{{ strtolower($stock->product->item_name ?? '') }}" data-product-code="{{ strtolower($stock->product->item_code ?? '') }}" data-part-name="{{ strtolower($stock->part_name ?? '') }}" data-branch-name="{{ strtolower($stock->branch->name ?? '') }}" data-warehouse-name="{{ strtolower($stock->warehouse->warehouse_name ?? '') }}" style="transition: background 0.2s;" onmouseover="this.style.background='var(--light)'" onmouseout="this.style.background=''">
-                                    <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border); font-weight: bold;">
-                                        {{ $stock->branch->name ?? 'Head Office' }}
-                                    </td>
-                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border);">
-                                        @if($stock->warehouse_id === null)
-                                            <span class="badge badge-warning py-1 px-3" style="border-radius: 20px; font-weight: 700; font-size: 0.8rem;"><i class="fas fa-store mr-1"></i>Held at Shop</span>
-                                        @else
-                                            <span class="badge badge-danger py-1 px-3" style="border-radius: 20px; font-weight: 700; font-size: 0.8rem; background-color: #c0392b;"><i class="fas fa-warehouse mr-1"></i>Warehouse: {{ $stock->warehouse->warehouse_name ?? '-' }}</span>
-                                        @endif
-                                    </td>
-                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border);">
-                                        <strong>{{ $stock->product->item_name ?? 'N/A' }}</strong>
-                                        @if($stock->is_part && $stock->part_name)
-                                            <span class="badge badge-warning d-block mt-1 font-weight-bold text-dark" style="max-width: fit-content;"><i class="fas fa-puzzle-piece mr-1"></i>Part: {{ $stock->part_name }}</span>
-                                        @else
-                                            <span class="badge badge-success d-block mt-1 font-weight-bold text-white" style="max-width: fit-content;"><i class="fas fa-box mr-1"></i>Complete Product</span>
-                                        @endif
-                                    </td>
-                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); color: var(--muted);">
-                                        {{ $stock->product->item_code ?? 'N/A' }}
-                                    </td>
-                                    <td style="padding: 16px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: right;">
-                                        <span style="background: rgba(239, 68, 68, 0.1); color: var(--danger); padding: 4px 12px; border-radius: 20px; font-weight: 700; font-size: 0.85rem;">{{ number_format($stock->quantity, 2) }}</span>
-                                    </td>
-                                    <td style="padding: 16px 24px; vertical-align: middle; border-bottom: 1px solid var(--border); text-align: right; color: var(--muted); font-size: 0.8rem;">
-                                        {{ $stock->updated_at->format('d M Y, H:i') }}
-                                    </td>
-                                </tr>
-                                @endif
-                                @empty
-                                <tr>
-                                    <td colspan="6" class="text-center py-5 text-muted">
-                                        <i class="fas fa-dumpster" style="font-size:40px; opacity:0.3;"></i>
-                                        <div class="mt-2">No damaged stock recorded in these locations.</div>
-                                    </td>
-                                </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </div>

@@ -326,11 +326,23 @@ public function searchProductsForSalebypagination(Request $request)
     // ===== List page =====
     
 
-    public function product()
+    public function product(Request $request)
     {
         // Get current user's branch
         $userBranch = Auth::check() ? Auth::user()->branch_id : null;
         $isSuperAdmin = Auth::check() ? Auth::user()->hasRole('super admin') : false;
+
+        // Parse multiple selected branch IDs (handles array, comma-delimited string, or single ID)
+        $rawBranchIds = $request->get('branch_ids', $request->get('branch_id', null));
+        $selectedBranchIds = [];
+
+        if (!empty($rawBranchIds)) {
+            if (is_array($rawBranchIds)) {
+                $selectedBranchIds = array_values(array_filter(array_map('intval', $rawBranchIds)));
+            } elseif (is_string($rawBranchIds) && $rawBranchIds !== 'all') {
+                $selectedBranchIds = array_values(array_filter(array_map('intval', explode(',', $rawBranchIds))));
+            }
+        }
 
         // Determine which branches the current user is allowed to see
         $allowedBranchIds = [];
@@ -339,8 +351,13 @@ public function searchProductsForSalebypagination(Request $request)
             $user = Auth::user();
 
             if ($user->hasRole('super admin')) {
-                // super admin sees all branches
-                $allowedBranchIds = Branch::pluck('id')->toArray();
+                // If specific branches are selected by super admin, filter by them
+                if (!empty($selectedBranchIds)) {
+                    $allowedBranchIds = $selectedBranchIds;
+                } else {
+                    // super admin sees all branches by default
+                    $allowedBranchIds = Branch::pluck('id')->toArray();
+                }
             } else {
                 // ✅ IMPORTANT: Only include user's own branch + explicitly granted permissions
                 // always include own branch
@@ -369,7 +386,7 @@ public function searchProductsForSalebypagination(Request $request)
             'brand', 
             'branch',
             'branchProductCodes', // ✅ Load branch-specific codes
-            'warehouseStocks' // ✅ Load all warehouse stocks for super admin
+            'warehouseStocks.branch' // ✅ Load all warehouse stocks with branch for super admin
         ]);
 
         if (!empty($allowedBranchIds)) {
@@ -404,6 +421,10 @@ public function searchProductsForSalebypagination(Request $request)
                             $stocksByBranch[$ws->branch_id]['quantity'] += $ws->quantity;
                         }
                     }
+                    // Filter to only show branches that have actual stock > 0
+                    $stocksByBranch = array_filter($stocksByBranch, function ($item) {
+                        return $item['quantity'] > 0;
+                    });
                     $product->all_warehouse_stocks = array_values($stocksByBranch);
                     $product->user_branch_stock_qty = 0;
                     $product->has_stock_in_user_branch = false;
@@ -442,11 +463,11 @@ public function searchProductsForSalebypagination(Request $request)
             });
 
         $categories = Category::get();
-        // supply branch list for add modal (super admin can choose branch)
-        $branchesList = Branch::get();
+        // supply branch list for add modal & filter (super admin can choose branch)
+        $branchesList = Branch::orderBy('name')->get();
         
-        // pass userBranch, isSuperAdmin, and allowedBranchIds to view
-        return view('admin_panel.product.index', compact('products', 'categories', 'allowedBranchIds', 'branchesList', 'userBranch', 'isSuperAdmin'));
+        // pass userBranch, isSuperAdmin, selectedBranchIds, and allowedBranchIds to view
+        return view('admin_panel.product.index', compact('products', 'categories', 'allowedBranchIds', 'branchesList', 'userBranch', 'isSuperAdmin', 'selectedBranchIds'));
     }
 
  public function productview($id)

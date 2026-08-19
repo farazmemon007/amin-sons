@@ -3,715 +3,849 @@
 @section('content')
 <style>
     :root {
-        --primary: #6366f1;
-        --success: #22c55e;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --info: #0ea5e9;
-        --light: #f8fafc;
-        --dark: #1e293b;
-        --muted: #64748b;
-        --border: #e2e8f0;
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-emerald-light: #ecfdf5;
+        --coa-crimson: #dc2626;
+        --coa-crimson-light: #fee2e2;
+        --coa-bg: #f8fafc;
+        --coa-border: #e2e8f0;
     }
 
-    .page-header {
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
-        color: white;
-        padding: 35px 0;
-        margin-bottom: 35px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+    .coa-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    .page-header-top {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: white;
-        text-decoration: none;
-        opacity: 0.9;
-        transition: opacity 0.2s;
-        font-size: 0.95rem;
-    }
-
-    .back-link:hover {
-        opacity: 1;
-        color: white;
-    }
-
-    .page-title-section {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-
-    .page-icon {
-        font-size: 2.2rem;
-    }
-
-    .page-title-text h1 {
-        font-size: 1.8rem;
-        font-weight: 700;
-        margin: 0;
-    }
-
-    .page-title-text p {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin: 5px 0 0 0;
-    }
-
-    .summary-cards {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-top: 25px;
-    }
-
-    .summary-card {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        padding: 18px;
+    /* ── 1. Corporate Header Bar ── */
+    .coa-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
         border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .summary-card-label {
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        opacity: 0.85;
-        margin-bottom: 8px;
-        font-weight: 600;
-    }
-
-    .summary-card-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-
-    /* Content Section */
-    .content-section {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
-        margin-bottom: 30px;
-    }
-
-    .section-header {
-        background: linear-gradient(135deg, var(--light), rgba(248, 250, 252, 0.5));
-        padding: 20px 25px;
-        border-bottom: 2px solid var(--border);
+        padding: 16px 22px;
+        color: #ffffff;
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
     }
 
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--dark);
-        margin: 0;
-        flex: 1;
-    }
-
-    .section-count {
-        background: var(--primary);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-
-    /* Account Head Groups */
-    .account-head-group {
-        border-bottom: 1px solid var(--border);
-    }
-
-    .account-head-group:last-child {
-        border-bottom: none;
-    }
-
-    .head-title-bar {
-        background: linear-gradient(90deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.05));
-        padding: 15px 25px;
+    .coa-header-left {
         display: flex;
         align-items: center;
-        gap: 12px;
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.2s;
+        gap: 14px;
     }
 
-    .head-title-bar:hover {
-        background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
-    }
-
-    .head-toggle-icon {
-        color: var(--primary);
-        transition: transform 0.2s;
-        font-size: 1rem;
-    }
-
-    .head-toggle-icon.collapsed {
-        transform: rotate(-90deg);
-    }
-
-    .head-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--dark);
-        flex: 1;
-    }
-
-    .head-account-count {
-        background: rgba(99, 102, 241, 0.1);
-        color: var(--primary);
-        padding: 3px 10px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .head-balance {
-        font-weight: 700;
-        color: var(--dark);
-        font-size: 0.95rem;
-        min-width: 140px;
-        text-align: right;
-    }
-
-    /* Accounts List */
-    .accounts-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .accounts-table tbody tr {
-        border-bottom: 1px solid var(--border);
-        transition: background 0.15s;
-    }
-
-    .accounts-table tbody tr:hover {
-        background: var(--light);
-    }
-
-    .accounts-table tbody tr:last-child {
-        border-bottom: none;
-    }
-
-    .account-row td {
-        padding: 14px 25px;
-        font-size: 0.95rem;
-    }
-
-    .account-code {
-        font-family: 'Courier New', monospace;
-        font-weight: 600;
-        color: var(--primary);
-        font-size: 0.9rem;
-    }
-
-    .account-title {
-        color: var(--dark);
-        font-weight: 500;
-    }
-
-    .account-type {
-        display: inline-flex;
+    .coa-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
         align-items: center;
-        gap: 5px;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
     }
 
-    .account-type.debit {
-        background: rgba(34, 197, 94, 0.1);
-        color: var(--success);
-    }
-
-    .account-type.credit {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
-    }
-
-    .account-balance {
-        font-weight: 700;
-        text-align: right;
-        min-width: 120px;
-    }
-
-    .account-balance.debit {
-        color: var(--success);
-    }
-
-    .account-balance.credit {
-        color: var(--danger);
-    }
-
-    .account-status {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 4px;
-    }
-
-    .account-status.active {
-        background: rgba(34, 197, 94, 0.1);
-        color: var(--success);
-    }
-
-    .account-status.inactive {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--danger);
-    }
-
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 50px 20px;
-        color: var(--muted);
-    }
-
-    .empty-state-icon {
-        font-size: 2.5rem;
-        margin-bottom: 15px;
-        opacity: 0.3;
-    }
-
-    .empty-state-text {
-        font-size: 1rem;
+    .coa-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
         margin: 0;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
     }
 
-    /* Branch Selector */
-    .branch-selector {
+    .coa-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.82);
+        margin-top: 3px;
         display: flex;
         align-items: center;
         gap: 10px;
-        background: white;
-        padding: 12px 16px;
-        border-radius: 8px;
-        border: 1px solid var(--border);
     }
 
-    .branch-selector label {
-        margin: 0;
-        font-weight: 600;
-        color: var(--dark);
-        font-size: 0.9rem;
-    }
-
-    .branch-selector select {
-        border: 1px solid var(--border);
-        padding: 6px 10px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 0.9rem;
-    }
-
-    .page-header-actions {
+    .coa-header-actions {
         display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn-coa-head {
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        padding: 7px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        text-decoration: none !important;
+        cursor: pointer;
+    }
+
+    .btn-coa-head:hover {
+        background: rgba(255, 255, 255, 0.22);
+        color: #ffffff !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-coa-account {
+        background: linear-gradient(135deg, #0d9f6e 0%, #059669 100%);
+        color: #ffffff !important;
+        border: 1px solid #059669;
+        padding: 7px 14px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        text-decoration: none !important;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(13, 159, 110, 0.3);
+    }
+
+    .btn-coa-account:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: #ffffff !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-coa-back {
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff !important;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 7px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s;
+        text-decoration: none !important;
+    }
+
+    .btn-coa-back:hover {
+        background: rgba(255, 255, 255, 0.18);
+        color: #ffffff !important;
+    }
+
+    /* ── 2. KPI Summary Grid ── */
+    .coa-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    @media (max-width: 992px) {
+        .coa-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .coa-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .coa-kpi-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 13px 16px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .coa-kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .coa-kpi-card.highlight {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border-color: #a7f3d0;
+    }
+
+    .coa-kpi-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+
+    .coa-kpi-val {
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--coa-navy);
+        line-height: 1.2;
+    }
+
+    .coa-kpi-val.emerald {
+        color: #047857;
+        font-family: monospace;
+        font-size: 20px;
+    }
+
+    .coa-kpi-val.opening {
+        color: #475569;
+        font-family: monospace;
+        font-size: 17px;
+    }
+
+    .coa-kpi-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon-blue { background: #e0f2fe; color: #0284c7; }
+    .kpi-icon-gold { background: #fef3c7; color: #d97706; }
+    .kpi-icon-slate { background: #f1f5f9; color: #475569; }
+    .kpi-icon-emerald { background: #d1fae5; color: #059669; }
+
+    /* ── 3. Branch Selector & Filter Bar ── */
+    .coa-toolbar {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 10px 16px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 12px;
         flex-wrap: wrap;
     }
 
-    .page-header-actions .btn {
-        background: rgba(255, 255, 255, 0.95) !important;
-        color: #333 !important;
-        border: 2px solid white !important;
-        font-weight: 600;
-        padding: 12px 20px;
+    .coa-filter-pills {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .filter-pill {
+        padding: 4px 10px;
+        border-radius: 5px;
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        transition: all 0.15s;
+        user-select: none;
+    }
+
+    .filter-pill:hover {
+        background: #e2e8f0;
+        color: var(--coa-navy);
+    }
+
+    .filter-pill.active {
+        background: var(--coa-navy);
+        color: #ffffff;
+        border-color: var(--coa-navy);
+    }
+
+    .coa-branch-switcher {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 700;
+        color: var(--coa-navy);
+    }
+
+    .coa-branch-select {
+        border: 1.5px solid #cbd5e1;
         border-radius: 6px;
-        transition: all 0.2s;
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none !important;
-    }
-
-    .page-header-actions .btn:hover {
-        background: white !important;
-        border-color: white !important;
-        color: #6366f1 !important;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
-    @media (max-width: 768px) {
-        .page-header {
-            padding: 25px 0;
-        }
-
-        .page-title-text h1 {
-            font-size: 1.3rem;
-        }
-
-        .summary-cards {
-            grid-template-columns: 1fr;
-        }
-
-        .account-row td {
-            padding: 12px 12px;
-            font-size: 0.85rem;
-        }
-
-        .account-code {
-            font-size: 0.8rem;
-        }
-
-        .account-balance {
-            min-width: 80px;
-            font-size: 0.9rem;
-        }
-
-        .head-balance {
-            min-width: 100px;
-            font-size: 0.85rem;
-        }
-    }
-
-    .hidden-accounts {
-        display: none;
-    }
-
-    .shown-accounts {
-        display: table-row;
-    }
-
-    /* ERP Modal Styling - Premium Look */
-    .modal-content {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-        overflow: hidden;
-    }
-    .modal-header {
-        padding: 22px 30px;
-        border-bottom: none;
-    }
-    .modal-title {
-        font-weight: 700;
-        font-size: 1.25rem;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .modal-body {
-        padding: 35px 30px;
-        background: #fff;
-    }
-    .form-label {
-        font-size: 0.88rem;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .form-label i {
-        color: var(--primary);
-        font-size: 1rem;
-        width: 20px;
-        text-align: center;
-    }
-    .form-control, .form-select {
-        border: 2px solid #edf2f7;
-        border-radius: 10px;
-        padding: 12px 16px;
-        font-size: 0.95rem;
-        color: #2d3748;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        background-color: #f8fafc;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: var(--primary);
-        background-color: #fff;
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        padding: 5px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--coa-navy);
+        background: #ffffff;
+        cursor: pointer;
         outline: none;
     }
-    .modal-footer {
-        padding: 20px 30px 30px;
-        border-top: 1px solid #f1f5f9;
-        background: #f8fafc;
-        display: flex;
-        justify-content: flex-end;
-        gap: 12px;
+
+    .coa-branch-select:focus {
+        border-color: var(--coa-navy);
     }
-    .modal-footer .btn {
-        padding: 12px 24px;
-        font-weight: 700;
+
+    /* ── 4. Main Accounts Card & Table ── */
+    .coa-card {
+        background: #ffffff;
         border-radius: 10px;
-        display: inline-flex;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+    }
+
+    .coa-card-header {
+        background: #f8fafc;
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--coa-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .coa-card-title {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: var(--coa-navy);
+        margin: 0;
+        display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 0.9rem;
+    }
+
+    .coa-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+
+    .coa-table thead th {
+        background: #f1f5f9;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 10px 14px;
+        border-bottom: 1.5px solid #cbd5e1;
+        white-space: nowrap;
+    }
+
+    .coa-table tbody td {
+        padding: 11px 14px;
+        font-size: 12.5px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #1e293b;
+    }
+
+    .coa-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .badge-code {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 11.5px;
+        background: #f1f5f9;
+        color: var(--coa-navy);
+        padding: 3px 8px;
+        border-radius: 5px;
+        border: 1px solid #cbd5e1;
+        display: inline-block;
+    }
+
+    .badge-head {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 5px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        text-transform: capitalize;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .badge-type-debit {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .badge-type-credit {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .current-bal-badge {
+        font-family: monospace;
+        font-size: 13.5px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        letter-spacing: -0.01em;
+    }
+
+    .current-bal-badge.positive {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1.5px solid #a7f3d0;
+    }
+
+    .current-bal-badge.negative {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1.5px solid #fca5a5;
+    }
+
+    .badge-status-active {
+        background: #dcfce7;
+        color: #15803d;
+        border: 1px solid #86efac;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .badge-status-inactive {
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #cbd5e1;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+    }
+
+    .btn-action-ledger {
+        background: var(--coa-navy);
+        color: #ffffff !important;
+        border: 1px solid var(--coa-navy);
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 5px;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.15s;
+    }
+
+    .btn-action-ledger:hover {
+        background: var(--coa-navy-dark);
+        color: #ffffff !important;
+        transform: translateY(-1px);
+    }
+
+    .btn-action-edit {
+        background: #ffffff;
+        color: #475569 !important;
+        border: 1px solid #cbd5e1;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 5px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        transition: all 0.15s;
+    }
+
+    .btn-action-edit:hover {
+        background: #f1f5f9;
+        color: var(--coa-navy) !important;
+        border-color: #94a3b8;
+    }
+
+    /* ── Empty State ── */
+    .coa-empty-box {
+        text-align: center;
+        padding: 45px 20px;
+    }
+
+    .coa-empty-icon {
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #94a3b8;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-bottom: 12px;
+    }
+
+    .coa-empty-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 4px;
+    }
+
+    .coa-empty-desc {
+        font-size: 12px;
+        color: #64748b;
+        margin-bottom: 14px;
     }
 </style>
 
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="container">
-            <div class="page-header-top">
-                <a href="{{ route('view_all') }}" class="back-link">
-                    <i class="fas fa-arrow-left"></i> Back to Branches
-                </a>
-            </div>
+<div class="main-content">
+    <div class="coa-wrapper">
+        <div class="container-fluid px-2">
 
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
-                <div class="page-title-section">
-                    <i class="fas fa-list-ul page-icon"></i>
-                    <div class="page-title-text">
-                        <h1>{{ $branch->name }}</h1>
-                        <p><i class="fas fa-map-marker-alt"></i> {{ $branch->address ?? 'No address on file' }}</p>
+            {{-- 1. Corporate Header Bar --}}
+            <div class="coa-header-bar">
+                <div class="coa-header-left">
+                    <div class="coa-header-icon">
+                        <i class="fas fa-sitemap"></i>
+                    </div>
+                    <div>
+                        <h4 class="coa-header-title">{{ $branch->name }}</h4>
+                        <div class="coa-header-sub">
+                            <span><i class="fas fa-map-marker-alt" style="color: var(--coa-gold);"></i> {{ $branch->address ?? 'Branch Code #' . $branch->id }}</span>
+                            <span>•</span>
+                            <span><i class="fas fa-book" style="color: var(--coa-gold);"></i> Chart of Accounts & Head Balances</span>
+                        </div>
                     </div>
                 </div>
-                
-                @can('chart.of.accounts.create')
-                <div class="page-header-actions">
-                    <button type="button" class="btn" data-toggle="modal" data-target="#createHeadModal">
-                        <i class="fas fa-plus"></i> Create Account Head
-                    </button>
-                    
-                    <button type="button" class="btn" data-toggle="modal" data-target="#createAccountModal">
-                        <i class="fas fa-plus"></i> Create Account
-                    </button>
-                </div>
-                @endcan
-            </div>
-
-            <!-- Summary Cards -->
-            <div class="summary-cards">
-                <div class="summary-card">
-                    <div class="summary-card-label">Total Accounts</div>
-                    <div class="summary-card-value">{{ $branch->accounts()->count() }}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-card-label">Account Heads</div>
-                    <div class="summary-card-value">{{ count((array)$accountsByHead) }}</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-card-label">Total Balance</div>
-                    <div class="summary-card-value">PKR {{ number_format($totalBalance, 2) }}</div>
+                <div class="coa-header-actions">
+                    <a href="{{ route('view_all') }}" class="btn-coa-back">
+                        <i class="fas fa-arrow-left"></i> Back to Branches
+                    </a>
+                    @can('chart.of.accounts.create')
+                        <button type="button" class="btn-coa-head" data-toggle="modal" data-target="#createHeadModal">
+                            <i class="fas fa-folder-plus"></i> + Create Account Head
+                        </button>
+                        <button type="button" class="btn-coa-account" data-toggle="modal" data-target="#createAccountModal">
+                            <i class="fas fa-plus-circle"></i> + Create Account
+                        </button>
+                    @endcan
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Main Content -->
-    <div class="container">
-        <!-- Branch Selector (for super admin to switch branches) -->
-        @if($isSuperAdmin && count($branches) > 1)
-            <div style="margin-bottom: 25px;">
-                <div class="branch-selector">
-                    <label for="branch-select">Switch to Branch:</label>
-                    <select id="branch-select" onchange="if(this.value) window.location.href = '{{ url('branch-accounts') }}/' + this.value;">
-                        <option value="">-- Select a branch --</option>
-                        @foreach($branches as $b)
-                            <option value="{{ $b->id }}" {{ $b->id == $branch->id ? 'selected' : '' }}>
-                                {{ $b->name }}
-                            </option>
-                        @endforeach
-                    </select>
+            {{-- 2. Alerts if any --}}
+            @if (session('success'))
+                <div class="alert alert-success py-2 px-3 mb-3 small font-weight-bold border-0 shadow-sm" style="border-left: 4px solid #10b981 !important; border-radius: 6px;">
+                    <i class="fas fa-check-circle mr-1"></i> {{ session('success') }}
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger py-2 px-3 mb-3 small font-weight-bold border-0 shadow-sm" style="border-left: 4px solid #ef4444 !important; border-radius: 6px;">
+                    <i class="fas fa-exclamation-circle mr-1"></i> {{ session('error') }}
+                </div>
+            @endif
+
+            {{-- 3. KPI Summary Grid --}}
+            <div class="coa-kpi-grid">
+                <!-- Card 1: Total Accounts -->
+                <div class="coa-kpi-card">
+                    <div>
+                        <div class="coa-kpi-label">Total Accounts</div>
+                        <div class="coa-kpi-val">{{ $allAccounts->count() }}</div>
+                    </div>
+                    <div class="coa-kpi-icon kpi-icon-blue">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                </div>
+
+                <!-- Card 2: Account Heads -->
+                <div class="coa-kpi-card">
+                    <div>
+                        <div class="coa-kpi-label">Active Heads</div>
+                        <div class="coa-kpi-val">{{ $accountsByHead->count() }}</div>
+                    </div>
+                    <div class="coa-kpi-icon kpi-icon-gold">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                </div>
+
+                <!-- Card 3: Total Opening Balance -->
+                <div class="coa-kpi-card">
+                    <div>
+                        <div class="coa-kpi-label">Opening Balance</div>
+                        <div class="coa-kpi-val opening">PKR {{ number_format($totalOpeningBalance, 2) }}</div>
+                    </div>
+                    <div class="coa-kpi-icon kpi-icon-slate">
+                        <i class="fas fa-history"></i>
+                    </div>
+                </div>
+
+                <!-- Card 4: Current Net Balance (Highlighted) -->
+                <div class="coa-kpi-card highlight">
+                    <div>
+                        <div class="coa-kpi-label" style="color: #047857;">Current Total Balance</div>
+                        <div class="coa-kpi-val emerald">PKR {{ number_format($totalCurrentBalance, 2) }}</div>
+                    </div>
+                    <div class="coa-kpi-icon kpi-icon-emerald">
+                        <i class="fas fa-check-double"></i>
+                    </div>
                 </div>
             </div>
-        @endif
 
-        <!-- Accounts by Head -->
-        @if(count($heads) > 0)
-            <div class="content-section">
-                <div class="section-header">
-                    <i class="fas fa-book" style="color: var(--primary); font-size: 1.2rem;"></i>
-                    <h2 class="section-title">Chart of Accounts</h2>
-                    <span class="section-count">{{ $branch->accounts()->count() }} Accounts</span>
+            {{-- 4. Toolbar: Category Filters + Branch Switcher --}}
+            <div class="coa-toolbar">
+                <div class="coa-filter-pills">
+                    <span class="filter-pill active" onclick="filterByHead('all', this)">
+                        <i class="fas fa-th-large mr-1"></i> All Accounts ({{ $allAccounts->count() }})
+                    </span>
+                    @foreach($accountsByHead as $headName => $accounts)
+                        <span class="filter-pill" onclick="filterByHead('{{ Str::slug($headName) }}', this)">
+                            {{ $headName }} ({{ count($accounts) }})
+                        </span>
+                    @endforeach
                 </div>
 
-                @if(count((array)$accountsByHead) > 0)
-                    <table class="accounts-table">
-                        <tbody>
-                            @foreach($accountsByHead as $headName => $accounts)
-                                <!-- Account Head Row (Expandable) -->
-                                <tr class="head-title-bar" onclick="toggleAccountHead(this)">
-                                    <td colspan="6" style="padding: 0;">
-                                        <div style="display: flex; align-items: center; gap: 12px; padding: 15px 25px;">
-                                            <i class="fas fa-chevron-right head-toggle-icon"></i>
-                                            <span class="head-title">{{ $headName }}</span>
-                                            <span class="head-account-count">
-                                                @if(count($accounts) > 0)
-                                                    {{ count($accounts) }} {{ count($accounts) == 1 ? 'Account' : 'Accounts' }}
-                                                @else
-                                                    <span style="color: #f59e0b;">No Accounts</span>
-                                                @endif
-                                            </span>
-                                            <span class="head-balance" style="margin-left: auto;">
-                                                PKR {{ number_format($accounts->sum('opening_balance'), 2) }}
-                                            </span>
-                                        </div>
-                                    </td>
-                                </tr>
-
-                                <!-- Accounts under this head -->
-                                @if(count($accounts) > 0)
-                                    @foreach($accounts as $account)
-                                        <tr class="account-row shown-accounts" data-head="{{ $loop->parent->index }}">
-                                            <td style="width: 15%; padding-left: 50px;">
-                                                <span class="account-code">{{ $account->account_code ?? 'N/A' }}</span>
-                                            </td>
-                                            <td style="width: 30%;">
-                                                <span class="account-title">{{ $account->title }}</span>
-                                            </td>
-                                            <td style="width: 15%;">
-                                                <span class="account-type {{ strtolower($account->type) }}">
-                                                    <i class="fas {{ strtolower($account->type) == 'debit' ? 'fa-arrow-up' : 'fa-arrow-down' }}"></i>
-                                                    {{ ucfirst($account->type ?? 'N/A') }}
-                                                </span>
-                                            </td>
-                                            <td style="width: 18%;">
-                                                <span class="account-balance {{ strtolower($account->type) }}">
-                                                    PKR {{ number_format($account->opening_balance ?? 0, 2) }}
-                                                </span>
-                                            </td>
-                                            <td style="width: 12%;">
-                                                <span class="account-status {{ $account->status == 'active' ? 'active' : 'inactive' }}">
-                                                    <i class="fas {{ $account->status == 'active' ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
-                                                    {{ ucfirst($account->status ?? 'N/A') }}
-                                                </span>
-                                            </td>
-                                             <td style="width: 15%; text-align: center;">
-                                                <div style="display: flex; gap: 6px; justify-content: center;">
-                                                    <a href="{{ route('account.ledger', $account->id) }}"
-                                                       class="btn btn-sm"
-                                                       style="background:linear-gradient(135deg,#6366f1,#8b5cf6); color:white; border-radius:6px; font-size:0.78rem; font-weight:600; padding:5px 12px; white-space:nowrap; text-decoration:none;"
-                                                       title="View Account Ledger">
-                                                        <i class="fas fa-book-open"></i> Ledger
-                                                    </a>
-                                                    
-                                                    <button type="button" 
-                                                            class="btn btn-sm btn-edit-account"
-                                                            style="background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; border-radius:6px; font-size:0.78rem; font-weight:600; padding:5px 12px;"
-                                                            data-account="{{ json_encode($account) }}"
-                                                            data-toggle="modal" 
-                                                            data-target="#editAccountModal">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                </div>
-                                             </td>
-                                        </tr>
-                                    @endforeach
-                                @endif
+                @if($isSuperAdmin && count($branches) > 1)
+                    <div class="coa-branch-switcher">
+                        <span><i class="fas fa-store"></i> Switch Branch:</span>
+                        <select class="coa-branch-select" onchange="if(this.value) window.location.href = '{{ url('branch-accounts') }}/' + this.value;">
+                            @foreach($branches as $b)
+                                <option value="{{ $b->id }}" {{ $b->id == $branch->id ? 'selected' : '' }}>
+                                    🏬 {{ $b->name }}
+                                </option>
                             @endforeach
-                        </tbody>
-                    </table>
-                @else
-                    <div class="empty-state">
-                        <div class="empty-state-icon">
-                            <i class="fas fa-inbox"></i>
-                        </div>
-                        <p class="empty-state-text">No accounts created. <br><strong>Create an Account</strong> under one of the account heads above.</p>
+                        </select>
                     </div>
                 @endif
             </div>
-        @else
-            <div class="content-section">
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="fas fa-inbox"></i>
+
+            {{-- 5. Main Accounts Card --}}
+            <div class="coa-card">
+                <div class="coa-card-header">
+                    <div class="coa-card-title">
+                        <i class="fas fa-list-alt text-primary"></i>
+                        <span>Branch Chart of Accounts & Real-Time Balances</span>
                     </div>
-                    <p class="empty-state-text">No account heads found. Create one first!</p>
+                    <small class="text-muted font-weight-bold">{{ $allAccounts->count() }} Accounts Configured</small>
                 </div>
+
+                @if($allAccounts->isEmpty())
+                    <div class="coa-empty-box">
+                        <div class="coa-empty-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="coa-empty-title">No Accounts Created Yet for {{ $branch->name }}</div>
+                        <div class="coa-empty-desc">
+                            This branch currently has no active ledger accounts. Click the button below to add bank or cash accounts.
+                        </div>
+                        @can('chart.of.accounts.create')
+                            <button type="button" class="btn btn-sm btn-success px-3 fw-bold" data-toggle="modal" data-target="#createAccountModal">
+                                <i class="fas fa-plus-circle mr-1"></i> Add First Account
+                            </button>
+                        @endcan
+                    </div>
+                @else
+                    <div class="table-responsive">
+                        <table class="coa-table" id="accountsMainTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">#</th>
+                                    <th style="width: 14%;">Account Code</th>
+                                    <th style="width: 22%;">Account Title</th>
+                                    <th style="width: 14%;">Account Head</th>
+                                    <th style="width: 10%; text-align: center;">Nature</th>
+                                    <th style="width: 12%; text-align: right;">Opening Balance</th>
+                                    <th style="width: 15%; text-align: right;">Current Balance</th>
+                                    <th style="width: 8%; text-align: center;">Status</th>
+                                    <th style="width: 10%; text-align: center;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($allAccounts as $index => $account)
+                                    @php
+                                        $headSlug = Str::slug($account->head->name ?? 'general');
+                                        $currBal = (float)($account->current_balance ?? $account->opening_balance ?? 0);
+                                    @endphp
+                                    <tr class="account-item-row" data-head-slug="{{ $headSlug }}">
+                                        <td style="color: #94a3b8; font-weight: 600;">
+                                            {{ $index + 1 }}
+                                        </td>
+                                        <td>
+                                            <span class="badge-code">{{ $account->account_code ?? 'B' . $branch->id . '-ACC-' . $account->id }}</span>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight: 700; color: #0f172a; font-size: 13px;">
+                                                {{ $account->title }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge-head">
+                                                <i class="fas fa-tag"></i> {{ $account->head->name ?? 'General' }}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            @if(strtolower($account->type) === 'debit')
+                                                <span class="badge-type-debit">
+                                                    <i class="fas fa-arrow-up"></i> Debit (Dr)
+                                                </span>
+                                            @else
+                                                <span class="badge-type-credit">
+                                                    <i class="fas fa-arrow-down"></i> Credit (Cr)
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td style="text-align: right; font-family: monospace; color: #64748b; font-weight: 600;">
+                                            PKR {{ number_format($account->opening_balance ?? 0, 2) }}
+                                        </td>
+                                        <td style="text-align: right;">
+                                            <span class="current-bal-badge {{ $currBal >= 0 ? 'positive' : 'negative' }}">
+                                                PKR {{ number_format(abs($currBal), 2) }}
+                                                <small style="font-size: 10px; font-weight: 800;">{{ $currBal < 0 ? 'Dr' : 'Cr' }}</small>
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">
+                                            @if($account->status == 'active' || $account->status == 1 || $account->status === null)
+                                                <span class="badge-status-active">
+                                                    <i class="fas fa-check-circle"></i> Active
+                                                </span>
+                                            @else
+                                                <span class="badge-status-inactive">
+                                                    <i class="fas fa-pause-circle"></i> Inactive
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td style="text-align: center;">
+                                            <div class="d-inline-flex gap-1" style="gap: 4px;">
+                                                <a href="{{ route('account.ledger', $account->id) }}"
+                                                   class="btn-action-ledger"
+                                                   title="View Account Ledger">
+                                                    <i class="fas fa-book-open"></i> Ledger
+                                                </a>
+                                                <button type="button" 
+                                                        class="btn-action-edit btn-edit-account"
+                                                        data-account="{{ json_encode($account) }}"
+                                                        data-toggle="modal" 
+                                                        data-target="#editAccountModal"
+                                                        title="Edit Account Details">
+                                                    <i class="fas fa-pencil-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
-        @endif
+
+        </div>
     </div>
 </div>
 
+{{-- Category Filter Script --}}
 <script>
-function toggleAccountHead(element) {
-    const headIndex = Array.from(document.querySelectorAll('.head-title-bar')).indexOf(element);
-    const accounts = document.querySelectorAll(`.account-row[data-head="${headIndex}"]`);
-    const icon = element.querySelector('.head-toggle-icon');
+    function filterByHead(slug, element) {
+        $('.filter-pill').removeClass('active');
+        $(element).addClass('active');
 
-    accounts.forEach(account => {
-        account.classList.toggle('hidden-accounts');
-        account.classList.toggle('shown-accounts');
-    });
-
-    icon.classList.toggle('collapsed');
-}
-
-// Initially show all accounts
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.account-row').forEach(row => {
-        row.classList.add('shown-accounts');
-        row.classList.remove('hidden-accounts');
-    });
-
-    // ✅ Account Edit Logic
-    $('.btn-edit-account').on('click', function() {
-        const account = $(this).data('account');
-        const $modal = $('#editAccountModal');
-        
-        // Set Form Action
-        $modal.find('form').attr('action', `{{ url('coa/account') }}/${account.id}`);
-        
-        // Fill Fields
-        $modal.find('[name="head_id"]').val(account.head_id);
-        $modal.find('[name="title"]').val(account.title);
-        $modal.find('[name="type"]').val(account.type);
-        $modal.find('[name="opening_balance"]').val(account.opening_balance);
-        
-        // Set Status Switch
-        if (account.status == 1 || account.status == 'active') {
-            $modal.find('[name="status"]').prop('checked', true);
+        if (slug === 'all') {
+            $('.account-item-row').show();
         } else {
-            $modal.find('[name="status"]').prop('checked', false);
+            $('.account-item-row').hide();
+            $(`.account-item-row[data-head-slug="${slug}"]`).show();
         }
-        
-        console.log('✏️ Editing Account:', account);
+    }
+
+    $(document).ready(function() {
+        // Edit Account Modal Handler
+        $('.btn-edit-account').on('click', function() {
+            const account = $(this).data('account');
+            const $modal = $('#editAccountModal');
+            
+            $modal.find('form').attr('action', `{{ url('coa/account') }}/${account.id}`);
+            $modal.find('[name="head_id"]').val(account.head_id);
+            $modal.find('[name="title"]').val(account.title);
+            $modal.find('[name="type"]').val(account.type);
+            $modal.find('[name="opening_balance"]').val(account.opening_balance);
+            
+            if (account.status == 1 || account.status == 'active' || account.status === null) {
+                $modal.find('[name="status"]').prop('checked', true);
+            } else {
+                $modal.find('[name="status"]').prop('checked', false);
+            }
+        });
     });
-});
 </script>
 
 <!-- Modal: Create Account Head -->
 <div class="modal fade" id="createHeadModal" tabindex="-1" aria-labelledby="createHeadLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="createHeadLabel"><i class="fas fa-plus-circle"></i> Create Account Head</h5>
+        <div class="modal-content" style="border-radius: 10px; overflow: hidden; border: none;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);">
+                <h6 class="modal-title font-weight-bold mb-0" id="createHeadLabel">
+                    <i class="fas fa-folder-plus mr-1"></i> Create Account Head
+                </h6>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <form action="{{ route('coa.head.store') }}" method="POST">
                 @csrf
-                <div class="modal-body">
-                    <div class="mb-4">
-                        <label for="headName" class="form-label"><i class="fas fa-tag"></i> Account Head Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="headName" name="name" placeholder="e.g., Bank, Cash, Asset" required>
-                        <p class="text-muted mt-2 mb-0" style="font-size: 0.8rem;">
-                            <i class="fas fa-info-circle"></i> Account head is a high-level category used to group similar accounts.
-                        </p>
+                <div class="modal-body p-4 bg-white">
+                    <div class="form-group mb-0">
+                        <label for="headName" class="font-weight-bold text-dark small mb-1">
+                            Account Head Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="headName" name="name" placeholder="e.g., Bank, Cash, Asset" required style="border-radius: 6px;">
+                        <small class="text-muted mt-2 d-block">
+                            <i class="fas fa-info-circle mr-1"></i> Account head is a general category used across all branches to group accounts.
+                        </small>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light border" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-check-circle"></i> Create Head</button>
+                <div class="modal-footer bg-light p-3 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary font-weight-bold px-3" data-dismiss="modal" style="border-radius: 5px;">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary font-weight-bold px-3" style="background: #1e3a5f; border-color: #1e3a5f; border-radius: 5px;">
+                        <i class="fas fa-check-circle mr-1"></i> Save Head
+                    </button>
                 </div>
             </form>
         </div>
@@ -721,25 +855,29 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Modal: Create Account -->
 <div class="modal fade" id="createAccountModal" tabindex="-1" aria-labelledby="createAccountLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="createAccountLabel"><i class="fas fa-plus-circle"></i> Create Account</h5>
+        <div class="modal-content" style="border-radius: 10px; overflow: hidden; border: none;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #0d9f6e 0%, #059669 100%);">
+                <h6 class="modal-title font-weight-bold mb-0" id="createAccountLabel">
+                    <i class="fas fa-plus-circle mr-1"></i> Create Account for {{ $branch->name }}
+                </h6>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <form action="{{ route('coa.account.store') }}" method="POST">
                 @csrf
-                <div class="modal-body">
+                <div class="modal-body p-4 bg-white">
                     <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label"><i class="fas fa-building"></i> Branch</label>
-                            <input type="text" class="form-control bg-light" value="{{ $branch->name }}" readonly>
+                        <div class="col-md-6 mb-3">
+                            <label class="font-weight-bold text-dark small mb-1"><i class="fas fa-building mr-1"></i> Branch</label>
+                            <input type="text" class="form-control bg-light font-weight-bold" value="{{ $branch->name }}" readonly style="border-radius: 6px;">
                             <input type="hidden" name="branch_id" value="{{ $branch->id }}">
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <label for="accountHead" class="form-label"><i class="fas fa-sitemap"></i> Account Head <span class="text-danger">*</span></label>
-                            <select class="form-select" id="accountHead" name="head_id" required>
+                        <div class="col-md-6 mb-3">
+                            <label for="accountHead" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-sitemap mr-1"></i> Account Head <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="accountHead" name="head_id" required style="border-radius: 6px;">
                                 <option value="">-- Select Head --</option>
                                 @foreach($heads ?? [] as $head)
                                     <option value="{{ $head->id }}">{{ $head->name }}</option>
@@ -749,32 +887,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
 
                     <div class="row">
-                        <div class="col-12 mb-4">
-                            <label for="accountTitle" class="form-label"><i class="fas fa-font"></i> Account Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="accountTitle" name="title" placeholder="e.g., Main Bank Account" required>
-                            <div class="mt-2 d-flex align-items-center gap-2" style="font-size: 0.8rem; color: #64748b;">
-                                <i class="fas fa-magic text-warning"></i> 
-                                <span>Account code will be auto-generated sequentially for this branch.</span>
-                            </div>
+                        <div class="col-12 mb-3">
+                            <label for="accountTitle" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-font mr-1"></i> Account Title <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="accountTitle" name="title" placeholder="e.g., Meezan Bank / Main Cash Counter" required style="border-radius: 6px;">
+                            <small class="text-muted mt-1 d-block">
+                                <i class="fas fa-magic text-warning mr-1"></i> Account code will be automatically generated sequentially for this branch.
+                            </small>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label for="accountType" class="form-label"><i class="fas fa-exchange-alt"></i> Account Type <span class="text-danger">*</span></label>
-                            <select class="form-select" id="accountType" name="type" required>
-                                <option value="">-- Select Type --</option>
-                                <option value="Debit">Debit (Increase Asset/Expense)</option>
-                                <option value="Credit">Credit (Increase Liability/Income)</option>
+                        <div class="col-md-6 mb-3">
+                            <label for="accountType" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-exchange-alt mr-1"></i> Account Nature <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="accountType" name="type" required style="border-radius: 6px;">
+                                <option value="Debit">Debit (Asset / Expense / Cash / Bank)</option>
+                                <option value="Credit">Credit (Liability / Capital / Revenue)</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <label for="accountOpeningBalance" class="form-label"><i class="fas fa-wallet"></i> Opening Balance</label>
+                        <div class="col-md-6 mb-3">
+                            <label for="accountOpeningBalance" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-wallet mr-1"></i> Opening Balance
+                            </label>
                             <div class="input-group">
                                 <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light fw-bold" style="border: 2px solid #edf2f7; border-right: none; border-radius: 10px 0 0 10px;">PKR</span>
+                                    <span class="input-group-text bg-light font-weight-bold" style="border-radius: 6px 0 0 6px;">PKR</span>
                                 </div>
-                                <input type="number" step="0.01" class="form-control" id="accountOpeningBalance" name="opening_balance" placeholder="0.00" value="0.00">
+                                <input type="number" step="0.01" class="form-control" id="accountOpeningBalance" name="opening_balance" placeholder="0.00" value="0.00" style="border-radius: 0 6px 6px 0;">
                             </div>
                         </div>
                     </div>
@@ -783,14 +925,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-12">
                             <div class="custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="accountStatus" name="status" checked>
-                                <label class="custom-control-label fw-bold" for="accountStatus" style="cursor: pointer;">Set as Active Account</label>
+                                <label class="custom-control-label font-weight-bold text-dark small" for="accountStatus" style="cursor: pointer;">Set as Active Account</label>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light border" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Create Account</button>
+                <div class="modal-footer bg-light p-3 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary font-weight-bold px-3" data-dismiss="modal" style="border-radius: 5px;">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-success font-weight-bold px-3" style="border-radius: 5px;">
+                        <i class="fas fa-save mr-1"></i> Save Account
+                    </button>
                 </div>
             </form>
         </div>
@@ -800,9 +944,11 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Modal: Edit Account -->
 <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="editAccountLabel"><i class="fas fa-edit"></i> Edit Account</h5>
+        <div class="modal-content" style="border-radius: 10px; overflow: hidden; border: none;">
+            <div class="modal-header text-white" style="background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);">
+                <h6 class="modal-title font-weight-bold mb-0" id="editAccountLabel">
+                    <i class="fas fa-edit mr-1"></i> Edit Account
+                </h6>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -810,47 +956,52 @@ document.addEventListener('DOMContentLoaded', function() {
             <form action="" method="POST">
                 @csrf
                 @method('PUT')
-                <div class="modal-body">
+                <div class="modal-body p-4 bg-white">
                     <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label class="form-label"><i class="fas fa-building"></i> Branch</label>
-                            <input type="text" class="form-control bg-light" value="{{ $branch->name }}" readonly disabled>
+                        <div class="col-md-6 mb-3">
+                            <label class="font-weight-bold text-dark small mb-1"><i class="fas fa-building mr-1"></i> Branch</label>
+                            <input type="text" class="form-control bg-light font-weight-bold" value="{{ $branch->name }}" readonly disabled style="border-radius: 6px;">
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <label for="editAccountHead" class="form-label"><i class="fas fa-sitemap"></i> Account Head <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editAccountHead" name="head_id" required>
+                        <div class="col-md-6 mb-3">
+                            <label for="editAccountHead" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-sitemap mr-1"></i> Account Head <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="editAccountHead" name="head_id" required style="border-radius: 6px;">
                                 @foreach($heads ?? [] as $head)
                                     <option value="{{ $head->id }}">{{ $head->name }}</option>
                                 @endforeach
                             </select>
-                            <small class="text-warning fw-bold d-block mt-1" style="font-size: 0.75rem;">
-                                <i class="fas fa-exclamation-triangle"></i> Changing head will regenerate account code!
-                            </small>
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-12 mb-4">
-                            <label for="editAccountTitle" class="form-label"><i class="fas fa-font"></i> Account Title <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="editAccountTitle" name="title" required>
+                        <div class="col-12 mb-3">
+                            <label for="editAccountTitle" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-font mr-1"></i> Account Title <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="editAccountTitle" name="title" required style="border-radius: 6px;">
                         </div>
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6 mb-4">
-                            <label for="editAccountType" class="form-label"><i class="fas fa-exchange-alt"></i> Account Type <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editAccountType" name="type" required>
+                        <div class="col-md-6 mb-3">
+                            <label for="editAccountType" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-exchange-alt mr-1"></i> Account Nature <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-control" id="editAccountType" name="type" required style="border-radius: 6px;">
                                 <option value="Debit">Debit</option>
                                 <option value="Credit">Credit</option>
                             </select>
                         </div>
-                        <div class="col-md-6 mb-4">
-                            <label for="editAccountOpeningBalance" class="form-label"><i class="fas fa-wallet"></i> Opening Balance</label>
+                        <div class="col-md-6 mb-3">
+                            <label for="editAccountOpeningBalance" class="font-weight-bold text-dark small mb-1">
+                                <i class="fas fa-wallet mr-1"></i> Opening Balance
+                            </label>
                             <div class="input-group">
                                 <div class="input-group-prepend">
-                                    <span class="input-group-text bg-light fw-bold" style="border: 2px solid #edf2f7; border-right: none; border-radius: 10px 0 0 10px;">PKR</span>
+                                    <span class="input-group-text bg-light font-weight-bold" style="border-radius: 6px 0 0 6px;">PKR</span>
                                 </div>
-                                <input type="number" step="0.01" class="form-control" id="editAccountOpeningBalance" name="opening_balance">
+                                <input type="number" step="0.01" class="form-control" id="editAccountOpeningBalance" name="opening_balance" style="border-radius: 0 6px 6px 0;">
                             </div>
                         </div>
                     </div>
@@ -859,14 +1010,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-12">
                             <div class="custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="editAccountStatus" name="status">
-                                <label class="custom-control-label fw-bold" for="editAccountStatus" style="cursor: pointer;">Account Active Status</label>
+                                <label class="custom-control-label font-weight-bold text-dark small" for="editAccountStatus" style="cursor: pointer;">Account Active Status</label>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light border" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                <div class="modal-footer bg-light p-3 border-top">
+                    <button type="button" class="btn btn-sm btn-secondary font-weight-bold px-3" data-dismiss="modal" style="border-radius: 5px;">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-primary font-weight-bold px-3" style="background: #1e3a5f; border-color: #1e3a5f; border-radius: 5px;">
+                        <i class="fas fa-save mr-1"></i> Save Changes
+                    </button>
                 </div>
             </form>
         </div>

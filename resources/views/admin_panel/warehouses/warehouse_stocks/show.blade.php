@@ -3,11 +3,10 @@
 @section('content')
 @php
     $isSuperAdmin = isset($isSuperAdmin) ? $isSuperAdmin : false;
-    // Safe percentage: avoid division by zero when totalQty is 0
     $totalQtySafe = ($totalQty > 0) ? $totalQty : 1;
 @endphp
 
-{{-- ✅ SweetAlert: Show warning when product stock is zero --}}
+{{-- SweetAlert: Show warning when product stock is zero --}}
 @if($totalQty <= 0)
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -15,11 +14,11 @@
         Swal.fire({
             icon: 'info',
             title: 'No Opening Stock',
-            html: '<p style="color:#64748b;font-size:15px;">This product has <strong>never been added to opening stock</strong>.<br>Please add opening stock first before viewing warehouse distribution.</p>',
+            html: '<p style="color:#64748b;font-size:14px;">This product has <strong>never been added to opening stock</strong>.<br>Please add opening stock first before viewing warehouse distribution.</p>',
             confirmButtonText: '<i class="fas fa-plus-circle"></i> Add Opening Stock',
             cancelButtonText: 'Close',
             showCancelButton: true,
-            confirmButtonColor: '#6366f1',
+            confirmButtonColor: '#1e3a5f',
             cancelButtonColor: '#94a3b8',
         }).then(function(result) {
             if (result.isConfirmed) {
@@ -30,9 +29,9 @@
         Swal.fire({
             icon: 'warning',
             title: 'Zero Stock',
-            html: '<p style="color:#64748b;font-size:15px;">This product currently has <strong>0 quantity</strong> in all warehouses.<br>Stock may have been fully sold or transferred out.</p>',
+            html: '<p style="color:#64748b;font-size:14px;">This product currently has <strong>0 quantity</strong> in all warehouses.<br>Stock may have been fully sold or transferred out.</p>',
             confirmButtonText: 'OK',
-            confirmButtonColor: '#6366f1',
+            confirmButtonColor: '#1e3a5f',
         });
         @endif
     });
@@ -41,57 +40,69 @@
 
 <style>
     :root {
-        --primary: #6366f1;
-        --success: #22c55e;
-        --warning: #f59e0b;
-        --info: #0ea5e9;
-        --light: #f8fafc;
-        --dark: #1e293b;
-        --muted: #64748b;
-        --border: #e2e8f0;
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-amber: #d97706;
+        --coa-crimson: #dc2626;
+        --coa-border: #e2e8f0;
     }
 
-    .product-header {
-        background: linear-gradient(135deg, var(--primary), #8b5cf6);
-        color: white;
-        padding: 40px 0;
-        margin-bottom: 40px;
-        border-radius: 12px;
-        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+    .wh-show-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
     }
 
-    .back-link {
+    /* ── 1. Corporate Header Bar ── */
+    .product-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 18px 22px;
+        color: #ffffff;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
+    }
+
+    .back-btn-link {
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        color: white;
-        text-decoration: none;
-        margin-bottom: 20px;
-        opacity: 0.9;
-        transition: opacity 0.2s;
+        gap: 6px;
+        color: #ffffff !important;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-decoration: none !important;
+        margin-bottom: 14px;
+        transition: all 0.15s;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
-    .back-link:hover {
-        opacity: 1;
-        color: white;
+    .back-btn-link:hover {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff !important;
     }
 
     .product-header-content {
         display: flex;
-        gap: 30px;
+        gap: 20px;
         align-items: center;
     }
 
     .product-image-container {
-        width: 150px;
-        height: 150px;
+        width: 100px;
+        height: 100px;
         background: rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
         overflow: hidden;
-        border: 2px solid rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(200, 151, 58, 0.4);
+        flex-shrink: 0;
     }
 
     .product-image-container img {
@@ -100,501 +111,467 @@
         object-fit: cover;
     }
 
-    .product-image-container i {
-        font-size: 3rem;
-        color: rgba(255, 255, 255, 0.5);
-    }
-
     .product-details {
         flex: 1;
     }
 
-    .product-name {
-        font-size: 1.2rem;
-        font-weight: 700;
-        margin-bottom: 8px;
+    .product-name-title {
+        font-size: 19px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin-bottom: 6px;
+        line-height: 1.2;
     }
 
-    .product-meta {
+    .product-meta-row {
         display: flex;
-        gap: 20px;
-        font-size: 0.9rem;
-        opacity: 0.9;
+        flex-wrap: wrap;
+        gap: 12px;
+        font-size: 12px;
     }
 
-    .meta-item {
-        display: flex;
+    .meta-chip {
+        display: inline-flex;
         align-items: center;
         gap: 6px;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 3px 10px;
+        border-radius: 5px;
+        color: #ffffff;
+        font-size: 11.5px;
     }
 
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-bottom: 40px;
-    }
-
-    .stat-card {
-        background: white;
-        padding: 18px;
-        border-radius: 12px;
-        border-left: 4px solid var(--primary);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    }
-
-    .stat-card.available {
-        border-left-color: var(--success);
-    }
-
-    .stat-card.reserved {
-        border-left-color: var(--warning);
-    }
-
-    .stat-label {
-        font-size: 0.65rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 6px;
-        font-weight: 600;
-    }
-
-    .stat-value {
-        font-size: 1.2rem;
+    .meta-chip.gold {
+        background: rgba(200, 151, 58, 0.25);
+        color: #fef08a;
         font-weight: 700;
-        color: var(--dark);
+        border: 1px solid rgba(200, 151, 58, 0.5);
     }
 
-    .warehouses-section {
-        background: white;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    /* ── 2. KPI Summary Grid ── */
+    .show-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
     }
 
-    .section-header {
-        background: var(--light);
-        padding: 20px;
-        border-bottom: 1px solid var(--border);
+    .show-kpi-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 12px 15px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
         display: flex;
         align-items: center;
-        gap: 10px;
+        justify-content: space-between;
     }
 
-    .section-title {
-        font-size: 1.1rem;
+    .show-kpi-card.highlight {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border-color: #a7f3d0;
+    }
+
+    .show-kpi-label {
+        font-size: 10.5px;
         font-weight: 700;
-        color: var(--dark);
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+
+    .show-kpi-val {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--coa-navy);
+        font-family: monospace;
+    }
+
+    .show-kpi-val.emerald {
+        color: #047857;
+    }
+
+    .show-kpi-val.amber {
+        color: #b45309;
+    }
+
+    .show-kpi-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon-blue { background: #e0f2fe; color: #0284c7; }
+    .kpi-icon-emerald { background: #d1fae5; color: #059669; }
+    .kpi-icon-amber { background: #fef3c7; color: #d97706; }
+    .kpi-icon-purple { background: #f3e8ff; color: #9333ea; }
+    .kpi-icon-gold { background: #fef9c3; color: #ca8a04; }
+
+    /* ── 3. Branch Filter Bar ── */
+    .filter-branch-bar {
+        background: #ffffff;
+        border: 1px solid var(--coa-border);
+        border-radius: 8px;
+        padding: 10px 16px;
+        margin-bottom: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    /* ── 4. Warehouse Distribution Cards ── */
+    .distribution-card {
+        background: #ffffff;
+        border-radius: 9px;
+        border: 1px solid var(--coa-border);
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+        margin-bottom: 18px;
+    }
+
+    .distribution-header {
+        background: #f8fafc;
+        padding: 12px 18px;
+        border-bottom: 1.5px solid #cbd5e1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .distribution-title {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--coa-navy);
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .warehouse-item {
-        padding: 15px;
-        border-bottom: 1px solid var(--border);
-        transition: background 0.2s;
+    .warehouse-item-row {
+        padding: 14px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        transition: background 0.15s;
     }
 
-    .warehouse-item:hover {
-        background: var(--light);
+    .warehouse-item-row:hover {
+        background: #f8fafc;
     }
 
-    .warehouse-item:last-child {
+    .warehouse-item-row:last-child {
         border-bottom: none;
     }
 
-    .warehouse-name {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 10px;
+    .wh-name-title {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 8px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
     }
 
-    .warehouse-name i {
-        color: var(--info);
-    }
-
-    .warehouse-stock-info {
+    .wh-stock-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-        gap: 15px;
-        margin-top: 10px;
+        gap: 12px;
+        background: #f8fafc;
+        padding: 10px 14px;
+        border-radius: 6px;
+        border: 1px solid #f1f5f9;
     }
 
-    .stock-metric {
+    .wh-stock-metric {
         display: flex;
         flex-direction: column;
     }
 
-    .metric-label {
-        font-size: 0.65rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 4px;
-        font-weight: 600;
-    }
-
-    .metric-value {
-        font-size: 0.95rem;
+    .wh-metric-label {
+        font-size: 10px;
         font-weight: 700;
-        color: var(--dark);
+        text-transform: uppercase;
+        color: #64748b;
+        margin-bottom: 2px;
     }
 
-    .metric-value.available {
-        color: var(--success);
+    .wh-metric-val {
+        font-family: monospace;
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #0f172a;
     }
 
-    .metric-value.reserved {
-        color: var(--warning);
-    }
+    .wh-metric-val.emerald { color: #047857; }
+    .wh-metric-val.amber { color: #b45309; }
 
-    .warehouse-remarks {
-        margin-top: 10px;
-        padding: 10px;
-        background: var(--light);
-        border-radius: 6px;
-        font-size: 0.9rem;
-        color: var(--muted);
-        font-style: italic;
-    }
-
-    .progress-bar-container {
+    .progress-bar-wrap {
         width: 100%;
-        height: 8px;
-        background: var(--border);
-        border-radius: 4px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
         overflow: hidden;
         margin-top: 10px;
     }
 
-    .progress-fill {
+    .progress-fill-bar {
         height: 100%;
-        background: linear-gradient(90deg, var(--success), #16a34a);
-        transition: width 0.3s ease;
-        border-radius: 4px;
+        background: linear-gradient(90deg, #10b981, #059669);
+        border-radius: 3px;
     }
 
-    .actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 20px;
-    }
-
-    .btn-back {
-        background: var(--light);
-        color: var(--dark);
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-back:hover {
-        background: var(--border);
-        color: var(--dark);
-    }
-
-    /* Customer Reserved Details Styling */
-    .customer-reserved-section {
-        margin-top: 15px;
-        padding: 12px;
-        background: rgba(249, 158, 11, 0.05);
-        border-left: 3px solid var(--warning);
+    /* Customer Reserved Section */
+    .cust-reserved-wrap {
+        margin-top: 10px;
+        padding: 10px 14px;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
         border-radius: 6px;
     }
 
-    .customer-reserved-header {
+    .cust-reserved-btn {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.85rem;
+        gap: 6px;
+        font-size: 11.5px;
         font-weight: 700;
-        color: var(--dark);
-        margin-bottom: 10px;
+        color: #92400e;
         cursor: pointer;
         user-select: none;
     }
 
-    .customer-reserved-header i {
-        color: var(--warning);
+    .cust-reserved-btn i {
         transition: transform 0.2s;
     }
 
-    .customer-reserved-header.expanded i {
+    .cust-reserved-btn.expanded i {
         transform: rotate(90deg);
     }
 
-    .customer-reserved-list {
+    .cust-reserved-body {
         display: none;
-        padding-top: 10px;
-        border-top: 1px solid rgba(249, 158, 11, 0.2);
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px dashed #fde68a;
     }
 
-    .customer-reserved-list.show {
+    .cust-reserved-body.show {
         display: block;
-    }
-
-    .customer-order-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 8px 0;
-        font-size: 0.8rem;
-        border-bottom: 1px solid rgba(249, 158, 11, 0.1);
-    }
-
-    .customer-order-item:last-child {
-        border-bottom: none;
-    }
-
-    .customer-order-name {
-        font-weight: 600;
-        color: var(--dark);
-        flex: 1;
-    }
-
-    .customer-order-qty {
-        background: rgba(249, 158, 11, 0.1);
-        color: var(--warning);
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-weight: 700;
-        margin: 0 8px;
-        min-width: 50px;
-        text-align: center;
-    }
-
-    .customer-order-status {
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-weight: 600;
-        font-size: 0.75rem;
-    }
-
-    .customer-order-status.pending {
-        background: rgba(59, 130, 246, 0.1);
-        color: #2563eb;
-    }
-
-    .customer-order-status.partial {
-        background: rgba(249, 158, 11, 0.1);
-        color: var(--warning);
-    }
-
-    @media (max-width: 768px) {
-        .product-header-content {
-            flex-direction: column;
-            text-align: center;
-        }
-
-        .product-name {
-            font-size: 1.5rem;
-        }
-
-        .product-meta {
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .warehouse-stock-info {
-            grid-template-columns: 1fr;
-        }
     }
 </style>
 
-<div class="container-fluid">
-    <!-- Product Header -->
-    <div class="product-header">
-        <div class="container">
-            <a href="{{ route('warehouse_stocks.index') }}" class="back-link">
-                <i class="fas fa-arrow-left"></i> Back to Inventory
-            </a>
+<div class="main-content">
+    <div class="wh-show-wrapper">
+        <div class="container-fluid px-2">
 
-            <div class="product-header-content">
-                <div class="product-image-container">
-                    @if($product->image)
-                        <img src="{{ asset('uploads/products/' . $product->image) }}" alt="{{ $product->item_name }}">
-                    @else
-                        <i class="fas fa-cube"></i>
-                    @endif
-                </div>
+            {{-- 1. Corporate Header Bar --}}
+            <div class="product-header-bar">
+                <a href="{{ route('warehouse_stocks.index') }}" class="back-btn-link">
+                    <i class="fas fa-arrow-left"></i> Back to Inventory
+                </a>
 
-                <div class="product-details">
-                    <div class="product-name">{{ $product->item_name }}</div>
-                    <div class="product-meta">
-                        <div class="meta-item">
-                            <i class="fas fa-barcode"></i>
-                            <strong>{{ $product->item_code }}</strong>
-                        </div>
-                        <div class="meta-item">
-                            <i class="fas fa-tag"></i>
-                            {{ optional($product->category_relation)->name ?? 'Uncategorized' }}
-                        </div>
-                        @if($product->price)
-                        <div class="meta-item">
-                            <i class="fas fa-money-bill"></i>
-                            <strong>PKR {{ number_format($product->price) }}</strong>
-                        </div>
+                <div class="product-header-content">
+                    <div class="product-image-container">
+                        @if($product->image)
+                            <img src="{{ asset('uploads/products/' . $product->image) }}" alt="{{ $product->item_name }}">
+                        @else
+                            <i class="fas fa-cube fa-2x" style="color: var(--coa-gold);"></i>
                         @endif
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <div class="container">
-
-        {{-- ✅ BRANCH FILTER BAR (super admin OR user with multi-branch access) --}}
-        @if($showBranchFilter)
-        <div style="background:#1e293b;border-radius:12px;padding:1rem 1.5rem;margin-bottom:24px;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,.15);">
-            <span style="font-size:18px;">&#127968;</span>
-            <span style="color:#94a3b8;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;">Filter by Branch:</span>
-            <select id="branch_filter_sel"
-                    style="border:2px solid #6366f1;border-radius:8px;padding:8px 16px;font-size:14px;font-weight:700;color:#1e293b;background:#eef2ff;min-width:220px;cursor:pointer;">
-                <option value="0" {{ $selectedBranchId == 0 ? 'selected' : '' }}>&#127760; All Branches</option>
-                @foreach($availableBranches as $br)
-                    <option value="{{ $br->id }}" {{ $br->id == $selectedBranchId ? 'selected' : '' }}>
-                        &#127968; {{ $br->name }}
-                    </option>
-                @endforeach
-            </select>
-            <span style="color:#64748b;font-size:11px;">
-                Showing: <strong style="color:#c7d2fe;">
-                    {{ $selectedBranchId == 0 ? 'All Branches' : ($availableBranches->firstWhere('id', $selectedBranchId)?->name ?? 'All') }}
-                </strong>
-            </span>
-        </div>
-        @endif
-
-        <!-- Summary Statistics -->
-        <div class="stats-grid">
-            <div class="stat-card available">
-                <div class="stat-label"><i class="fas fa-boxes"></i> Total Quantity</div>
-                <div class="stat-value">{{ number_format($totalQty, 2) }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label"><i class="fas fa-check-circle"></i> Available</div>
-                <div class="stat-value">{{ number_format($totalAvailable, 2) }}</div>
-            </div>
-            <div class="stat-card reserved">
-                <div class="stat-label"><i class="fas fa-user-tie"></i> Committed from Orders</div>
-                <div class="stat-value">{{ number_format($totalCustomerReserved, 2) }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label"><i class="fas fa-lock"></i> System Reserved</div>
-                <div class="stat-value">{{ number_format($totalReserved, 2) }}</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label"><i class="fas fa-building"></i> Warehouses</div>
-                <div class="stat-value">{{ count($warehouses) }}</div>
-            </div>
-        </div>
-
-        <!-- Warehouse Distribution -->
-        <div class="warehouses-section">
-            <div class="section-header">
-                <i class="fas fa-warehouse"></i>
-                <h3 class="section-title">Warehouse Distribution</h3>
-                @if($showBranchFilter)
-                    <span style="background:#e0e7ff;color:#4f46e5;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:8px;">
-                        {{ $selectedBranchId == 0 ? '&#127760; All Branches' : ('&#127968; ' . ($availableBranches->firstWhere('id', $selectedBranchId)?->name ?? '')) }}
-                    </span>
-                @endif
-                <span style="margin-left: auto; color: var(--muted);">{{ count($warehouses) }} location{{ count($warehouses) != 1 ? 's' : '' }}</span>
-            </div>
-
-
-            @forelse($warehouses as $warehouse)
-                <div class="warehouse-item">
-                    <div class="warehouse-name">
-                        <i class="fas fa-map-marker-alt"></i>
-                        {{ $warehouse['warehouse_name'] }}
-                        @if(isset($warehouse['branch_name']) && $warehouse['branch_name'])
-                            <span style="margin-left: 10px; background: #e0e7ff; color: #4f46e5; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;">
-                                🏢 {{ $warehouse['branch_name'] }}
+                    <div class="product-details">
+                        <h3 class="product-name-title">{{ $product->item_name }}</h3>
+                        <div class="product-meta-row">
+                            <span class="meta-chip">
+                                <i class="fas fa-barcode text-warning"></i> Code: <strong>{{ $product->item_code }}</strong>
                             </span>
-                        @endif
-                    </div>
-
-                    <div class="warehouse-stock-info">
-                        <div class="stock-metric">
-                            <span class="metric-label">Total Qty</span>
-                            <span class="metric-value available">{{ number_format($warehouse['quantity'], 2) }}</span>
-                        </div>
-                        <div class="stock-metric">
-                            <span class="metric-label">Available</span>
-                            <span class="metric-value available">{{ number_format($warehouse['available_qty'], 2) }}</span>
-                        </div>
-                        <div class="stock-metric">
-                            <span class="metric-label">Committed</span>
-                            <span class="metric-value reserved">{{ number_format($warehouse['customer_reserved'], 2) }}</span>
-                        </div>
-                        <div class="stock-metric">
-                            <span class="metric-label">System Reserved</span>
-                            <span class="metric-value reserved">{{ number_format($warehouse['reserved_qty'], 2) }}</span>
-                        </div>
-                        <div class="stock-metric">
-                            <span class="metric-label">Last Updated</span>
-                            <span class="metric-value" style="font-size: 0.9rem;">{{ $warehouse['updated_at']->format('d-m-Y H:i') }}</span>
+                            <span class="meta-chip">
+                                <i class="fas fa-tag text-info"></i> {{ optional($product->category_relation)->name ?? 'Uncategorized' }}
+                            </span>
+                            @if($product->price)
+                            <span class="meta-chip gold">
+                                <i class="fas fa-coins mr-1"></i> PKR {{ number_format($product->price, 2) }}
+                            </span>
+                            @endif
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Progress Bar -->
-                    <div class="progress-bar-container">
-                        <div class="progress-fill" style="width: {{ $totalQty > 0 ? round(($warehouse['quantity'] / $totalQty) * 100, 2) : 0 }}%"></div>
+            {{-- 2. Branch Filter Bar --}}
+            @if($showBranchFilter)
+            <div class="filter-branch-bar">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="fas fa-building" style="color: var(--coa-navy);"></i>
+                    <span class="font-weight-bold text-dark small text-uppercase">Filter by Branch:</span>
+                    <select id="branch_filter_sel" class="form-select form-select-sm" style="min-width: 200px; height: 34px; border-radius: 6px; border: 1.5px solid #cbd5e1; font-weight: 700; font-size: 12px;">
+                        <option value="0" {{ $selectedBranchId == 0 ? 'selected' : '' }}>🌐 All Branches</option>
+                        @foreach($availableBranches as $br)
+                            <option value="{{ $br->id }}" {{ $br->id == $selectedBranchId ? 'selected' : '' }}>
+                                🏢 {{ $br->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <small class="text-muted font-weight-bold">
+                    Showing: <span class="text-primary font-weight-bold">{{ $selectedBranchId == 0 ? 'All Branches' : ($availableBranches->firstWhere('id', $selectedBranchId)?->name ?? 'All') }}</span>
+                </small>
+            </div>
+            @endif
+
+            {{-- 3. KPI Summary Statistics Grid --}}
+            <div class="show-kpi-grid">
+                <div class="show-kpi-card highlight">
+                    <div>
+                        <div class="show-kpi-label" style="color: #047857;">Total Quantity</div>
+                        <div class="show-kpi-val emerald">{{ number_format($totalQty, 2) }}</div>
                     </div>
+                    <div class="show-kpi-icon kpi-icon-emerald">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                </div>
+                <div class="show-kpi-card">
+                    <div>
+                        <div class="show-kpi-label">Available for Sale</div>
+                        <div class="show-kpi-val emerald">{{ number_format($totalAvailable, 2) }}</div>
+                    </div>
+                    <div class="show-kpi-icon kpi-icon-blue">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+                <div class="show-kpi-card">
+                    <div>
+                        <div class="show-kpi-label">Customer Committed</div>
+                        <div class="show-kpi-val amber">{{ number_format($totalCustomerReserved, 2) }}</div>
+                    </div>
+                    <div class="show-kpi-icon kpi-icon-amber">
+                        <i class="fas fa-user-tag"></i>
+                    </div>
+                </div>
+                <div class="show-kpi-card">
+                    <div>
+                        <div class="show-kpi-label">System Reserved</div>
+                        <div class="show-kpi-val">{{ number_format($totalReserved, 2) }}</div>
+                    </div>
+                    <div class="show-kpi-icon kpi-icon-purple">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                </div>
+                <div class="show-kpi-card">
+                    <div>
+                        <div class="show-kpi-label">Stock Locations</div>
+                        <div class="show-kpi-val">{{ count($warehouses) }}</div>
+                    </div>
+                    <div class="show-kpi-icon kpi-icon-gold">
+                        <i class="fas fa-warehouse"></i>
+                    </div>
+                </div>
+            </div>
 
-                    <!-- Customer Reserved Details -->
-                    @if(!empty($warehouse['customer_reserved_details']) && collect($warehouse['customer_reserved_details'])->isNotEmpty() && $warehouse['customer_reserved'] > 0)
-                        <div class="customer-reserved-section">
-                            <div class="customer-reserved-header" onclick="toggleCustomerReserved(this)">
-                                <i class="fas fa-chevron-right"></i>
-                                <span>{{ collect($warehouse['customer_reserved_details'])->count() }} Customer Order{{ collect($warehouse['customer_reserved_details'])->count() != 1 ? 's' : '' }} Reserved</span>
-                            </div>
-                            <div class="customer-reserved-list">
-                                @foreach($warehouse['customer_reserved_details'] as $reserved)
-                                    <div class="customer-order-item">
-                                        <span class="customer-order-name">{{ $reserved['customer_name'] }} (Sale #{{ $reserved['sale_id'] }})</span>
-                                        <span class="customer-order-qty">{{ number_format($reserved['remaining_qty'], 2) }}</span>
-                                        <span class="customer-order-status {{ strtolower($reserved['status']) }}">
-                                            {{ ucfirst($reserved['status']) }}
+            {{-- 4. Warehouse Distribution Details --}}
+            <div class="distribution-card">
+                <div class="distribution-header">
+                    <h5 class="distribution-title">
+                        <i class="fas fa-cubes" style="color: var(--coa-gold);"></i> Multi-Location Warehouse Distribution
+                    </h5>
+                    <span class="badge" style="background: #e0f2fe; color: #0369a1; font-weight: 700; padding: 4px 10px; border-radius: 4px;">
+                        {{ count($warehouses) }} Location{{ count($warehouses) != 1 ? 's' : '' }} Found
+                    </span>
+                </div>
+
+                <div class="distribution-body">
+                    @forelse($warehouses as $warehouse)
+                        <div class="warehouse-item-row">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap mb-2">
+                                <div class="wh-name-title mb-0">
+                                    <i class="fas fa-warehouse text-primary"></i>
+                                    <span>{{ $warehouse['warehouse_name'] }}</span>
+                                    @if(isset($warehouse['branch_name']) && $warehouse['branch_name'])
+                                        <span class="badge" style="background: #f1f5f9; color: var(--coa-navy); border: 1px solid #cbd5e1; font-size: 11px; font-weight: 700; padding: 3px 8px;">
+                                            🏢 {{ $warehouse['branch_name'] }}
                                         </span>
-                                    </div>
-                                @endforeach
+                                    @endif
+                                </div>
+                                <small class="text-muted font-weight-bold" style="font-size: 11px;">
+                                    <i class="far fa-clock mr-1"></i> Updated: {{ $warehouse['updated_at']->format('d M Y, H:i') }}
+                                </small>
                             </div>
-                        </div>
-                    @endif
 
-                    @if($warehouse['remarks'])
-                        <div class="warehouse-remarks">
-                            <i class="fas fa-sticky-note"></i> {{ $warehouse['remarks'] }}
-                        </div>
-                    @endif
-                </div>
-            @empty
-                <div style="padding: 40px; text-align: center; color: var(--muted);">
-                    <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.5;"></i>
-                    <p>No warehouse inventory found for this product</p>
-                </div>
-            @endforelse
-        </div>
+                            <div class="wh-stock-grid">
+                                <div class="wh-stock-metric">
+                                    <span class="wh-metric-label">Total Qty</span>
+                                    <span class="wh-metric-val emerald">{{ number_format($warehouse['quantity'], 2) }}</span>
+                                </div>
+                                <div class="wh-stock-metric">
+                                    <span class="wh-metric-label">Available</span>
+                                    <span class="wh-metric-val emerald">{{ number_format($warehouse['available_qty'], 2) }}</span>
+                                </div>
+                                <div class="wh-stock-metric">
+                                    <span class="wh-metric-label">Committed (Orders)</span>
+                                    <span class="wh-metric-val amber">{{ number_format($warehouse['customer_reserved'], 2) }}</span>
+                                </div>
+                                <div class="wh-stock-metric">
+                                    <span class="wh-metric-label">System Reserved</span>
+                                    <span class="wh-metric-val">{{ number_format($warehouse['reserved_qty'], 2) }}</span>
+                                </div>
+                            </div>
 
-        <!-- Actions -->
-        <div class="actions">
-            <a href="{{ route('warehouse_stocks.index') }}" class="btn-back">
-                <i class="fas fa-arrow-left"></i> Back to Inventory
-            </a>
+                            <!-- Progress Bar -->
+                            <div class="progress-bar-wrap">
+                                <div class="progress-fill-bar" style="width: {{ $totalQty > 0 ? round(($warehouse['quantity'] / $totalQty) * 100, 2) : 0 }}%"></div>
+                            </div>
+
+                            <!-- Customer Reserved Details -->
+                            @if(!empty($warehouse['customer_reserved_details']) && collect($warehouse['customer_reserved_details'])->isNotEmpty() && $warehouse['customer_reserved'] > 0)
+                                <div class="cust-reserved-wrap">
+                                    <div class="cust-reserved-btn" onclick="toggleCustomerReserved(this)">
+                                        <i class="fas fa-chevron-right"></i>
+                                        <span>{{ collect($warehouse['customer_reserved_details'])->count() }} Customer Order{{ collect($warehouse['customer_reserved_details'])->count() != 1 ? 's' : '' }} Committed / Reserved</span>
+                                    </div>
+                                    <div class="cust-reserved-body">
+                                        @foreach($warehouse['customer_reserved_details'] as $reserved)
+                                            <div class="d-flex justify-content-between align-items-center py-1 font-size-12 border-bottom">
+                                                <span class="font-weight-bold text-dark">{{ $reserved['customer_name'] }} (Sale #{{ $reserved['sale_id'] }})</span>
+                                                <div>
+                                                    <span class="badge badge-warning font-weight-bold mr-2">{{ number_format($reserved['remaining_qty'], 2) }} Units</span>
+                                                    <span class="badge badge-secondary">{{ ucfirst($reserved['status']) }}</span>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
+                            @if($warehouse['remarks'])
+                                <div class="mt-2 text-muted small font-italic">
+                                    <i class="fas fa-sticky-note mr-1"></i> {{ $warehouse['remarks'] }}
+                                </div>
+                            @endif
+                        </div>
+                    @empty
+                        <div class="p-5 text-center text-muted">
+                            <i class="fas fa-inbox fa-3x mb-2 opacity-50"></i>
+                            <h6 class="font-weight-bold text-dark">No warehouse inventory found for this product</h6>
+                        </div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Back Button Action -->
+            <div class="mt-3">
+                <a href="{{ route('warehouse_stocks.index') }}" class="btn btn-sm btn-secondary font-weight-bold px-3" style="border-radius: 6px;">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Inventory
+                </a>
+            </div>
+
         </div>
     </div>
 </div>

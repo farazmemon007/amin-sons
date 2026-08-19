@@ -1,28 +1,118 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+    :root {
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-border: #e2e8f0;
+    }
+
+    .rpt-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .rpt-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 16px 22px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
+    }
+
+    .rpt-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
+    }
+
+    .rpt-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .rpt-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 3px;
+    }
+
+    .f-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #475569;
+        letter-spacing: 0.03em;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    #performanceTable th {
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 10px 8px;
+        border: 1px solid #1e3a5f;
+    }
+</style>
+
 <div class="main-content">
-    <div class="main-content-inner">
-        <div class="container-fluid px-4">
+    <div class="rpt-wrapper">
+        <div class="container-fluid px-2">
             
-            {{-- PAGE HEADER --}}
-            <div class="row mb-3 align-items-center mt-3">
-                <div class="col">
-                    <h4 class="mb-0 fw-bold" style="color:#1a1a2e;">
-                        <i class="fas fa-user-tie me-2" style="color:#ffc107;"></i>
-                        Salesman Performance Report
-                    </h4>
-                    <small class="text-muted">ERP Standard &mdash; Monthly Productivity & Sales Analysis</small>
+            {{-- 1. Corporate Header Bar --}}
+            <div class="rpt-header-bar">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rpt-header-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div>
+                        <h4 class="rpt-header-title">Salesman Performance Report</h4>
+                        <div class="rpt-header-sub">
+                            <span><i class="fas fa-chart-line mr-1" style="color: var(--coa-gold);"></i> Monthly productivity, commission & sales target analysis &mdash; Ameen & Sons Corporate ERP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" onclick="shareOnWhatsApp()" class="btn btn-sm btn-outline-light font-weight-bold" style="background: rgba(37, 211, 102, 0.2); border-color: #25D366; color: #25D366;">
+                        <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                    </button>
+                    <button type="button" onclick="showExportOptions()" class="btn btn-sm btn-light font-weight-bold text-dark border">
+                        <i class="fas fa-file-export mr-1 text-primary"></i> Export
+                    </button>
                 </div>
             </div>
 
-            {{-- FILTER CARD --}}
-            <div class="card shadow-sm mb-3" style="border-radius:10px;border:none;">
-                <div class="card-body py-3">
-                    <form id="performanceFilterForm" class="row g-3 align-items-end">
+            {{-- 2. Filter Card --}}
+            <div class="card shadow-sm mb-3 border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;">
+                <div class="card-body p-3">
+                    <form id="performanceFilterForm" class="row g-2 align-items-end mb-0">
                         @if($isSuper)
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Select Branch</label>
+                        <div class="col-md-3">
+                            <label class="f-label">Select Branch</label>
                             <select name="branch_id" id="branch_id" class="form-control form-control-sm select2 branch-trigger">
                                 <option value="">-- All Branches --</option>
                                 @foreach($branches as $b)
@@ -34,8 +124,8 @@
                         <input type="hidden" name="branch_id" id="branch_id" value="{{ $userBranchId }}">
                         @endif
 
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1">Select Salesman</label>
+                        <div class="col-md-{{ $isSuper ? '3' : '4' }}">
+                            <label class="f-label">Select Salesman</label>
                             <select name="salesman_id" id="salesman_id" class="form-control form-control-sm select2">
                                 <option value="">-- All (Summary) --</option>
                                 <option value="direct">Direct Sale (No Salesman)</option>
@@ -46,40 +136,30 @@
                         </div>
 
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ date('Y-m-01') }}">
+                            <label class="f-label">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ date('Y-m-01') }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">End Date</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}">
+                            <label class="f-label">End Date</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
 
-                        <div class="col-md-1">
-                            <button type="button" id="btnSearch" class="btn btn-primary btn-sm w-100" style="background:#0066cc;border-color:#0066cc;padding:7px;">
-                                <i class="fas fa-search"></i>
+                        <div class="col-md-2">
+                            <button type="button" id="btnSearch" class="btn btn-sm btn-primary w-100 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy);">
+                                <i class="fas fa-search mr-1"></i> Analyze
                             </button>
-                        </div>
-                        <div class="col-md-2 text-end">
-                            <div class="btn-group shadow-sm" role="group">
-                                <button type="button" onclick="showExportOptions()" class="btn btn-outline-info btn-sm" style="background: #fff; border-color: #17a2b8; color: #17a2b8; padding: 7px 10px;" title="Export">
-                                    <i class="fas fa-file-export"></i>
-                                </button>
-                                <button type="button" onclick="shareOnWhatsApp()" class="btn btn-outline-success btn-sm" style="background: #fff; border-color: #28a745; color: #28a745; padding: 7px 10px;" title="WhatsApp">
-                                    <i class="fab fa-whatsapp"></i>
-                                </button>
-                            </div>
                         </div>
                     </form>
                 </div>
             </div>
 
-            {{-- REPORT TABLE --}}
-            <div class="card shadow-sm border-0" style="border-radius:10px;" id="reportContent">
-                <div class="card-body p-4">
+            {{-- 3. REPORT TABLE --}}
+            <div class="card shadow-sm border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;" id="reportContent">
+                <div class="card-body p-3">
                     
                     {{-- PDF HEADER (HIDDEN ON SCREEN) --}}
-                    <div id="pdfHeader" style="display:none; text-align:center; margin-bottom:20px; border-bottom:2px solid #1a1a2e; padding-bottom:10px;">
-                        <h2 style="margin:0; color:#1a1a2e; text-transform:uppercase; letter-spacing:1px;">SALESMAN PERFORMANCE REPORT</h2>
+                    <div id="pdfHeader" style="display:none; text-align:center; margin-bottom:20px; border-bottom:2px solid #0f1f38; padding-bottom:10px;">
+                        <h2 style="margin:0; color:#0f1f38; text-transform:uppercase; letter-spacing:1px;">SALESMAN PERFORMANCE REPORT</h2>
                         <p style="margin:5px 0; font-size:14px; color:#333;">
                             <strong>Period:</strong> <span id="pdfPeriod"></span>
                         </p>
@@ -88,27 +168,27 @@
 
                     <div id="loader" style="display:none;text-align:center;padding:40px;">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted mt-2">Aggregating performance data...</p>
+                        <p class="text-muted mt-2 small font-weight-bold">Aggregating performance data...</p>
                     </div>
 
                     <div class="table-responsive">
-                        <table id="performanceTable" class="table table-bordered mb-0" style="font-size:13px;border-collapse:collapse;">
+                        <table id="performanceTable" class="table table-bordered mb-0" style="font-size:12.5px; border-collapse:collapse;">
                             <thead>
-                                <tr style="background:#1a1a2e;color:#fff;">
-                                    <th class="text-center" style="padding:15px 5px;">#</th>
-                                    <th style="padding:15px 5px;">Salesman Name</th>
-                                    <th style="padding:15px 5px;">Branch</th>
-                                    <th style="padding:15px 5px;">Month</th>
-                                    <th class="text-end" style="padding:15px 5px;">Total Invoices</th>
-                                    <th class="text-end" style="padding:15px 5px;background:#1b5e20;">Total Sales (PKR)</th>
+                                <tr>
+                                    <th class="text-center" style="width: 4%;">#</th>
+                                    <th>Salesman Name</th>
+                                    <th style="width: 18%;">Branch</th>
+                                    <th style="width: 12%;">Month</th>
+                                    <th class="text-end" style="width: 14%;">Total Invoices</th>
+                                    <th class="text-end" style="width: 18%;">Total Sales (PKR)</th>
                                 </tr>
                             </thead>
                             <tbody id="reportBody"></tbody>
                             <tfoot id="tableFooter" style="display:none;">
-                                <tr class="fw-bold bg-light">
-                                    <td colspan="4" class="text-end" style="font-size:15px;">Totals:</td>
-                                    <td class="text-end" id="footerInvoices" style="font-size:15px;">0</td>
-                                    <td class="text-end text-success" id="footerTotalAmount" style="font-size:15px;">0.00</td>
+                                <tr class="font-weight-bold bg-light" style="font-family: monospace; font-size: 13px;">
+                                    <td colspan="4" class="text-end font-weight-bold" style="font-family: sans-serif;">Totals:</td>
+                                    <td class="text-end font-weight-bold text-dark" id="footerInvoices">0</td>
+                                    <td class="text-end font-weight-bold text-success" id="footerTotalAmount">0.00</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -116,36 +196,36 @@
                 </div>
             </div>
 
-            {{-- DETAILED LEDGER SECTION (Show only when salesman selected) --}}
-            <div class="card shadow-sm border-0 mt-4 d-none" style="border-radius:10px;" id="ledgerContent">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold text-primary">
-                        <i class="fas fa-list-alt me-2"></i>
-                        Detailed Sales Ledger: <span id="selectedSalesmanName"></span>
-                    </h5>
+            {{-- 4. DETAILED LEDGER SECTION (Show only when salesman selected) --}}
+            <div class="card shadow-sm border-0 mt-3 d-none" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;" id="ledgerContent">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 font-weight-bold" style="color: var(--coa-navy);">
+                        <i class="fas fa-list-alt mr-1" style="color: var(--coa-gold);"></i>
+                        Detailed Sales Ledger: <span id="selectedSalesmanName" class="text-dark"></span>
+                    </h6>
                 </div>
-                <div class="card-body p-4">
+                <div class="card-body p-3">
                     <div id="ledgerLoader" style="display:none;text-align:center;padding:20px;">
                         <div class="spinner-border text-info" role="status"></div>
-                        <p class="text-muted mt-2">Loading transaction history...</p>
+                        <p class="text-muted mt-2 small font-weight-bold">Loading transaction history...</p>
                     </div>
 
                     <div class="table-responsive">
-                        <table id="ledgerTable" class="table table-hover table-sm" style="font-size:12px;">
-                            <thead class="table-light">
+                        <table id="ledgerTable" class="table table-hover table-bordered mb-0" style="font-size:12px;">
+                            <thead class="thead-light">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Invoice #</th>
+                                    <th style="width: 12%;">Date</th>
+                                    <th style="width: 16%;">Invoice #</th>
                                     <th>Customer</th>
-                                    <th>Branch</th>
-                                    <th class="text-end">Amount (PKR)</th>
+                                    <th style="width: 18%;">Branch</th>
+                                    <th class="text-end" style="width: 16%;">Amount (PKR)</th>
                                 </tr>
                             </thead>
                             <tbody id="ledgerBody"></tbody>
                             <tfoot>
-                                <tr class="fw-bold table-active">
-                                    <td colspan="4" class="text-end">Total Amount:</td>
-                                    <td class="text-end text-primary" id="ledgerTotal">0.00</td>
+                                <tr class="font-weight-bold bg-light" style="font-family: monospace; font-size: 13px;">
+                                    <td colspan="4" class="text-end font-weight-bold" style="font-family: sans-serif;">Total Amount:</td>
+                                    <td class="text-end text-success font-weight-bold" id="ledgerTotal">0.00</td>
                                 </tr>
                             </tfoot>
                         </table>

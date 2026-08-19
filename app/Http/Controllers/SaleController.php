@@ -426,6 +426,7 @@ class SaleController extends Controller
                                     Log::info('Creating receipt voucher for account', ['account_id' => $acctId, 'amount' => $amt]);
                                     
                                     $rv = ReceiptsVoucher::create([
+                                        'branch_id' => $sale->branch_id ?? ($booking->branch_id ?? (auth()->user()->branch_id ?? 1)),
                                         'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
                                         'receipt_date' => Carbon::today(),
                                         'entry_date' => Carbon::now(),
@@ -991,6 +992,7 @@ class SaleController extends Controller
                                 foreach ($uniqueAccountIds as $i => $acctId) {
                                     $amt = $uniqueAmounts[$i];
                                     $rv = ReceiptsVoucher::create([
+                                        'branch_id' => $sale->branch_id ?? ($booking->branch_id ?? (auth()->user()->branch_id ?? 1)),
                                         'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
                                         'receipt_date' => Carbon::today(),
                                         'entry_date' => Carbon::now(),
@@ -2257,6 +2259,7 @@ public function finddc($invoice)
                     foreach ($uniqueAccountIds as $i => $acctId) {
                         $amt = $uniqueAmounts[$i];
                         $rv = ReceiptsVoucher::create([
+                            'branch_id' => $sale->branch_id ?? (auth()->user()->branch_id ?? 1),
                             'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
                             'receipt_date' => Carbon::today(),
                             'entry_date' => Carbon::now(),
@@ -3415,6 +3418,7 @@ public function finddc($invoice)
                         if ($amount <= 0 || !$accId) continue;
 
                         ReceiptsVoucher::create([
+                            'branch_id' => $sale->branch_id ?? (auth()->user()->branch_id ?? 1),
                             'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
                             'receipt_date' => now()->toDateString(),
                             'entry_date' => now(),

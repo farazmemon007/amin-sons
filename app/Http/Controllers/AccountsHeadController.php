@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Account;
 use App\Models\AccountHead;
+use App\Models\AccountLedgerEntry;
 use App\Models\Branch;
 use App\Models\PurchaseAccountAllocaations;
 use Illuminate\Http\Request;
@@ -40,31 +41,48 @@ class AccountsHeadController extends Controller
         $isSuperAdmin = $user->hasRole('super admin');
 
         // Get all branches with their account information
-        $branches = Branch::where('status', 'active')
-            ->orWhere('status', 1)
-            ->orWhere('status', true)
-            ->with('accounts')
-            ->get();
+        $branches = Branch::where(function ($q) {
+            $q->whereNull('status')
+              ->orWhere('status', '!=', 'inactive');
+        })->with('accounts.head')->orderBy('name')->get();
 
         // Calculate totals for each branch
         $branchesWithTotals = $branches->map(function ($branch) {
+            $accounts = $branch->accounts;
+            $openingSum = (float)$accounts->sum('opening_balance');
+            $currentSum = (float)$accounts->sum(function ($acc) {
+                $lastEntry = AccountLedgerEntry::where('account_id', $acc->id)->latest('id')->first();
+                return $lastEntry ? (float)$lastEntry->running_balance : (float)($acc->opening_balance ?? 0);
+            });
+
             return [
                 'id'              => $branch->id,
                 'name'            => $branch->name,
                 'address'         => $branch->address,
                 'number'          => $branch->number,
-                'status'          => $branch->status,
-                'accounts_count'  => $branch->accounts()->count(),
-                'total_balance'   => $branch->accounts()->sum('opening_balance'),
+                'status'          => $branch->status ?? 'active',
+                'accounts_count'  => $accounts->count(),
+                'opening_balance' => $openingSum,
+                'total_balance'   => $currentSum,
+                'current_balance' => $currentSum,
             ];
         });
 
-        $heads = AccountHead::all();
+        $totalOrgBranches = $branchesWithTotals->count();
+        $totalOrgAccounts = $branchesWithTotals->sum('accounts_count');
+        $totalOrgOpening  = $branchesWithTotals->sum('opening_balance');
+        $totalOrgBalance  = $branchesWithTotals->sum('current_balance');
+
+        $heads = AccountHead::orderBy('name')->get();
 
         return view('admin_panel.chart_of_accounts.branches_overview', compact(
             'branchesWithTotals',
             'branches',
             'heads',
+            'totalOrgBranches',
+            'totalOrgAccounts',
+            'totalOrgOpening',
+            'totalOrgBalance',
             'isSuperAdmin',
             'user'
         ));
@@ -88,36 +106,43 @@ class AccountsHeadController extends Controller
         $branch = Branch::with(['accounts.head'])
             ->findOrFail($branchId);
 
-        // ✅ Get ALL account heads and their accounts for this branch
-        $heads = AccountHead::all();
+        // ✅ Get accounts with current running balances from ledger
+        $allAccounts = $branch->accounts()->with('head')->get()->map(function ($acc) {
+            $lastEntry = AccountLedgerEntry::where('account_id', $acc->id)->latest('id')->first();
+            $acc->current_balance = $lastEntry ? (float)$lastEntry->running_balance : (float)($acc->opening_balance ?? 0);
+            return $acc;
+        });
+
+        // ✅ Get ALL account heads
+        $heads = AccountHead::orderBy('name')->get();
         
-        // Build accountsByHead structure including empty heads (ERP Standard)
+        // Build accountsByHead structure
         $accountsByHead = collect();
         foreach ($heads as $head) {
-            $accounts = $branch->accounts()
-                ->where('head_id', $head->id)
-                ->with('head')
-                ->get();
-            
-            if ($accounts->count() > 0 || true) { // Include empty heads too
+            $accounts = $allAccounts->where('head_id', $head->id)->values();
+            if ($accounts->count() > 0) {
                 $accountsByHead[$head->name] = $accounts;
             }
         }
 
         // Calculate totals
-        $totalBalance = $branch->accounts()->sum('opening_balance');
+        $totalOpeningBalance = (float)$allAccounts->sum('opening_balance');
+        $totalCurrentBalance = (float)$allAccounts->sum('current_balance');
+        $totalBalance = $totalCurrentBalance;
 
-        $branches = Branch::where('status', 'active')
-            ->orWhere('status', 1)
-            ->orWhere('status', true)
-            ->get();
+        $branches = Branch::where(function ($q) {
+            $q->whereNull('status')
+              ->orWhere('status', '!=', 'inactive');
+        })->orderBy('name')->get();
 
         return view('admin_panel.chart_of_accounts.branch_details', compact(
             'branch',
+            'allAccounts',
             'accountsByHead',
             'heads',
+            'totalOpeningBalance',
+            'totalCurrentBalance',
             'totalBalance',
-            'heads',
             'branches',
             'isSuperAdmin',
             'user'

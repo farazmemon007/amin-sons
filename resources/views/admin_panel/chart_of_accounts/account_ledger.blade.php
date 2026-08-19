@@ -3,12 +3,15 @@
 @section('content')
 <style>
 :root {
-    --primary: #6366f1;
-    --success: #22c55e;
-    --danger:  #ef4444;
+    --primary: #1e3a5f;
+    --primary-dark: #0f1f38;
+    --primary-light: #2c5282;
+    --gold: #c8973a;
+    --success: #0d9f6e;
+    --danger:  #dc2626;
     --warning: #f59e0b;
-    --info:    #0ea5e9;
-    --dark:    #1e293b;
+    --info:    #0284c7;
+    --dark:    #0f172a;
     --muted:   #64748b;
     --border:  #e2e8f0;
     --light:   #f8fafc;
@@ -16,122 +19,153 @@
 
 /* ── Page Header ─────────────────────────────── */
 .ledger-header {
-    background: linear-gradient(135deg, #1e293b, #334155);
-    color: white;
-    padding: 32px 0;
-    margin-bottom: 30px;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.2);
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+    color: #ffffff !important;
+    padding: 24px 0;
+    margin-bottom: 24px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
 }
-.back-link { color:rgba(255,255,255,.85); text-decoration:none; font-size:.9rem; display:inline-flex; align-items:center; gap:6px; }
-.back-link:hover { color:white; }
-.account-meta { display:flex; align-items:center; gap:16px; margin-top:14px; }
+.ledger-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0;
+    color: #ffffff !important;
+    letter-spacing: -0.01em;
+}
+.back-link {
+    color: rgba(255,255,255,.9) !important;
+    text-decoration: none !important;
+    font-size: .88rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    transition: all 0.2s;
+}
+.back-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff !important;
+}
+.account-meta { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
 .account-badge {
-    background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.2);
-    border-radius: 8px; padding:6px 14px;
-    font-size:.85rem; font-weight:600;
-    display:inline-flex; align-items:center; gap:6px;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.22);
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* ── Summary Cards ───────────────────────────── */
-.summary-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:18px; margin-bottom:28px; }
+.summary-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:14px; margin-bottom:22px; }
 .s-card {
-    background:white; border-radius:12px;
-    padding:20px 22px;
-    box-shadow:0 2px 12px rgba(0,0,0,.07);
+    background:white; border-radius:8px;
+    padding:16px 18px;
+    box-shadow:0 2px 8px rgba(0,0,0,.03);
+    border:1px solid var(--border);
     border-left:4px solid transparent;
 }
-.s-card.ob  { border-color:#6366f1; }
-.s-card.dr  { border-color:#22c55e; }
-.s-card.cr  { border-color:#ef4444; }
-.s-card.bal { border-color:#0ea5e9; }
-.s-card-label { font-size:.75rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; margin-bottom:6px; }
-.s-card-value { font-size:1.4rem; font-weight:800; color:var(--dark); }
+.s-card.ob  { border-left-color: #64748b; }
+.s-card.dr  { border-left-color: var(--success); }
+.s-card.cr  { border-left-color: var(--danger); }
+.s-card.bal { border-left-color: var(--primary); background: #f0fdf4; }
+.s-card-label { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); font-weight:700; margin-bottom:4px; }
+.s-card-value { font-size:1.35rem; font-weight:800; color:var(--dark); font-family:monospace; }
 
 /* ── Filter Bar ──────────────────────────────── */
 .filter-bar {
-    background:white; border-radius:12px;
-    padding:16px 20px; margin-bottom:20px;
-    box-shadow:0 2px 8px rgba(0,0,0,.06);
-    display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap;
+    background:white; border-radius:8px;
+    padding:14px 18px; margin-bottom:18px;
+    box-shadow:0 2px 6px rgba(0,0,0,.03);
+    border:1px solid var(--border);
+    display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;
 }
-.filter-bar label { font-size:.8rem; font-weight:700; color:var(--muted); display:block; margin-bottom:4px; }
+.filter-bar label { font-size:.78rem; font-weight:700; color:var(--muted); display:block; margin-bottom:4px; }
 .filter-bar input[type=date] {
-    border:1.5px solid var(--border); border-radius:8px;
-    padding:8px 12px; font-size:.9rem; cursor:pointer;
+    border:1.5px solid var(--border); border-radius:6px;
+    padding:6px 10px; font-size:.85rem; cursor:pointer;
 }
 .btn-filter {
-    background: var(--primary); color:white;
-    border:none; border-radius:8px;
-    padding:9px 20px; font-size:.9rem; font-weight:600;
+    background: var(--primary); color:#ffffff !important;
+    border:none; border-radius:6px;
+    padding:7px 16px; font-size:.85rem; font-weight:700;
     cursor:pointer; display:inline-flex; align-items:center; gap:6px;
-    transition: background .2s, transform .15s;
+    transition: background .2s;
 }
-.btn-filter:hover { background:#4f46e5; transform:translateY(-1px); }
+.btn-filter:hover { background:var(--primary-dark); }
 .btn-clear {
     background:#f1f5f9; color:var(--dark);
-    border:1.5px solid var(--border); border-radius:8px;
-    padding:8px 16px; font-size:.9rem; font-weight:600;
+    border:1px solid var(--border); border-radius:6px;
+    padding:7px 14px; font-size:.85rem; font-weight:600;
     cursor:pointer; text-decoration:none;
     display:inline-flex; align-items:center; gap:6px;
 }
 
 /* ── Ledger Table ────────────────────────────── */
 .ledger-card {
-    background:white; border-radius:14px;
-    box-shadow:0 2px 15px rgba(0,0,0,.08);
+    background:white; border-radius:10px;
+    box-shadow:0 4px 12px rgba(0,0,0,.03);
+    border:1px solid var(--border);
     overflow:hidden;
 }
 .ledger-card-header {
-    background:linear-gradient(135deg,#f8fafc,#f1f5f9);
-    padding:18px 24px; border-bottom:2px solid var(--border);
-    display:flex; align-items:center; gap:12px;
+    background:#f8fafc;
+    padding:14px 20px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
 }
-.ledger-table { width:100%; border-collapse:collapse; }
+.ledger-table { width:100%; border-collapse:collapse; margin:0; }
 .ledger-table thead th {
-    background:#1e293b; color:white;
-    padding:13px 16px; font-size:.78rem;
-    text-transform:uppercase; letter-spacing:.06em;
+    background:#f1f5f9; color:#475569;
+    padding:11px 14px; font-size:.75rem;
+    text-transform:uppercase; letter-spacing:.05em;
     font-weight:700;
+    border-bottom:1.5px solid #cbd5e1;
 }
-.ledger-table thead th:first-child { border-radius:0; }
-.ledger-table tbody tr { border-bottom:1px solid var(--border); transition:background .12s; }
-.ledger-table tbody tr:last-child { border-bottom:none; }
+.ledger-table tbody tr { border-bottom:1px solid #f1f5f9; transition:background .12s; }
 .ledger-table tbody tr:hover { background:#f8fafc; }
-.ledger-table td { padding:12px 16px; font-size:.9rem; vertical-align:middle; }
+.ledger-table td { padding:10px 14px; font-size:.88rem; vertical-align:middle; color:#1e293b; }
 
 .entry-no {
-    font-family:'Courier New',monospace; font-weight:700; font-size:.85rem;
-    padding:3px 8px; border-radius:5px;
+    font-family:monospace; font-weight:700; font-size:.82rem;
+    padding:2px 7px; border-radius:4px;
 }
-.entry-no.br { background:rgba(99,102,241,.1); color:#6366f1; }
-.entry-no.cr { background:rgba(239,68,68,.1); color:#ef4444; }
-.entry-no.jv { background:rgba(245,158,11,.1); color:#b45309; }
-.entry-no.ob { background:rgba(14,165,233,.1); color:#0369a1; }
+.entry-no.br { background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+.entry-no.cr { background:#fef2f2; color:#b91c1c; border:1px solid #fca5a5; }
+.entry-no.jv { background:#fef3c7; color:#b45309; border:1px solid #fde68a; }
+.entry-no.ob { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
 
 .voucher-tag {
-    font-size:.78rem; color:var(--muted);
-    background:var(--light); padding:2px 7px;
-    border-radius:4px; font-family:'Courier New',monospace;
+    font-size:.78rem; color:var(--primary); font-weight:600;
+    background:#f1f5f9; padding:2px 6px;
+    border-radius:4px; font-family:monospace;
+    border:1px solid #e2e8f0;
 }
 
-.amount-debit  { color:var(--success); font-weight:700; }
-.amount-credit { color:var(--danger);  font-weight:700; }
+.amount-debit  { color:var(--success); font-weight:700; font-family:monospace; }
+.amount-credit { color:var(--danger);  font-weight:700; font-family:monospace; }
 .amount-zero   { color:#cbd5e1; }
 
-.running-balance { font-weight:800; font-size:.95rem; }
-.running-balance.positive { color:#0ea5e9; }
-.running-balance.negative { color:#ef4444; }
+.running-balance { font-weight:800; font-size:.92rem; font-family:monospace; }
+.running-balance.positive { color:#047857; }
+.running-balance.negative { color:#b91c1c; }
 
 /* Totals row */
 .totals-row td {
-    background:#1e293b; color:white;
-    font-weight:700; padding:14px 16px;
-    font-size:.92rem;
+    background:var(--primary); color:#ffffff !important;
+    font-weight:700; padding:12px 14px;
+    font-size:.9rem;
 }
-.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
-.empty-state i { font-size:2.5rem; opacity:.3; margin-bottom:12px; display:block; }
+.empty-state { text-align:center; padding:50px 20px; color:var(--muted); }
+.empty-state i { font-size:2.2rem; opacity:.3; margin-bottom:10px; display:block; }
 </style>
 
 <div class="container-fluid">
@@ -139,29 +173,29 @@
     {{-- Page Header --}}
     <div class="ledger-header">
         <div class="container">
-            <a href="{{ url()->previous() }}" class="back-link">
+            <a href="{{ route('branch.accounts', $account->branch_id ?? 1) }}" class="back-link">
                 <i class="fas fa-arrow-left"></i> Back to Accounts
             </a>
 
-            <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap;">
+            <div style="margin-top:14px; display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap;">
                 <div>
-                    <h1 style="font-size:1.8rem; font-weight:800; margin:0;">
+                    <h1 class="ledger-title" style="color: #ffffff !important;">
                         {{ $account->title }}
                     </h1>
                     <div class="account-meta">
                         <span class="account-badge">
-                            <i class="fas fa-code"></i>
+                            <i class="fas fa-barcode" style="color: var(--gold);"></i>
                             {{ $account->account_code ?? 'N/A' }}
                         </span>
                         <span class="account-badge">
-                            <i class="fas fa-layer-group"></i>
-                            {{ $account->head->name ?? '—' }}
+                            <i class="fas fa-layer-group" style="color: var(--gold);"></i>
+                            {{ $account->head->name ?? 'General' }}
                         </span>
                         <span class="account-badge">
-                            <i class="fas fa-building"></i>
-                            {{ $account->branch->name ?? '—' }}
+                            <i class="fas fa-store" style="color: var(--gold);"></i>
+                            {{ $account->branch->name ?? 'Head Office' }}
                         </span>
-                        <span class="account-badge" style="{{ strtolower($account->type) == 'debit' ? 'background:rgba(34,197,94,.2);' : 'background:rgba(239,68,68,.2);' }}">
+                        <span class="account-badge" style="{{ strtolower($account->type) == 'debit' ? 'background:rgba(13,159,110,.25); border-color:#059669;' : 'background:rgba(220,38,38,.25); border-color:#b91c1c;' }}">
                             <i class="fas {{ strtolower($account->type) == 'debit' ? 'fa-arrow-up' : 'fa-arrow-down' }}"></i>
                             {{ $account->type }} Account
                         </span>
@@ -187,15 +221,15 @@
             </div>
             <div class="s-card dr">
                 <div class="s-card-label">Total Debit (In)</div>
-                <div class="s-card-value" style="color:#22c55e;">PKR {{ number_format($totalDebit, 2) }}</div>
+                <div class="s-card-value" style="color:var(--success);">PKR {{ number_format($totalDebit, 2) }}</div>
             </div>
             <div class="s-card cr">
                 <div class="s-card-label">Total Credit (Out)</div>
-                <div class="s-card-value" style="color:#ef4444;">PKR {{ number_format($totalCredit, 2) }}</div>
+                <div class="s-card-value" style="color:var(--danger);">PKR {{ number_format($totalCredit, 2) }}</div>
             </div>
             <div class="s-card bal">
-                <div class="s-card-label">Closing Balance</div>
-                <div class="s-card-value" style="color:{{ $closingBalance >= 0 ? '#0ea5e9' : '#ef4444' }};">
+                <div class="s-card-label" style="color:#047857;">Closing Balance</div>
+                <div class="s-card-value" style="color:{{ $closingBalance >= 0 ? '#047857' : 'var(--danger)' }};">
                     PKR {{ number_format(abs($closingBalance), 2) }}
                     @if($closingBalance < 0) <small style="font-size:.7rem;">(Cr)</small> @endif
                 </div>

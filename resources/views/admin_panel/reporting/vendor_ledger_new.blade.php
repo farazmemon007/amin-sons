@@ -1,84 +1,158 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
-<div class="main-content">
-    <div class="main-content-inner">
-        <div class="container-fluid px-4">
+<style>
+    :root {
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-border: #e2e8f0;
+    }
 
-            {{-- PAGE HEADER --}}
-            <div class="row mb-3 align-items-center">
-                <div class="col">
-                    <h4 class="mb-0 fw-bold" style="color:#1a1a2e;">
-                        <i class="fas fa-book-open me-2" style="color:#0066cc;"></i>
-                        Vendor Account Ledger
-                    </h4>
-                    <small class="text-muted">ERP Standard &mdash; Complete Transaction History with Running Balance</small>
+    .rpt-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .rpt-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 16px 22px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
+    }
+
+    .rpt-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
+    }
+
+    .rpt-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .rpt-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 3px;
+    }
+
+    .f-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #475569;
+        letter-spacing: 0.03em;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    #ledgerTable th {
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 10px 6px;
+        border: 1px solid #1e3a5f;
+    }
+</style>
+
+<div class="main-content">
+    <div class="rpt-wrapper">
+        <div class="container-fluid px-2">
+
+            {{-- 1. Corporate Header Bar --}}
+            <div class="rpt-header-bar">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rpt-header-icon">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div>
+                        <h4 class="rpt-header-title">Vendor Account Ledger</h4>
+                        <div class="rpt-header-sub">
+                            <span><i class="fas fa-file-invoice-dollar mr-1" style="color: var(--coa-gold);"></i> Complete Supplier Transaction History & Running Balance &mdash; Ameen & Sons Corporate ERP</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-auto" id="printBtnWrap" style="display:none;">
-                    <button id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-sm btn-outline-success me-2" style="border-color:#25D366; color:#25D366;">
-                        <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                <div class="d-flex align-items-center gap-2" id="printBtnWrap" style="display:none;">
+                    <button id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-sm btn-outline-light font-weight-bold" style="background: rgba(37, 211, 102, 0.2); border-color: #25D366; color: #25D366;">
+                        <i class="fab fa-whatsapp mr-1"></i> WhatsApp
                     </button>
-                    <button id="toggleDetailsBtn" onclick="toggleInvoiceDetails()" class="btn btn-sm btn-outline-primary me-2">
-                        <i class="fas fa-eye-slash me-1"></i> Hide Details
+                    <button id="toggleDetailsBtn" onclick="toggleInvoiceDetails()" class="btn btn-sm btn-light font-weight-bold border">
+                        <i class="fas fa-eye-slash mr-1"></i> Hide Details
                     </button>
-                    <button onclick="window.print()" class="btn btn-sm btn-outline-secondary me-2">
-                        <i class="fas fa-print me-1"></i> Print
+                    <button onclick="window.print()" class="btn btn-sm btn-outline-light font-weight-bold">
+                        <i class="fas fa-print mr-1"></i> Print
                     </button>
-                    <button onclick="showExportOptions()" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-download me-1"></i> Export
+                    <button onclick="showExportOptions()" class="btn btn-sm btn-light font-weight-bold text-dark border">
+                        <i class="fas fa-download mr-1 text-primary"></i> Export
                     </button>
                 </div>
             </div>
 
-            {{-- FILTER CARD --}}
-            <div class="card filter-card mb-4">
-                <div class="card-body p-4">
-                    <form id="ledgerForm" class="row g-3 align-items-end">
+            {{-- 2. Filter Card --}}
+            <div class="card shadow-sm mb-3 border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;">
+                <div class="card-body p-3">
+                    <form id="ledgerForm" class="row g-2 align-items-end mb-0">
                         @php $user = Auth::user(); @endphp
                         
                         @if($user && $user->hasRole('super admin'))
                             <div class="col-md-3">
-                                <div class="d-flex flex-column">
-                                    <label class="filter-label">Select Branch</label>
-                                    <select id="branch_id" class="form-select modern-input">
-                                        <option value="">-- Choose Branch --</option>
-                                        @foreach($branches as $b)
-                                            <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
+                                <label class="f-label">Select Branch</label>
+                                <select id="branch_id" class="form-control form-control-sm" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
+                                    <option value="">-- Choose Branch --</option>
+                                    @foreach($branches as $b)
+                                        <option value="{{ $b->id }}">{{ $b->name ?? $b->branch_name }}</option>
+                                    @endforeach
+                                </select>
                             </div>
                         @else
                             <input type="hidden" id="branch_id" value="{{ $user->branch_id }}">
                         @endif
 
-                        <div class="col-md-3">
-                            <div class="d-flex flex-column">
-                                <label class="filter-label">Select Vendor</label>
-                                <select id="vendor_id" class="form-select modern-input">
-                                    <option value="">-- Choose Vendor --</option>
-                                    @foreach($vendors as $v)
-                                        <option value="{{ $v->id }}">{{ $v->name }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div class="col-md-{{ ($user && $user->hasRole('super admin')) ? '3' : '4' }}">
+                            <label class="f-label">Select Vendor</label>
+                            <select id="vendor_id" class="form-control form-control-sm select2">
+                                <option value="">-- Choose Vendor --</option>
+                                @foreach($vendors as $v)
+                                    <option value="{{ $v->id }}">{{ $v->name }}</option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div class="col-md-2">
-                            <div class="d-flex flex-column">
-                                <label class="filter-label">From Date</label>
-                                <input type="date" id="start_date" class="form-control modern-input" value="{{ $startDate ?? '' }}">
-                            </div>
+                            <label class="f-label">From Date</label>
+                            <input type="date" id="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
                         <div class="col-md-2">
-                            <div class="d-flex flex-column">
-                                <label class="filter-label">To Date</label>
-                                <input type="date" id="end_date" class="form-control modern-input" value="{{ $endDate ?? '' }}">
-                            </div>
+                            <label class="f-label">To Date</label>
+                            <input type="date" id="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
                         <div class="col-md-2">
-                            <button type="button" id="btnSearch" class="btn btn-primary btn-generate w-100" style="background:#0066cc;border-color:#0066cc;">
-                                <i class="fas fa-sync-alt me-2"></i> GENERATE
+                            <button type="button" id="btnSearch" class="btn btn-sm btn-primary w-100 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy);">
+                                <i class="fas fa-sync-alt mr-1"></i> GENERATE
                             </button>
                         </div>
                     </form>
@@ -88,66 +162,66 @@
             {{-- LOADER --}}
             <div id="loader" class="text-center py-4" style="display:none;">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p class="text-muted mt-2">Loading ledger data&hellip;</p>
+                <p class="text-muted mt-2 small font-weight-bold">Loading ledger data&hellip;</p>
             </div>
 
             {{-- LEDGER OUTPUT --}}
             <div id="ledgerBox" style="display:none;">
 
-                {{-- Vendor Summary Card --}}
-                <div class="card shadow-sm mb-3" style="border:2px solid #0066cc;border-radius:10px;background:#f0f6ff;">
-                    <div class="card-body py-3">
-                        <div class="row g-2">
+                {{-- 3. Vendor Summary Card --}}
+                <div class="card shadow-sm mb-3 border-0" style="border-radius: 9px; border: 1.5px solid #cbd5e1 !important; background: #ffffff;">
+                    <div class="card-body p-3">
+                        <div class="row g-2 align-items-center">
                             <div class="col-md-3">
-                                <div class="lbl">Vendor</div>
-                                <div id="vendor_name" class="val" style="color:#0066cc;font-size:16px;font-weight:700;">-</div>
+                                <div class="f-label" style="margin-bottom: 2px;">Vendor</div>
+                                <div id="vendor_name" style="color: var(--coa-navy); font-size: 15px; font-weight: 800;">-</div>
                             </div>
                             <div class="col-md-3">
-                                <div class="lbl">Company</div>
-                                <span id="vendor_company" class="badge bg-info text-dark" style="font-size:12px;padding:5px 10px;">-</span>
+                                <div class="f-label" style="margin-bottom: 2px;">Company</div>
+                                <span id="vendor_company" class="badge badge-info text-dark" style="font-size: 11px; padding: 4px 8px;">-</span>
                             </div>
                             <div class="col-md-3">
-                                <div class="lbl">Mobile</div>
-                                <div id="vendor_mobile" class="val">-</div>
+                                <div class="f-label" style="margin-bottom: 2px;">Mobile</div>
+                                <div id="vendor_mobile" class="font-weight-bold font-monospace text-dark">-</div>
                             </div>
                             <div class="col-md-3">
-                                <div class="lbl">Email</div>
-                                <div id="vendor_email" class="val" style="font-size:12px;">-</div>
+                                <div class="f-label" style="margin-bottom: 2px;">Email</div>
+                                <div id="vendor_email" class="text-muted small text-truncate">-</div>
                             </div>
                         </div>
-                        <hr class="my-2">
-                        <div class="row g-2">
+                        <hr class="my-2" style="border-top: 1px dashed #cbd5e1;">
+                        <div class="row g-2 align-items-center">
                             <div class="col-md-4">
-                                <span class="lbl">Period: </span>
-                                <span id="vendor_period" class="fw-bold" style="color:#0066cc;">-</span>
+                                <span class="f-label d-inline mr-1">Period: </span>
+                                <span id="vendor_period" class="font-weight-bold" style="color: var(--coa-navy);">-</span>
                             </div>
-                            <div class="col-md-8 text-end">
-                                <span class="me-3"><span class="lbl">Opening: </span><span id="s_open" class="fw-bold">-</span></span>
-                                <span class="me-3"><span class="lbl">Total Debit (Payments): </span><span id="s_debit" class="fw-bold text-danger">-</span></span>
-                                <span class="me-3"><span class="lbl">Total Credit (Purchases): </span><span id="s_credit" class="fw-bold text-success">-</span></span>
-                                <span><span class="lbl">Closing: </span><span id="s_close" class="fw-bold" style="font-size:15px;">-</span></span>
+                            <div class="col-md-8 text-right font-monospace" style="font-size: 13px;">
+                                <span class="mr-3"><span class="text-muted">Opening: </span><span id="s_open" class="font-weight-bold text-dark">-</span></span>
+                                <span class="mr-3"><span class="text-muted">Total Debit (Payments): </span><span id="s_debit" class="font-weight-bold text-danger">-</span></span>
+                                <span class="mr-3"><span class="text-muted">Total Credit (Purchases): </span><span id="s_credit" class="font-weight-bold text-success">-</span></span>
+                                <span><span class="text-muted">Closing: </span><span id="s_close" class="font-weight-bold text-primary" style="font-size: 15px;">-</span></span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {{-- LEDGER TABLE --}}
+                {{-- 4. LEDGER TABLE --}}
                 <div id="printArea">
-                    <div class="table-responsive" style="border:2px solid #1a1a2e;border-radius:8px;overflow:hidden;">
-                        <table id="ledgerTable" class="table table-bordered mb-0" style="font-size:12.5px;border-collapse:collapse;">
+                    <div class="table-responsive" style="border: 1px solid var(--coa-border); border-radius: 9px; overflow: hidden;">
+                        <table id="ledgerTable" class="table table-bordered mb-0" style="font-size: 12.5px; border-collapse: collapse;">
                             <thead>
-                                <tr style="background:#1a1a2e;color:#fff;">
-                                    <th class="text-center" style="width:68px;padding:9px 5px;">Date</th>
-                                    <th class="text-center" style="width:100px;padding:9px 5px;">Tran. NO</th>
-                                    <th class="text-center" style="width:62px;padding:9px 5px;">Bill</th>
-                                    <th class="text-center" style="width:72px;padding:9px 5px;">DC No</th>
-                                    <th class="text-center" style="width:72px;padding:9px 5px;">Gate Pass</th>
-                                    <th class="text-left"   style="padding:9px 5px;">Description / Item</th>
-                                    <th class="text-right"  style="width:55px;padding:9px 5px;">Qty</th>
-                                    <th class="text-right"  style="width:72px;padding:9px 5px;">Rate</th>
-                                    <th class="text-right"  style="width:90px;padding:9px 5px;">Debit</th>
-                                    <th class="text-right"  style="width:90px;padding:9px 5px;">Credit</th>
-                                    <th class="text-right"  style="width:105px;padding:9px 5px;">Total</th>
+                                <tr>
+                                    <th class="text-center" style="width: 75px;">Date</th>
+                                    <th class="text-center" style="width: 100px;">Tran. NO</th>
+                                    <th class="text-center" style="width: 55px;">Bill</th>
+                                    <th class="text-center" style="width: 75px;">DC No</th>
+                                    <th class="text-center" style="width: 75px;">Gate Pass</th>
+                                    <th>Description / Item</th>
+                                    <th class="text-right" style="width: 60px;">Qty</th>
+                                    <th class="text-right" style="width: 75px;">Rate</th>
+                                    <th class="text-right" style="width: 90px;">Debit</th>
+                                    <th class="text-right" style="width: 90px;">Credit</th>
+                                    <th class="text-right" style="width: 105px;">Total</th>
                                 </tr>
                             </thead>
                             <tbody id="ledgerBody"></tbody>

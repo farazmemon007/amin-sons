@@ -1,28 +1,186 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+    :root {
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-border: #e2e8f0;
+    }
+
+    .rpt-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .rpt-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 16px 22px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
+    }
+
+    .rpt-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
+    }
+
+    .rpt-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .rpt-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 3px;
+    }
+
+    .rpt-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    @media (max-width: 992px) {
+        .rpt-kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .rpt-kpi-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 13px 16px;
+        border: 1px solid var(--coa-border);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .rpt-kpi-card.highlight {
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border-color: #a7f3d0;
+    }
+
+    .rpt-kpi-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+
+    .rpt-kpi-val {
+        font-size: 18px;
+        font-weight: 800;
+        color: var(--coa-navy);
+        font-family: monospace;
+    }
+
+    .rpt-kpi-val.emerald { color: #047857; }
+    .rpt-kpi-val.crimson { color: #dc2626; }
+    .rpt-kpi-val.amber { color: #d97706; }
+
+    .rpt-kpi-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .kpi-icon-blue { background: #e0f2fe; color: #0284c7; }
+    .kpi-icon-emerald { background: #d1fae5; color: #059669; }
+    .kpi-icon-red { background: #fee2e2; color: #dc2626; }
+    .kpi-icon-amber { background: #fef3c7; color: #d97706; }
+
+    .f-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #475569;
+        letter-spacing: 0.03em;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    #saleTable th {
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 10px 8px;
+        border: 1px solid #1e3a5f;
+    }
+</style>
+
 <div class="main-content">
-    <div class="main-content-inner">
-        <div class="container-fluid px-4">
+    <div class="rpt-wrapper">
+        <div class="container-fluid px-2">
             
-            {{-- PAGE HEADER --}}
-            <div class="row mb-3 align-items-center mt-3">
-                <div class="col">
-                    <h4 class="mb-0 fw-bold" style="color:#1a1a2e;">
-                        <i class="fas fa-shopping-cart me-2" style="color:#28a745;"></i>
-                        Sale Report
-                    </h4>
-                    <small class="text-muted">ERP Standard &mdash; Detailed Sales Analysis & Business Intelligence</small>
+            {{-- 1. Corporate Header Bar --}}
+            <div class="rpt-header-bar">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rpt-header-icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div>
+                        <h4 class="rpt-header-title">Sale Report</h4>
+                        <div class="rpt-header-sub">
+                            <span><i class="fas fa-chart-line mr-1" style="color: var(--coa-gold);"></i> Detailed Sales Analysis & Business Intelligence &mdash; Ameen & Sons Corporate ERP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-sm btn-outline-light font-weight-bold" style="background: rgba(37, 211, 102, 0.2); border-color: #25D366; color: #25D366;">
+                        <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                    </button>
+                    <button type="button" onclick="showExportOptions()" class="btn btn-sm btn-light font-weight-bold text-dark border">
+                        <i class="fas fa-download mr-1 text-primary"></i> Export
+                    </button>
+                    <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-light font-weight-bold">
+                        <i class="fas fa-print mr-1"></i> Print
+                    </button>
                 </div>
             </div>
 
-            {{-- FILTER CARD --}}
-            <div class="card shadow-sm mb-3" style="border-radius:10px;border:none;">
-                <div class="card-body py-3">
-                    <form id="saleFilterForm" class="row g-3 align-items-end">
+            {{-- 2. Filter Card --}}
+            <div class="card shadow-sm mb-3 border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;">
+                <div class="card-body p-3">
+                    <form id="saleFilterForm" class="row g-2 align-items-end mb-0">
                         @if(auth()->user()->hasRole('super admin'))
-                        <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Select Branch</label>
+                        <div class="col-md-3">
+                            <label class="f-label">Select Branch</label>
                             <select name="branch_id" id="branch_id" class="form-control form-control-sm select2">
                                 <option value="">-- All Branches --</option>
                                 @foreach($branches as $b)
@@ -31,8 +189,8 @@
                             </select>
                         </div>
                         @endif
-                        <div class="col-md-3">
-                            <label class="form-label fw-semibold mb-1">Select Customer</label>
+                        <div class="col-md-{{ auth()->user()->hasRole('super admin') ? '3' : '4' }}">
+                            <label class="f-label">Select Customer</label>
                             <select name="customer_id" id="customer_id" class="form-control form-control-sm select2">
                                 <option value="all">-- All Customers --</option>
                                 @foreach($customers as $c)
@@ -41,73 +199,69 @@
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">Start Date</label>
-                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}">
+                            <label class="f-label">Start Date</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control form-control-sm" value="{{ $startDate ?? '' }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label fw-semibold mb-1">End Date</label>
-                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}">
+                            <label class="f-label">End Date</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control form-control-sm" value="{{ $endDate ?? '' }}" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                         </div>
-                        <div class="col-md-1">
-                            <button type="button" id="btnSearch" class="btn btn-primary btn-sm w-100" style="background:#0066cc;border-color:#0066cc;padding:7px;">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                        <div class="col-md-4 text-end">
-                            <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-outline-success btn-sm shadow-sm me-1" style="border-color:#25D366; color:#25D366; background: #fff;">
-                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                            </button>
-                            <button type="button" onclick="showExportOptions()" class="btn btn-outline-info btn-sm shadow-sm" style="background: #fff; border-color: #17a2b8; color: #17a2b8;">
-                                <i class="fas fa-download me-1"></i> Export
+                        <div class="col-md-2">
+                            <button type="button" id="btnSearch" class="btn btn-sm btn-primary w-100 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy);">
+                                <i class="fas fa-search mr-1"></i> Search
                             </button>
                         </div>
                     </form>
                 </div>
             </div>
 
-            {{-- SUMMARY CARDS --}}
-            <div id="summaryCards" class="row mb-3 g-3" style="display:none;">
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-primary text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Gross Sales</div>
-                            <div id="stat_gross" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+            {{-- 3. KPI Summary Cards --}}
+            <div id="summaryCards" class="rpt-kpi-grid" style="display:none;">
+                <div class="rpt-kpi-card">
+                    <div>
+                        <div class="rpt-kpi-label">Gross Sales</div>
+                        <div id="stat_gross" class="rpt-kpi-val">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-blue">
+                        <i class="fas fa-file-invoice-dollar"></i>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-success text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Net Revenue</div>
-                            <div id="stat_net" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+                <div class="rpt-kpi-card highlight">
+                    <div>
+                        <div class="rpt-kpi-label" style="color: #047857;">Net Revenue</div>
+                        <div id="stat_net" class="rpt-kpi-val emerald">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-emerald">
+                        <i class="fas fa-check-circle"></i>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-danger text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Sales Returns</div>
-                            <div id="stat_return" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+                <div class="rpt-kpi-card">
+                    <div>
+                        <div class="rpt-kpi-label">Sales Returns</div>
+                        <div id="stat_return" class="rpt-kpi-val crimson">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-red">
+                        <i class="fas fa-undo"></i>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card shadow-sm border-0 bg-info text-white" style="border-radius:10px;">
-                        <div class="card-body p-3 text-center">
-                            <div class="lbl text-white opacity-75">Total Discount</div>
-                            <div id="stat_disc" class="h5 fw-bold mb-0">0.00</div>
-                        </div>
+                <div class="rpt-kpi-card">
+                    <div>
+                        <div class="rpt-kpi-label">Total Discount</div>
+                        <div id="stat_disc" class="rpt-kpi-val amber">0.00</div>
+                    </div>
+                    <div class="rpt-kpi-icon kpi-icon-amber">
+                        <i class="fas fa-tag"></i>
                     </div>
                 </div>
             </div>
 
-            {{-- REPORT TABLE --}}
-            <div class="card shadow-sm border-0" style="border-radius:10px;" id="reportContent">
-                <div class="card-body p-4">
+            {{-- 4. Report Table --}}
+            <div class="card shadow-sm border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;" id="reportContent">
+                <div class="card-body p-3">
                     
                     {{-- PDF HEADER (HIDDEN ON SCREEN) --}}
-                    <div id="pdfHeader" style="display:none; text-align:center; margin-bottom:20px; border-bottom:2px solid #1a1a2e; padding-bottom:10px;">
-                        <h2 style="margin:0; color:#1a1a2e; text-transform:uppercase; letter-spacing:1px;">SALE REPORT</h2>
+                    <div id="pdfHeader" style="display:none; text-align:center; margin-bottom:20px; border-bottom:2px solid #0f1f38; padding-bottom:10px;">
+                        <h2 style="margin:0; color:#0f1f38; text-transform:uppercase; letter-spacing:1px;">SALE REPORT</h2>
                         <p style="margin:5px 0; font-size:14px; color:#333;">
                             <strong>Period:</strong> <span id="pdfPeriod"></span> | 
                             <strong>Customer:</strong> <span id="pdfCustomerName">All Customers</span>
@@ -117,34 +271,34 @@
 
                     <div id="loader" style="display:none;text-align:center;padding:40px;">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="text-muted mt-2">Processing sales data...</p>
+                        <p class="text-muted mt-2 small font-weight-bold">Processing sales data...</p>
                     </div>
 
                     <div class="table-responsive">
-                        <table id="saleTable" class="table table-bordered mb-0" style="font-size:13px;border-collapse:collapse;">
+                        <table id="saleTable" class="table table-bordered mb-0" style="font-size:12px; border-collapse:collapse;">
                             <thead>
-                                <tr style="background:#1a1a2e;color:#fff;">
-                                    <th class="text-center" style="padding:15px 5px;">#</th>
-                                    <th style="padding:15px 5px;">Date</th>
-                                    <th style="padding:15px 5px;">Invoice</th>
-                                    <th style="padding:15px 5px;">Customer</th>
-                                    <th style="padding:15px 5px;">Products / Items</th>
-                                    <th class="text-end" style="padding:15px 5px;">Qty</th>
-                                    <th class="text-end" style="padding:15px 5px;">Disc</th>
-                                    <th class="text-end" style="padding:15px 5px;background:#2d4a6e;">Item Total</th>
-                                    <th class="text-end" style="padding:15px 5px;background:#1b5e20;">Total Net</th>
-                                    <th class="text-end" style="padding:15px 5px;background:#b71c1c;">Returns</th>
+                                <tr>
+                                    <th class="text-center" style="width: 35px;">#</th>
+                                    <th style="width: 90px; white-space: nowrap;">Date</th>
+                                    <th style="width: 105px; white-space: nowrap;">Invoice</th>
+                                    <th style="min-width: 150px; width: 16%;">Customer</th>
+                                    <th style="min-width: 250px; width: 26%;">Products / Items</th>
+                                    <th class="text-end" style="width: 75px; white-space: nowrap;">Qty</th>
+                                    <th class="text-end" style="width: 80px; white-space: nowrap;">Disc</th>
+                                    <th class="text-end" style="width: 100px; white-space: nowrap;">Gross Total</th>
+                                    <th class="text-end" style="width: 105px; white-space: nowrap;">Total Net</th>
+                                    <th class="text-end" style="width: 95px; white-space: nowrap;">Returns</th>
                                 </tr>
                             </thead>
                             <tbody id="reportBody"></tbody>
                             <tfoot id="tableFooter" style="display:none;">
-                                <tr class="fw-bold bg-light">
-                                    <td colspan="5" class="text-end" style="font-size:15px;">Totals:</td>
-                                    <td class="text-end" id="footerQty" style="font-size:15px;">0.00</td>
-                                    <td class="text-end text-danger" id="footerDisc" style="font-size:15px;">0.00</td>
-                                    <td class="text-end text-primary" id="footerGross" style="font-size:15px;">0.00</td>
-                                    <td class="text-end text-success" id="footerNet" style="font-size:15px;">0.00</td>
-                                    <td class="text-end text-danger" id="footerReturn" style="font-size:15px;">0.00</td>
+                                <tr class="font-weight-bold bg-light" style="font-family: monospace; font-size: 13px;">
+                                    <td colspan="5" class="text-end font-weight-bold" style="font-family: sans-serif;">Grand Totals:</td>
+                                    <td class="text-end font-weight-bold text-dark" id="footerQty">0.00</td>
+                                    <td class="text-end text-danger font-weight-bold" id="footerDisc">0.00</td>
+                                    <td class="text-end text-primary font-weight-bold" id="footerGross">0.00</td>
+                                    <td class="text-end text-success font-weight-bold" style="background:rgba(13, 159, 110, 0.12);" id="footerNet">0.00</td>
+                                    <td class="text-end text-danger font-weight-bold" id="footerReturn">0.00</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -159,27 +313,31 @@
 @section('css')
 <style>
     .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-    #saleTable { border: 2px solid #1a1a2e; }
+    #saleTable { border: 1px solid #cbd5e1; }
     #saleTable th { 
         vertical-align: middle; 
-        border: 1px solid #444; 
-        text-transform: uppercase; 
-        letter-spacing: 0.5px;
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
         font-weight: 700;
+        text-transform: uppercase; 
+        letter-spacing: 0.04em;
+        padding: 10px 8px;
+        border: 1px solid #1e3a5f;
     }
     #saleTable td { 
         vertical-align: middle; 
-        border: 1px solid #ccc; 
-        padding: 12px 10px; 
+        border: 1px solid #e2e8f0; 
+        padding: 8px 8px; 
         font-weight: 500;
-        color: #1a1a2e;
+        color: #1e293b;
     }
-    #saleTable tbody tr:nth-child(even) { background-color: #f9f9f9; }
-    #saleTable tbody tr:hover { background-color: #f0f4ff !important; transition: 0.2s; }
+    #saleTable tbody tr:nth-child(even) { background-color: #f8fafc; }
+    #saleTable tbody tr:hover { background-color: #f1f5f9 !important; transition: 0.15s; }
     
-    .invoice-no { color: #0066cc; font-weight: 700; font-size: 14px; }
-    .customer-name { font-weight: 700; color: #333; font-size: 14px; }
-    .product-item { padding: 4px 0; border-bottom: 1px dashed #eee; }
+    .invoice-no { color: #1e3a5f; font-weight: 700; font-family: monospace; font-size: 12px; }
+    .customer-name { font-weight: 700; color: #0f172a; font-size: 12.5px; }
+    .product-item { padding: 3px 0; border-bottom: 1px dashed #e2e8f0; }
     .product-item:last-child { border-bottom: none; }
     
     @media print {
@@ -193,6 +351,8 @@
 
 @section('js')
 <script>
+    const isSuper = {{ (auth()->user() && auth()->user()->hasRole('super admin')) ? 'true' : 'false' }};
+
     $(document).ready(function() {
         $('.select2').select2({
             width: '100%',
@@ -246,36 +406,44 @@
                 let itemsHtml = "";
                 s.items.forEach(item => {
                     itemsHtml += `<div class="product-item">
-                        <span class="fw-bold text-dark" style="font-size:13px;">${item.product_name}</span> 
-                        <code class="text-muted">(${item.product_code})</code><br>
-                        <span class="text-muted small">Qty: <strong>${item.qty}</strong> x ${fmt(item.price)} = <strong>${fmt(item.amount)}</strong></span>
-                        ${item.discount_amount > 0 ? `<span class="text-danger ms-2 fw-bold">Disc: ${fmt(item.discount_amount)}</span>` : ''}
+                        <span class="font-weight-bold text-dark" style="font-size:12.5px;">${item.product_name}</span> 
+                        <code class="text-muted" style="font-size:10.5px;">(${item.product_code})</code><br>
+                        <span class="text-muted small" style="font-size:11px;">Qty: <strong>${item.qty}</strong> x ${fmt(item.price)} = <strong class="text-dark">${fmt(item.amount)}</strong></span>
+                        ${item.discount_amount > 0 ? `<span class="text-danger ms-2 font-weight-bold" style="font-size:11px;">Disc: ${fmt(item.discount_amount)}</span>` : ''}
                     </div>`;
                 });
 
-                let returnsHtml = "-";
+                let returnsHtml = '<span class="text-muted font-monospace">&#8212;</span>';
                 if (s.returns && s.returns.length > 0) {
                     returnsHtml = "";
                     s.returns.forEach(r => {
-                        returnsHtml += `<div class="text-danger fw-bold small border-bottom border-danger-subtle pb-1 mb-1">
+                        returnsHtml += `<div class="text-danger font-weight-bold small border-bottom border-danger-subtle pb-1 mb-1 font-monospace" style="font-size:11.5px;">
                             ${r.product} (${r.qty}) = ${fmt(r.total_net)}
                         </div>`;
                     });
                 }
 
+                let branchBadge = '';
+                if (isSuper && s.branch_name) {
+                    branchBadge = `<div class="text-muted mt-1" style="font-size: 10.5px; opacity: 0.85;"><i class="fas fa-building mr-1" style="font-size: 9.5px; color: #64748b;"></i><span style="color: #475569; font-weight: 600;">${s.branch_name}</span></div>`;
+                }
+
+                let addressHtml = s.address ? `<small class="text-muted d-block" style="font-size: 11px;">${s.address}</small>` : '';
+
                 tableContent += `<tr>
-                    <td class="text-center">${idx + 1}</td>
-                    <td style="white-space:nowrap;">${new Date(s.created_at).toLocaleDateString('en-GB')}</td>
-                    <td class="invoice-no">${s.invoice_no}</td>
+                    <td class="text-center text-muted" style="font-size:11px;">${idx + 1}</td>
+                    <td style="white-space:nowrap; font-size:11.5px;">${new Date(s.created_at).toLocaleDateString('en-GB')}</td>
+                    <td><span class="invoice-no">${s.invoice_no}</span></td>
                     <td>
                         <div class="customer-name">${s.customer_name}</div>
-                        <small class="text-muted d-block">${s.address || '-'}</small>
+                        ${addressHtml}
+                        ${branchBadge}
                     </td>
                     <td>${itemsHtml}</td>
-                    <td class="text-end fw-bold" style="font-size:14px;">${n(s.total_qty).toFixed(2)}</td>
-                    <td class="text-end text-danger fw-bold">${fmt(s.discount_amount)}</td>
-                    <td class="text-end fw-bold text-primary" style="background:#f0f7ff; font-size:14px;">${fmt(s.total_items_amount)}</td>
-                    <td class="text-end fw-bold text-success" style="background:#f0fff0; font-size:15px;">${fmt(s.total_net)}</td>
+                    <td class="text-end font-monospace font-weight-bold" style="font-size:12px; white-space:nowrap;">${n(s.total_qty).toFixed(2)}</td>
+                    <td class="text-end font-monospace ${n(s.discount_amount) > 0 ? 'text-danger font-weight-bold' : 'text-muted'}" style="font-size:12px;">${fmt(s.discount_amount)}</td>
+                    <td class="text-end font-monospace font-weight-bold" style="background:rgba(30, 58, 95, 0.04); color:#1e3a5f; font-size:12px;">${fmt(s.total_items_amount)}</td>
+                    <td class="text-end font-monospace font-weight-bold" style="background:rgba(13, 159, 110, 0.08); color:#047857; font-size:12.5px;">${fmt(s.total_net)}</td>
                     <td class="text-end" style="background:#fff5f5;">${returnsHtml}</td>
                 </tr>`;
 

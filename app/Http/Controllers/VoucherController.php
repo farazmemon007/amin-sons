@@ -123,9 +123,29 @@ class VoucherController extends Controller
         //
     }
 
-    public function all_recepit_vochers()
+    public function all_recepit_vochers(Request $request)
     {
-        $receipts = \App\Models\ReceiptsVoucher::orderBy('id', 'DESC')->get();
+        $user = Auth::user();
+        $isSuperAdmin = $user && $user->hasRole('super admin');
+        $selectedBranch = $request->get('branch_id', 'all');
+
+        $query = \App\Models\ReceiptsVoucher::with('branch')->orderBy('id', 'DESC');
+
+        if (!$isSuperAdmin) {
+            // Branch user: strictly restrict to their branch
+            $userBranchId = $user->branch_id ?? 0;
+            $query->where('branch_id', $userBranchId);
+        } else {
+            // Super Admin: allow filtering by branch
+            if ($request->filled('branch_id') && $request->branch_id !== 'all') {
+                $query->where('branch_id', $request->branch_id);
+            }
+        }
+
+        $receipts = $query->get();
+
+        // Fetch active branches for the Super Admin filter
+        $branches = $isSuperAdmin ? \App\Models\Branch::where('status', '!=', 'inactive')->orWhereNull('status')->orderBy('name')->get() : collect();
 
         foreach ($receipts as $voucher) {
             $partyName = '-';
@@ -160,7 +180,12 @@ class VoucherController extends Controller
             $voucher->party_name = $partyName;
         }
 
-        return view('admin_panel.vochers.all_recepit_vochers', compact('receipts'));
+        return view('admin_panel.vochers.all_recepit_vochers', compact(
+            'receipts',
+            'branches',
+            'isSuperAdmin',
+            'selectedBranch'
+        ));
     }
 
 
@@ -434,7 +459,15 @@ public function getOpeningBalance($type, $id)
                 $remarks = 'Walk-in Name: ' . $request->walking_customer_name . ($remarks ? ' - ' . $remarks : '');
             }
 
+            // Get proper branch_id from request or auth
+            if (Auth::user()->hasRole('super admin') && $request->has('branch_id') && $request->branch_id != '') {
+                $branchId = (int) $request->branch_id;
+            } else {
+                $branchId = (int) (auth()->user()->branch_id ?? 1);
+            }
+
             $voucherData = [
+                'branch_id'        => $branchId,
                 'rvid'             => $rvid,
                 'receipt_date'     => $request->receipt_date ?? now()->toDateString(),
                 'entry_date'       => $request->entry_date ?? now()->toDateString(),
@@ -455,13 +488,6 @@ public function getOpeningBalance($type, $id)
 
             $savedVoucher = ReceiptsVoucher::create($voucherData);
             $totalAmount = (float)$request->total_amount;
-            
-            // Get proper branch_id from request or auth
-            if (Auth::user()->hasRole('super admin') && $request->has('branch_id') && $request->branch_id != '') {
-                $branchId = $request->branch_id;
-            } else {
-                $branchId = auth()->user()->branch_id ?? 0;
-            }
 
             /**
              * 4. PARTY SIDE POSTING (CREDIT)

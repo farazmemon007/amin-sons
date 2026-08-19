@@ -1,36 +1,131 @@
 @extends('admin_panel.layout.app')
 
 @section('content')
+<style>
+    :root {
+        --coa-navy: #1e3a5f;
+        --coa-navy-dark: #0f1f38;
+        --coa-navy-light: #2c5282;
+        --coa-gold: #c8973a;
+        --coa-emerald: #0d9f6e;
+        --coa-border: #e2e8f0;
+    }
+
+    .rpt-wrapper {
+        padding: 12px 0 30px 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .rpt-header-bar {
+        background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 60%, var(--coa-navy-light) 100%);
+        border-radius: 10px;
+        padding: 16px 22px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        box-shadow: 0 4px 15px rgba(15, 31, 56, 0.15);
+        margin-bottom: 18px;
+    }
+
+    .rpt-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.12);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: var(--coa-gold);
+        border: 1px solid rgba(200, 151, 58, 0.3);
+        flex-shrink: 0;
+    }
+
+    .rpt-header-title {
+        font-size: 18px;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .rpt-header-sub {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.85);
+        margin-top: 3px;
+    }
+
+    .f-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #475569;
+        letter-spacing: 0.03em;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    #stockTable th {
+        background: #0f1f38 !important;
+        color: #ffffff !important;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 10px 8px;
+        border: 1px solid #1e3a5f;
+    }
+</style>
+
 <div class="main-content">
-    <div class="main-content-inner">
-        <div class="container-fluid">
-            <div class="page-header row mb-3">
-                <div class="page-title col-lg-6">
-                    <h4>Item Stock Report</h4>
-                    <h6>Track initial, purchased, sold and balance per product</h6>
+    <div class="rpt-wrapper">
+        <div class="container-fluid px-2">
+
+            {{-- 1. Corporate Header Bar --}}
+            <div class="rpt-header-bar">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="rpt-header-icon">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <div>
+                        <h4 class="rpt-header-title">Item Stock Report</h4>
+                        <div class="rpt-header-sub">
+                            <span><i class="fas fa-warehouse mr-1" style="color: var(--coa-gold);"></i> Track opening, purchased, sold, reserved & balance per product &mdash; Ameen & Sons Corporate ERP</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-sm btn-outline-light font-weight-bold" style="background: rgba(37, 211, 102, 0.2); border-color: #25D366; color: #25D366;">
+                        <i class="fab fa-whatsapp mr-1"></i> WhatsApp
+                    </button>
+                    <button type="button" onclick="showExportOptions()" class="btn btn-sm btn-light font-weight-bold text-dark border">
+                        <i class="fas fa-download mr-1 text-primary"></i> Export
+                    </button>
                 </div>
             </div>
 
-            <div class="card mb-3">
-                <div class="card-body">
-                    <form id="stockFilterForm" class="row g-2 align-items-end">
+            {{-- 2. Filter Card --}}
+            <div class="card shadow-sm mb-3 border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;">
+                <div class="card-body p-3">
+                    <form id="stockFilterForm" class="row g-2 align-items-end mb-0">
                         {{-- Branch Selector (Super Admin Only) --}}
                         @if($isSuperAdmin)
                         <div class="col-md-3">
-                            <label class="form-label">Branch</label>
-                            <select name="branch_id" id="branch_id" class="form-control">
+                            <label class="f-label">Branch</label>
+                            <select name="branch_id" id="branch_id" class="form-control form-control-sm" style="height: 38px; border-radius: 6px; border: 1.5px solid #cbd5e1;">
                                 @foreach($userBranches as $branch)
                                     <option value="{{ $branch->id }}" @selected($branch->id == $selectedBranchId)>
                                         {{ $branch->name }}
                                     </option>
                                 @endforeach
                             </select>
-                            <small class="form-text text-muted">Super admin can view all branches</small>
                         </div>
 
-                        <div class="col-md-3">
-                            <label class="form-label">Product</label>
-                            <select name="product_id" id="product_id" class="form-control">
+                        <div class="col-md-4">
+                            <label class="f-label">Product</label>
+                            <select name="product_id" id="product_id" class="form-control form-control-sm select2">
                                 <option value="all">-- All Products --</option>
                                 @foreach($products as $prod)
                                     <option value="{{ $prod->id }}">{{ $prod->item_code }} - {{ $prod->item_name }}</option>
@@ -39,30 +134,22 @@
                         </div>
 
                         <div class="col-md-2">
-                            <button type="button" id="btnSearch" class="btn btn-danger w-100">Search</button>
-                        </div>
-
-                        <div class="col-md-4 text-end">
-                            <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-outline-success shadow-sm me-1" style="border-color:#25D366; color:#25D366; background: #fff;">
-                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                            </button>
-                            <button type="button" onclick="showExportOptions()" class="btn btn-outline-info shadow-sm" style="background: #fff;">
-                                <i class="fas fa-download me-1"></i> Export
+                            <button type="button" id="btnSearch" class="btn btn-sm btn-primary w-100 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy);">
+                                <i class="fas fa-search mr-1"></i> Search Stock
                             </button>
                         </div>
                         @else
                         {{-- Non-Admin User: Branch Display Only --}}
                         <div class="col-md-3">
-                            <label class="form-label">Branch</label>
-                            <div class="form-control-plaintext fw-bold">
+                            <label class="f-label">Branch</label>
+                            <div class="form-control form-control-sm bg-light font-weight-bold" style="height: 38px; display: flex; align-items: center; border: 1.5px solid #cbd5e1;">
                                 {{ $userBranches[0]?->name ?? 'N/A' }}
                             </div>
-                            <small class="form-text text-muted">Viewing your branch only</small>
                         </div>
 
-                        <div class="col-md-3">
-                            <label class="form-label">Product</label>
-                            <select name="product_id" id="product_id" class="form-control">
+                        <div class="col-md-5">
+                            <label class="f-label">Product</label>
+                            <select name="product_id" id="product_id" class="form-control form-control-sm select2">
                                 <option value="all">-- All Products --</option>
                                 @foreach($products as $prod)
                                     <option value="{{ $prod->id }}">{{ $prod->item_code }} - {{ $prod->item_name }}</option>
@@ -71,15 +158,8 @@
                         </div>
 
                         <div class="col-md-2">
-                            <button type="button" id="btnSearch" class="btn btn-danger w-100">Search</button>
-                        </div>
-
-                        <div class="col-md-4 text-end">
-                            <button type="button" id="waShareBtn" onclick="shareWhatsApp()" class="btn btn-outline-success shadow-sm me-1" style="border-color:#25D366; color:#25D366; background: #fff;">
-                                <i class="fab fa-whatsapp me-1"></i> WhatsApp
-                            </button>
-                            <button type="button" onclick="showExportOptions()" class="btn btn-outline-info shadow-sm" style="background: #fff;">
-                                <i class="fas fa-download me-1"></i> Export
+                            <button type="button" id="btnSearch" class="btn btn-sm btn-primary w-100 font-weight-bold" style="height: 38px; border-radius: 6px; background: var(--coa-navy); border-color: var(--coa-navy);">
+                                <i class="fas fa-search mr-1"></i> Search Stock
                             </button>
                         </div>
                         @endif
@@ -87,38 +167,40 @@
                 </div>
             </div>
 
-            <div class="card" id="reportContent">
-                <div class="card-body">
-                    <div id="loader" style="display:none;text-align:center;margin-bottom:10px;">
-                        <div class="spinner-border" role="status"></div>
+            {{-- 3. Report Table Card --}}
+            <div class="card shadow-sm border-0" style="border-radius: 9px; border: 1px solid var(--coa-border) !important;" id="reportContent">
+                <div class="card-body p-3">
+                    <div id="loader" style="display:none;text-align:center;padding:30px;">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted mt-2 small font-weight-bold">Fetching stock metrics...</p>
                     </div>
 
                     <div class="table-responsive">
-                        <table id="stockTable" class="table table-striped table-bordered table-sm" style="width:100%;">
-                            <thead class="bg-light">
+                        <table id="stockTable" class="table table-bordered mb-0" style="font-size: 12.5px; width: 100%;">
+                            <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Item Code</th>
+                                    <th class="text-center" style="width: 3%;">#</th>
+                                    <th style="width: 9%;">Item Code</th>
                                     <th>Item Name</th>
-                                    <th>Opening Stock</th>
-                                    <th>Purchased Qty</th>
-                                    <th>Purchased Amount</th>
-                                    <th>Sold Qty</th>
-                                    <th>Sold Amount</th>
-                                    <th>Reserved Qty</th>
-                                    <th>Balance</th>
-                                    <th>Price</th>
-                                    <th>Stock Value</th>
-                                    <th class="text-center">Warehouse Details</th>
+                                    <th class="text-end" style="width: 7%;">Opening</th>
+                                    <th class="text-end" style="width: 7%;">Purchased</th>
+                                    <th class="text-end" style="width: 8%;">Purch. Value</th>
+                                    <th class="text-end" style="width: 7%;">Sold Qty</th>
+                                    <th class="text-end" style="width: 8%;">Sold Value</th>
+                                    <th class="text-end" style="width: 7%;">Reserved</th>
+                                    <th class="text-end" style="width: 7%;">Balance</th>
+                                    <th class="text-end" style="width: 7%;">Price</th>
+                                    <th class="text-end" style="width: 9%;">Stock Value</th>
+                                    <th class="text-center" style="width: 8%;">Warehouses</th>
                                 </tr>
                             </thead>
                             <tbody id="reportBody">
                                 <!-- Filled by AJAX -->
                             </tbody>
                             <tfoot>
-                                <tr class="fw-bold bg-light">
-                                    <th colspan="11" class="text-end">Grand Stock Value:</th>
-                                    <th id="grandStockValue">0.00</th>
+                                <tr class="font-weight-bold bg-light" style="font-family: monospace; font-size: 13px;">
+                                    <th colspan="11" class="text-end font-weight-bold" style="font-family: sans-serif;">Grand Stock Value:</th>
+                                    <th class="text-end text-success font-weight-bold" id="grandStockValue">0.00</th>
                                     <th></th>
                                 </tr>
                             </tfoot>
@@ -130,11 +212,13 @@
 
             <!-- Warehouse Breakdown Modal -->
             <div class="modal fade" id="warehouseModal" tabindex="-1" role="dialog" aria-labelledby="warehouseModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="warehouseModalLabel">Warehouse Stock Breakdown</h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                    <div class="modal-content border-0 shadow" style="border-radius: 10px; overflow: hidden;">
+                        <div class="modal-header text-white" style="background: linear-gradient(135deg, var(--coa-navy-dark) 0%, var(--coa-navy) 100%);">
+                            <h6 class="modal-title font-weight-bold mb-0" id="warehouseModalLabel">
+                                <i class="fas fa-warehouse mr-1" style="color: var(--coa-gold);"></i> Warehouse Stock Breakdown
+                            </h6>
+                            <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </button>
                         </div>
