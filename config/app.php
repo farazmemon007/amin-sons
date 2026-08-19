@@ -54,9 +54,9 @@ return [
     |
     */
 
-    'url' => env('APP_URL', 'http://localhost/Final_Fahad'),
+    'url' => env('APP_URL', 'http://localhost/zaid701'),
 
-    'asset_url' => env('ASSET_URL', '/zaid701'),
+    'asset_url' => env('ASSET_URL', null),
 
     /*
     |--------------------------------------------------------------------------

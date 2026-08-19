@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +20,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // ✅ Ensure assets, links, and routes automatically use HTTPS when on live hosting or behind SSL proxy
+        if (
+            config('app.env') === 'production' || 
+            request()->server('HTTPS') === 'on' || 
+            request()->header('x-forwarded-proto') === 'https' || 
+            request()->header('X-Forwarded-Proto') === 'https' ||
+            (config('app.url') && str_starts_with(config('app.url'), 'https://'))
+        ) {
+            URL::forceScheme('https');
+        }
     }
 }
+
