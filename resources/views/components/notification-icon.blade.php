@@ -417,11 +417,15 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
         notifications.forEach(notif => {
             let userIcon = '<i class="fas fa-user"></i>';
-            let detailIcon = '<i class="fas fa-file-invoice"></i> Booking: ' + notif.booking_no;
-            
             if (notif.type === 'stock_request') {
                 userIcon = '<i class="fas fa-user-tag"></i> Creator:';
                 detailIcon = '<i class="fas fa-exchange-alt"></i> ' + notif.booking_no;
+            } else if (notif.type === 'po_created') {
+                userIcon = '<i class="fas fa-file-invoice-dollar text-warning"></i> Created By:';
+                detailIcon = '<i class="fas fa-warehouse text-primary"></i> ' + (notif.warehouse_name ? notif.warehouse_name : 'Warehouse Inward');
+            } else if (notif.type === 'dc_created') {
+                userIcon = '<i class="fas fa-truck-loading text-success"></i> Customer:';
+                detailIcon = '<i class="fas fa-warehouse text-info"></i> ' + (notif.warehouse_name ? notif.warehouse_name : 'Delivery Challan');
             } else if (notif.product_name) {
                 detailIcon = '<i class="fas fa-box"></i> Product: ' + notif.product_name;
             }

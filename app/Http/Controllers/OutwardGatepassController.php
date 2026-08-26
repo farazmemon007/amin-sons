@@ -7,15 +7,44 @@ use App\Models\Sale;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Concerns\BranchScope;
+use App\Http\Controllers\Concerns\WarehouseScope;
 
 class OutwardGatepassController extends Controller
 {
+    use BranchScope, WarehouseScope;
+
+    /**
+     * Helper to apply Role, Branch & Warehouse scope on DC / Gatepass queries
+     */
+    protected function applyWarehouseScope($query)
+    {
+        if (auth()->check() && !auth()->user()->hasRole('super admin')) {
+            $allowedWarehouses = $this->allowedWarehouses();
+            $branchId = auth()->user()->branch_id;
+
+            $query->where(function ($q) use ($allowedWarehouses, $branchId) {
+                if (!empty($allowedWarehouses)) {
+                    $q->whereIn('warehouse_orders.warehouse_id', $allowedWarehouses);
+                }
+                if ($branchId) {
+                    $q->orWhere(function ($bq) use ($branchId) {
+                        $bq->whereNull('warehouse_orders.warehouse_id')
+                           ->where('warehouse_orders.branch_id', $branchId);
+                    });
+                }
+            });
+        }
+        return $query;
+    }
+
     public function index()
     {
-        // ✅ Show all DCs (warehouse_orders) instead of gate passes
-        // User can click on DC to create gate pass for it
-        $deliveryChallans = DB::table('warehouse_orders')
-            ->orderBy('created_at', 'desc')
+        // ✅ Show DCs (warehouse_orders) scoped to user's assigned warehouse / branch
+        $query = DB::table('warehouse_orders');
+        $query = $this->applyWarehouseScope($query);
+
+        $deliveryChallans = $query->orderBy('warehouse_orders.created_at', 'desc')
             ->paginate(20);
 
         // Enrich with related data
@@ -66,15 +95,18 @@ class OutwardGatepassController extends Controller
     }
 
     /**
-     * Show list of DCs available for gate pass creation
+     * Show list of DCs available for gate pass creation (scoped to assigned warehouses)
      */
     public function selectDC()
     {
-        // Get all warehouse orders without gate passes
-        $deliveryChallans = DB::table('warehouse_orders')
+        // Get all warehouse orders without gate passes scoped to assigned warehouses
+        $baseQuery = DB::table('warehouse_orders')
             ->leftJoin('outward_gatepasses', 'warehouse_orders.id', '=', 'outward_gatepasses.order_id')
-            ->where('outward_gatepasses.id', '=', null) // No gate pass created yet
-            ->select('warehouse_orders.*')
+            ->whereNull('outward_gatepasses.id'); // No gate pass created yet
+
+        $baseQuery = $this->applyWarehouseScope($baseQuery);
+
+        $deliveryChallans = (clone $baseQuery)->select('warehouse_orders.*')
             ->orderBy('warehouse_orders.created_at', 'desc')
             ->paginate(20);
 
@@ -90,21 +122,12 @@ class OutwardGatepassController extends Controller
             return $dc;
         });
 
-        // Calculate statistics
+        // Calculate statistics based on scoped query
         $stats = [
-            'totalDCs' => DB::table('warehouse_orders')
-                ->leftJoin('outward_gatepasses', 'warehouse_orders.id', '=', 'outward_gatepasses.order_id')
-                ->where('outward_gatepasses.id', '=', null)
-                ->count(),
-            'totalCustomers' => DB::table('warehouse_orders')
-                ->leftJoin('outward_gatepasses', 'warehouse_orders.id', '=', 'outward_gatepasses.order_id')
-                ->where('outward_gatepasses.id', '=', null)
-                ->distinct('customer_id')
-                ->count('customer_id'),
-            'totalItems' => DB::table('sale_items')
-                ->join('warehouse_orders', 'sale_items.sale_id', '=', 'warehouse_orders.sale_id')
-                ->leftJoin('outward_gatepasses', 'warehouse_orders.id', '=', 'outward_gatepasses.order_id')
-                ->where('outward_gatepasses.id', '=', null)
+            'totalDCs' => (clone $baseQuery)->count(),
+            'totalCustomers' => (clone $baseQuery)->distinct('warehouse_orders.customer_id')->count('warehouse_orders.customer_id'),
+            'totalItems' => (clone $baseQuery)
+                ->join('sale_items', 'warehouse_orders.sale_id', '=', 'sale_items.sale_id')
                 ->count(),
         ];
 
@@ -705,13 +728,16 @@ class OutwardGatepassController extends Controller
      */
     public function listGatepasses()
     {
-        $gatepasses = DB::table('outward_gatepasses')
+        $query = DB::table('outward_gatepasses')
             ->leftJoin('warehouse_orders', 'outward_gatepasses.order_id', '=', 'warehouse_orders.id')
             ->leftJoin('sales', 'warehouse_orders.sale_id', '=', 'sales.id')
             ->leftJoin('customers', 'warehouse_orders.customer_id', '=', 'customers.id')
             ->leftJoin('warehouses', 'warehouse_orders.warehouse_id', '=', 'warehouses.id')
-            ->leftJoin('branches', 'warehouse_orders.branch_id', '=', 'branches.id')
-            ->select(
+            ->leftJoin('branches', 'warehouse_orders.branch_id', '=', 'branches.id');
+
+        $query = $this->applyWarehouseScope($query);
+
+        $gatepasses = $query->select(
                 'outward_gatepasses.id',
                 'outward_gatepasses.created_at',
                 'outward_gatepasses.driver_name',

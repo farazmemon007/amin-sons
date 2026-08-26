@@ -69,6 +69,32 @@ use App\Http\Controllers\ComplaintController;
             //     return view('dashboard');
             // })->middleware(['auth', 'verified'])->name('dashboard');
 
+            // ─── Direct Browser Cache Clearing Utility for Hosting / Live Deployment ───
+    Route::get('/clear-all-cache', function () {
+        \Illuminate\Support\Facades\Artisan::call('config:clear');
+        \Illuminate\Support\Facades\Artisan::call('cache:clear');
+        \Illuminate\Support\Facades\Artisan::call('view:clear');
+        \Illuminate\Support\Facades\Artisan::call('route:clear');
+
+        // Manually delete frozen bootstrap cache files if they exist on hosting
+        $configCache = base_path('bootstrap/cache/config.php');
+        if (file_exists($configCache)) {
+            @unlink($configCache);
+        }
+        $routesCache = base_path('bootstrap/cache/routes-v7.php');
+        if (file_exists($routesCache)) {
+            @unlink($routesCache);
+        }
+
+        return "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 60px auto; padding: 30px; border-radius: 12px; background: #f0fdf4; border: 1.5px solid #86efac; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.05);'>
+            <h2 style='color: #166534; margin-top: 0;'>✅ Caches Cleared Successfully!</h2>
+            <p style='color: #374151; font-size: 14px;'>Config, View, Route, and Application caches have been wiped clean.</p>
+            <div style='margin-top: 20px;'>
+                <a href='" . url('/') . "' style='background: #1e3a5f; color: #fff; padding: 10px 22px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px;'>Go to Dashboard / Login</a>
+            </div>
+        </div>";
+    });
+
             Route::middleware('auth')->group(function () {
 
                 Route::get('/', [HomeController::class, 'index'])->name('home');

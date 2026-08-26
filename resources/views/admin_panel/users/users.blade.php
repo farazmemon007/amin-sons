@@ -682,7 +682,7 @@
                     <div class="users-grid" id="usersGrid">
                         @forelse($users as $user)
                             <div class="user-card" data-user-id="{{ $user->id }}"
-                                data-name="{{ strtolower($user->name) }}" data-email="{{ strtolower($user->email) }}"
+                                data-search-name="{{ strtolower($user->name) }}" data-search-email="{{ strtolower($user->email) }}"
                                 data-roles="{{ json_encode($user->getRoleNames()) }}"
                                 data-branch="{{ $user->branch_id ?? 0 }}"
                                 data-branch-name="{{ $user->branch?->name ?? 'No Branch' }}">
@@ -692,17 +692,27 @@
                                         <div class="user-info">
                                             <h4 class="user-name">{{ $user->name }}</h4>
                                             <div class="user-email">{{ $user->email }}</div>
-                                            <div class="user-email" style="font-size:0.78rem;color:#64748b;"><i class="fa fa-code-branch me-1"></i>{{ $user->branch?->name ?? 'No Branch' }}</div>
+                                            <div class="user-branch" style="font-size:0.78rem;color:#64748b;"><i class="fa fa-code-branch me-1"></i>{{ $user->branch?->name ?? 'No Branch' }}</div>
                                             <div class="user-meta">ID: {{ $user->id }} • Joined
                                                 {{ $user->created_at?->diffForHumans() ?? 'N/A' }}</div>
                                         </div>
                                     </div>
                                     <div class="user-actions">
                                         @can('users.edit')
-                                            <button class="btn btn-roles edit-role-btn" title="Edit Roles">
+                                            <button class="btn btn-roles edit-role-btn" 
+                                                data-id="{{ $user->id }}" 
+                                                data-name="{{ $user->name }}" 
+                                                data-roles="{{ json_encode($user->getRoleNames()) }}"
+                                                title="Edit Roles">
                                                 <i class="fa fa-key"></i>
                                             </button>
-                                            <button class="btn btn-edit edit-user-btn" title="Edit User">
+                                            <button class="btn btn-edit edit-user-btn" 
+                                                data-id="{{ $user->id }}" 
+                                                data-name="{{ $user->name }}" 
+                                                data-email="{{ $user->email }}" 
+                                                data-branch="{{ $user->branch_id ?? 0 }}" 
+                                                data-roles="{{ json_encode($user->getRoleNames()) }}"
+                                                title="Edit User">
                                                 <i class="fa fa-pen"></i>
                                             </button>
                                         @endcan
@@ -766,9 +776,12 @@
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-                <form id="userForm" class="myform" action="{{ route('users.store') }}" method="POST">
+                <form id="userForm" class="myform" action="{{ route('users.store') }}" method="POST" autocomplete="off">
                     @csrf
                     <input type="hidden" name="edit_id" id="userEditId">
+                    {{-- Honeypot to trick browser autocomplete away from real fields --}}
+                    <input type="text" style="display:none" name="fake_name" autocomplete="username">
+                    <input type="password" style="display:none" name="fake_pass" autocomplete="current-password">
 
                     <div class="modal-body">
                         <div class="row">
@@ -778,7 +791,7 @@
                                         <i class="fa fa-user"></i> Full Name
                                     </label>
                                     <input type="text" name="name" id="userName" class="form-control"
-                                        placeholder="Enter full name" required>
+                                        placeholder="Enter full name" autocomplete="off" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -786,8 +799,8 @@
                                     <label class="form-label">
                                         <i class="fa fa-envelope"></i> Email Address
                                     </label>
-                                    <input type="email" name="email" id="userEmail" class="form-control"
-                                        placeholder="Enter email address" required>
+                                    <input type="text" name="email" id="userEmail" class="form-control"
+                                        placeholder="Enter email address" autocomplete="new-password" required>
                                 </div>
                             </div>
                             <div class="col-md-12">
@@ -1039,26 +1052,30 @@
                 $('#userSaveText').text('Create User');
                 buildRolesCheckboxes('#rolesContainer', []);
                 $('#selectAllRoles').prop('checked', false);
+                $('#userForm').find(':submit').prop('disabled', false);
                 $('#userModal').modal('show');
             });
 
             // Edit User Button
             $(document).on('click', '.edit-user-btn', function() {
-                var card = $(this).closest('.user-card');
-                var id = card.data('user-id');
-                var name = card.find('.user-name').text();
-                var email = card.find('.user-email').text();
-                var roles = card.data('roles') || [];
-                var branch = card.data('branch') || 0;
+                var $btn = $(this);
+                var id = $btn.attr('data-id') || $btn.data('id');
+                var name = $btn.attr('data-name') || $btn.data('name');
+                var email = $btn.attr('data-email') || $btn.data('email');
+                var roles = $btn.data('roles') || [];
+                var branch = $btn.data('branch') || $btn.attr('data-branch') || 0;
 
+                // Reset form completely first
+                $('#userForm')[0].reset();
                 $('#userEditId').val(id);
                 $('#userName').val(name);
-                $('#userEmail').val(email);
                 $('#userPassword').val('');
                 $('#userModalTitle').html('<i class="fa fa-pen"></i><span>Edit User</span>');
                 $('#userSaveText').text('Save Changes');
                 buildRolesCheckboxes('#rolesContainer', roles);
                 $('#selectAllRoles').prop('checked', false);
+                $('#userForm').find(':submit').prop('disabled', false);
+
                 // populate branch select or hidden input
                 if ($('#branchSelect').length) {
                     $('#branchSelect').val(branch);
@@ -1066,19 +1083,31 @@
                 if ($('#branchHidden').length) {
                     $('#branchHidden').val(branch || $('#branchHidden').val());
                 }
+
+                // Set email directly and protect it after modal opens
+                $('#userEmail').val(email);
                 $('#userModal').modal('show');
+
+                // Re-set email after browser autofill kicks in (100ms delay)
+                setTimeout(function() {
+                    $('#userEmail').val(email);
+                }, 100);
+                setTimeout(function() {
+                    $('#userEmail').val(email);
+                }, 300);
             });
 
             // Edit Roles Button
             $(document).on('click', '.edit-role-btn', function() {
-                var card = $(this).closest('.user-card');
-                var id = card.data('user-id');
-                var name = card.find('.user-name').text();
-                var roles = card.data('roles') || [];
+                var $btn = $(this);
+                var id = $btn.attr('data-id') || $btn.data('id');
+                var name = $btn.attr('data-name') || $btn.data('name');
+                var roles = $btn.data('roles') || [];
 
                 $('#editRoleUserId').val(id);
                 $('#editRoleUserLabel').text('User: ' + name);
                 buildRolesCheckboxes('#editRolesContainer', roles);
+                $('#editRoleForm').find(':submit').prop('disabled', false);
                 $('#editRoleModal').modal('show');
             });
 
@@ -1111,11 +1140,10 @@
             $('#userSearch').on('input', function() {
                 var q = $(this).val().toLowerCase();
                 $('.user-card').each(function() {
-                    var name = $(this).data('name') || '';
-                    var email = $(this).data('email') || '';
+                    var name = $(this).attr('data-search-name') || '';
+                    var email = $(this).attr('data-search-email') || '';
                     var roles = JSON.stringify($(this).data('roles') || []).toLowerCase();
-                    $(this).toggle(name.indexOf(q) !== -1 || email.indexOf(q) !== -1 || roles
-                        .indexOf(q) !== -1);
+                    $(this).toggle(name.indexOf(q) !== -1 || email.indexOf(q) !== -1 || roles.indexOf(q) !== -1);
                 });
                 var visible = $('.user-card:visible').length;
                 $('#usersCount').text(visible + ' users');
@@ -1129,18 +1157,30 @@
             // Forms submission
             $('#userForm').submit(function(e) {
                 e.preventDefault();
+                var $btn = $(this).find(':submit');
                 var formdata = new FormData(this);
                 var url = $(this).attr('action');
-                $(this).find(':submit').prop('disabled', true);
-                myAjax(url, formdata, 'POST');
+                $btn.prop('disabled', true);
+                myAjax(url, formdata, 'POST', function() {
+                    $btn.prop('disabled', false);
+                });
+                setTimeout(function() {
+                    $btn.prop('disabled', false);
+                }, 3000);
             });
 
             $('#editRoleForm').submit(function(e) {
                 e.preventDefault();
+                var $btn = $(this).find(':submit');
                 var formdata = new FormData(this);
                 var url = $(this).attr('action');
-                $(this).find(':submit').prop('disabled', true);
-                myAjax(url, formdata, 'POST');
+                $btn.prop('disabled', true);
+                myAjax(url, formdata, 'POST', function() {
+                    $btn.prop('disabled', false);
+                });
+                setTimeout(function() {
+                    $btn.prop('disabled', false);
+                }, 3000);
             });
 
             // Toggle Password Visibility

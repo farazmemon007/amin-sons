@@ -207,7 +207,95 @@
                 </a>
             </div>
 
-            <!-- Table Card -->
+            {{-- ─── Pending POs Section (only for non-super-admin users) ─── --}}
+            @if(!$isSuperAdmin && $pendingPOs->isNotEmpty())
+            <div class="card card-premium mb-4" style="border-left: 4px solid #f59e0b;">
+                <div class="card-body p-0">
+                    <div class="d-flex align-items-center justify-content-between px-4 pt-3 pb-2" style="background:#fffbeb; border-radius:16px 16px 0 0;">
+                        <div>
+                            <h5 class="mb-0 fw-bold" style="color:#b45309;">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                Pending Purchase Orders — Awaiting Inward
+                            </h5>
+                            <p class="text-muted small mb-0 mt-1">These POs are assigned to your warehouse. Create an Inward Gatepass when stock arrives.</p>
+                        </div>
+                        <span class="badge rounded-pill" style="background:#f59e0b; color:white; font-size:0.85rem; padding:8px 16px;">
+                            {{ $pendingPOs->count() }} PO(s) Pending
+                        </span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table erp-table w-100 mb-0">
+                            <thead>
+                                <tr>
+                                    <th>PO Number</th>
+                                    <th>Vendor</th>
+                                    <th>Warehouse</th>
+                                    <th>Expected Date</th>
+                                    <th class="text-center">Total Qty</th>
+                                    <th class="text-center">Received</th>
+                                    <th class="text-center">Pending</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($pendingPOs as $po)
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold" style="color:#0f172a;">{{ $po->po_number }}</span>
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-person-circle text-muted me-1"></i>
+                                        {{ $po->vendor->name ?? 'N/A' }}
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-building text-muted me-1"></i>
+                                        {{ $po->warehouse->warehouse_name ?? 'N/A' }}
+                                    </td>
+                                    <td>
+                                        <span class="{{ \Carbon\Carbon::parse($po->expected_date)->isPast() ? 'text-danger fw-bold' : 'text-muted' }}">
+                                            <i class="bi bi-calendar-event me-1"></i>
+                                            {{ \Carbon\Carbon::parse($po->expected_date)->format('d M, Y') }}
+                                            @if(\Carbon\Carbon::parse($po->expected_date)->isPast())
+                                                <span class="badge bg-danger ms-1" style="font-size:0.65rem;">Overdue</span>
+                                            @endif
+                                        </span>
+                                    </td>
+                                    <td class="text-center fw-semibold">{{ number_format($po->total_ordered, 2) }}</td>
+                                    <td class="text-center">
+                                        <span class="text-success fw-semibold">{{ number_format($po->total_received, 2) }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="fw-bold" style="color:#d97706;">{{ number_format($po->total_pending, 2) }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($po->status === 'partially_received')
+                                            <span class="status-badge" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;">
+                                                <i class="bi bi-arrow-repeat me-1"></i> Partial
+                                            </span>
+                                        @else
+                                            <span class="status-badge badge-pending">
+                                                <i class="bi bi-clock-history me-1"></i> Pending
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ route('inward-gatepass.from-po', $po->id) }}"
+                                           class="action-btn btn-bill"
+                                           title="Create Inward Gatepass from this PO">
+                                            <i class="bi bi-box-arrow-in-down"></i> Receive Stock
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            <!-- Inward Gatepass Table Card -->
             <div class="card card-premium">
                 <div class="card-body p-0 pt-4 pb-4">
                     <div class="table-responsive">

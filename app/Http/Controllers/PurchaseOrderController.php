@@ -188,6 +188,26 @@ class PurchaseOrderController extends Controller
             $order->update(['total_amount' => $totalAmount]);
 
             DB::commit();
+
+            // ✅ Notify warehouse assigned users (same branch only — multi-branch safe)
+            // One notification per warehouse — applyScope() in NotificationController already
+            // filters by warehouse_id so all assigned users for this warehouse will see it.
+            if (!empty($orderData['warehouse_id'])) {
+                $warehouseId = $orderData['warehouse_id'];
+                \App\Models\Notification::create([
+                    'title'             => 'New Purchase Order: ' . $poNumber,
+                    'description'       => 'PO# ' . $poNumber . ' has been created. Please process Inward Gatepass when stock arrives.',
+                    'type'              => 'po_created',
+                    'status'            => 'pending',
+                    'is_read'           => 0,
+                    'notification_date' => now()->toDateString(),
+                    'branch_id'         => $branchId,
+                    'warehouse_id'      => $warehouseId,
+                    'sale_id'           => $order->id,
+                    'created_by'        => Auth::id(),
+                ]);
+            }
+
             return redirect()->route('purchase_orders.index')->with('success', "Purchase Order {$poNumber} created successfully.");
 
         } catch (\Exception $e) {

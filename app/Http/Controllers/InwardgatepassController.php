@@ -32,32 +32,56 @@ class InwardgatepassController extends Controller
     // LIST - Show pending items for each gatepass (ERP standard)
     public function index()
     {
-        $gatepasses = InwardGatepass::with('items.product','branch','warehouse','vendor')->latest()->get();
-        
-        // For each gatepass, calculate pending items from related purchase and determine display status
-        $gatepasses = $gatepasses->map(function ($gp) {
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('super admin');
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('branch admin') || $user->hasRole('Branch');
+        $assignedWarehouseIds = $user->assignedWarehouseIds();
+
+        // ─── Scoped Inward Gatepasses ───
+        $gpQuery = InwardGatepass::with('items.product', 'branch', 'warehouse', 'vendor');
+
+        if (!$isSuperAdmin) {
+            $gpQuery->where('branch_id', $user->branch_id);
+            // Warehouse incharge: only see their assigned warehouses
+            if (!$isAdmin && !empty($assignedWarehouseIds)) {
+                $gpQuery->whereIn('warehouse_id', $assignedWarehouseIds);
+            }
+        }
+
+        $gatepasses = $gpQuery->latest()->get()->map(function ($gp) {
             if ($gp->purchase_id) {
                 $gp->pending_count = VendorRemaining::where('purchase_id', $gp->purchase_id)
                     ->pending()
                     ->sum('remaining_qty');
-                
-                // ✅ ERP Standard: Determine display status based on completion
-                // If all items received (no pending), show "Completed" regardless of DB status
-                if ($gp->pending_count == 0) {
-                    $gp->display_status = 'completed';
-                } else {
-                    // Otherwise show "Pending" for active purchases
-                    $gp->display_status = $gp->status == 'cancelled' ? 'cancelled' : 'pending';
-                }
+                $gp->display_status = $gp->pending_count == 0 ? 'completed'
+                    : ($gp->status == 'cancelled' ? 'cancelled' : 'pending');
             } else {
-                $gp->pending_count = 0;
-                // Non-purchase gatepass - use DB status
+                $gp->pending_count  = 0;
                 $gp->display_status = $gp->status;
             }
             return $gp;
         });
-        
-        return view('admin_panel.inward.index', compact('gatepasses'));
+
+        // ─── Pending / Partial POs for this warehouse user (to create Inward from) ───
+        $pendingPOs = collect();
+        if (!$isSuperAdmin) {
+            $poQuery = \App\Models\PurchaseOrder::with(['vendor', 'branch', 'warehouse', 'items'])
+                ->whereIn('status', ['pending', 'partially_received'])
+                ->where('branch_id', $user->branch_id);
+
+            if (!$isAdmin && !empty($assignedWarehouseIds)) {
+                $poQuery->whereIn('warehouse_id', $assignedWarehouseIds);
+            }
+
+            $pendingPOs = $poQuery->latest()->get()->map(function ($po) {
+                $po->total_ordered  = $po->items->sum('qty');
+                $po->total_received = $po->items->sum('received_qty');
+                $po->total_pending  = $po->total_ordered - $po->total_received;
+                return $po;
+            });
+        }
+
+        return view('admin_panel.inward.index', compact('gatepasses', 'pendingPOs', 'isSuperAdmin', 'isAdmin'));
     }
 
     // CREATE FORM
@@ -127,10 +151,16 @@ class InwardgatepassController extends Controller
     {
         $po = \App\Models\PurchaseOrder::with(['items.product.brand', 'items.product.unit', 'vendor', 'branch'])->findOrFail($poId);
         
-        // Security Check: Warehouse Level
+        // Security Check: Branch & Warehouse Level
         $user = Auth::user();
-        if (!$user->hasRole('super admin') && !$user->hasRole('admin')) {
-            if (!in_array($po->warehouse_id, $user->assignedWarehouseIds())) {
+        $isSuperAdmin = $user->hasRole('super admin');
+        $isAdmin = $user->hasRole('admin') || $user->hasRole('branch admin') || $user->hasRole('Branch');
+
+        if (!$isSuperAdmin) {
+            if ($po->branch_id != $user->branch_id) {
+                return redirect()->route('InwardGatepass.home')->with('error', 'Unauthorized access to this Purchase Order.');
+            }
+            if (!$isAdmin && !in_array($po->warehouse_id, $user->assignedWarehouseIds())) {
                 return redirect()->route('InwardGatepass.home')->with('error', 'Unauthorized access to this Purchase Order.');
             }
         }

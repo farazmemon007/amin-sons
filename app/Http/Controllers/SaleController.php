@@ -3802,6 +3802,7 @@ public function finddc($invoice)
                         $warehouseOrder = new \App\Models\WarehouseOrder();
                         $warehouseOrder->dc_no = $dcNo;
                         $warehouseOrder->warehouse_id = (int) $warehouseId;
+                        $warehouseOrder->branch_id = $sale->branch_id;
                         $warehouseOrder->customer_id = $sale->customer_id;
                         $warehouseOrder->sale_id = $sale->id;
                         $warehouseOrder->status = 'pending';
@@ -3833,6 +3834,27 @@ public function finddc($invoice)
                             'sale_id' => $sale->id,
                             'items_count' => count($itemsArray)
                         ]);
+
+                        // ✅ Notify assigned warehouse staff & branch incharge for new DC
+                        try {
+                            $whName = $warehouseId ? (\App\Models\Warehouse::find($warehouseId)?->warehouse_name ?? 'Warehouse') : 'Branch';
+                            $custName = $sale->customer?->customer_name ?? ($sale->sub_customer ?? 'Customer');
+                            \App\Models\Notification::create([
+                                'branch_id'         => $sale->branch_id,
+                                'warehouse_id'      => $warehouseId ?: null,
+                                'sale_id'           => $sale->id,
+                                'customer_id'       => $sale->customer_id,
+                                'type'              => 'dc_created',
+                                'title'             => 'New DC: ' . $dcNo,
+                                'description'       => 'Delivery Challan ' . $dcNo . ' generated for ' . $custName . ' (' . $whName . ')',
+                                'notification_date' => \Carbon\Carbon::today(),
+                                'status'            => 'pending',
+                                'is_read'           => false,
+                                'created_by'        => auth()->id(),
+                            ]);
+                        } catch (\Throwable $e) {
+                            \Log::warning('DC Notification creation failed: ' . $e->getMessage());
+                        }
 
                         // ✅ AUDIT: Record in stock_hold table for draft_posted sales
                         if ($sale->status === 'draft_posted') {
@@ -4859,6 +4881,27 @@ public function finddc($invoice)
                         'warehouse_order_id' => $warehouseOrder->id,
                         'items_count' => count($itemsArray)
                     ]);
+
+                    // ✅ Notify assigned warehouse staff & branch incharge for new DC
+                    try {
+                        $whName = $warehouseId ? (\App\Models\Warehouse::find($warehouseId)?->warehouse_name ?? 'Warehouse') : 'Branch';
+                        $custName = $sale->customer?->customer_name ?? ($sale->sub_customer ?? 'Customer');
+                        \App\Models\Notification::create([
+                            'branch_id'         => $sale->branch_id,
+                            'warehouse_id'      => $warehouseId ?: null,
+                            'sale_id'           => $sale->id,
+                            'customer_id'       => $sale->customer_id,
+                            'type'              => 'dc_created',
+                            'title'             => 'New DC: ' . $dcNo,
+                            'description'       => 'Delivery Challan ' . $dcNo . ' generated for ' . $custName . ' (' . $whName . ')',
+                            'notification_date' => \Carbon\Carbon::today(),
+                            'status'            => 'pending',
+                            'is_read'           => false,
+                            'created_by'        => auth()->id(),
+                        ]);
+                    } catch (\Throwable $e) {
+                        \Log::warning('DC Notification creation failed: ' . $e->getMessage());
+                    }
 
                     $dcNumbers[] = $dcNo;
 

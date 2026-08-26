@@ -9,9 +9,43 @@ use Illuminate\Http\Request;
 class NotificationController extends Controller
 {
     /**
+     * Apply Role, Branch and Warehouse Scope on Notification Query
+     */
+    protected function applyScope($query)
+    {
+        $user = auth()->user();
+        if (!$user || $user->hasRole('super admin')) {
+            return $query;
+        }
+
+        $branchId = $user->branch_id;
+        $assignedWhIds = $user->assignedWarehouseIds();
+
+        return $query->where(function ($q) use ($user, $branchId, $assignedWhIds) {
+            // Branch level check
+            $q->where(function ($bq) use ($branchId) {
+                if ($branchId) {
+                    $bq->where('branch_id', $branchId)
+                       ->orWhereNull('branch_id');
+                } else {
+                    $bq->whereNull('branch_id');
+                }
+            });
+
+            // Warehouse incharge level check
+            if (!empty($assignedWhIds) && !$user->hasRole('branch admin') && !$user->hasRole('admin')) {
+                $q->where(function ($wq) use ($assignedWhIds) {
+                    $wq->whereIn('warehouse_id', $assignedWhIds)
+                       ->orWhereNull('warehouse_id');
+                });
+            }
+        });
+    }
+
+    /**
      * Get all pending notifications due today or earlier
      * Called on page load to show badge count
-     * Includes both booking reminders and product stock alerts
+     * Includes booking reminders, DC notifications and product stock alerts
      */
     public function getPendingNotifications()
     {
@@ -19,15 +53,9 @@ class NotificationController extends Controller
             $query = Notification::where('status', 'pending')
                 ->whereDate('notification_date', '<=', Carbon::today());
 
-            if (!auth()->user()->hasRole('super admin')) {
-                $branchId = auth()->user()->branch_id;
-                $query->where(function ($q) use ($branchId) {
-                    $q->where('branch_id', $branchId)
-                      ->orWhereNull('branch_id');
-                });
-            }
+            $query = $this->applyScope($query);
 
-            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy'])
+            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy', 'sale'])
                 ->orderBy('notification_date', 'asc')
                 ->get();
 
@@ -53,6 +81,12 @@ class NotificationController extends Controller
                             } else {
                                 $bookingNo = 'Request Details';
                             }
+                        } elseif ($n->type === 'dc_created') {
+                            $customerName = $n->customer?->customer_name ?? ($n->sale?->sub_customer ?? 'Customer');
+                            $bookingNo = $n->title ?? 'New DC';
+                        } elseif ($n->type === 'po_created') {
+                            $customerName = $n->createdBy?->name ?? 'System';
+                            $bookingNo = $n->title ?? 'New PO';
                         } else {
                             $customerName = $n->customer?->customer_name ?? ($n->product?->item_name ?? 'Unknown');
                             $bookingNo = $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A');
@@ -190,13 +224,7 @@ class NotificationController extends Controller
             $query = Notification::where('status', 'pending')
                 ->whereDate('notification_date', '<=', Carbon::today());
 
-            if (!auth()->user()->hasRole('super admin')) {
-                $branchId = auth()->user()->branch_id;
-                $query->where(function ($q) use ($branchId) {
-                    $q->where('branch_id', $branchId)
-                      ->orWhereNull('branch_id');
-                });
-            }
+            $query = $this->applyScope($query);
 
             $count = $query->count();
 
@@ -228,15 +256,9 @@ class NotificationController extends Controller
         try {
             $query = Notification::query();
 
-            if (!auth()->user()->hasRole('super admin')) {
-                $branchId = auth()->user()->branch_id;
-                $query->where(function ($q) use ($branchId) {
-                    $q->where('branch_id', $branchId)
-                      ->orWhereNull('branch_id');
-                });
-            }
+            $query = $this->applyScope($query);
 
-            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy'])
+            $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy', 'sale'])
                 ->orderBy('notification_date', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->get();
@@ -262,6 +284,12 @@ class NotificationController extends Controller
                             } else {
                                 $bookingNo = 'Request Details';
                             }
+                        } elseif ($n->type === 'dc_created') {
+                            $customerName = $n->customer?->customer_name ?? ($n->sale?->sub_customer ?? 'Customer');
+                            $bookingNo = $n->title ?? 'New DC';
+                        } elseif ($n->type === 'po_created') {
+                            $customerName = $n->createdBy?->name ?? 'System';
+                            $bookingNo = $n->title ?? 'New PO';
                         } else {
                             $customerName = $n->customer?->customer_name ?? ($n->product?->item_name ?? 'Unknown');
                             $bookingNo = $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A');

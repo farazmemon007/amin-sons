@@ -50,27 +50,29 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        // dd("sda");
         $editId = $request->edit_id ?? null;
-         $validator = Validator::make($request->all(), [
-            'name' => 'required',
-            'email' => 'required|unique:users,email,'.$request->edit_id,
-            'password' => 'required',
-            'branch_id' => 'required',
-        ]);
 
-        if ($validator->fails()) {
-            return ['errors' => $validator->errors()];
+        $rules = [
+            'name' => 'required',
+            'email' => 'required|email|unique:users,email,' . $editId,
+            'branch_id' => 'required',
+        ];
+
+        if (empty($editId)) {
+            $rules['password'] = 'required|min:6';
+        } else {
+            $rules['password'] = 'nullable|min:6';
         }
 
-      
+        $validator = Validator::make($request->all(), $rules);
+
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()]);
         }
 
-        // Step 3: Save or update logic
+        // Save or update logic
         if (!empty($editId)) {
-            $user = User::find($editId);
+            $user = User::findOrFail($editId);
             $msg = [
                 'success' => 'User Updated Successfully',
                 'reload' => true
@@ -85,7 +87,9 @@ class UserController extends Controller
 
         $user->name = $request->name;
         $user->email = $request->email;
-        $user->password = Hash::make($request->password);
+        if (!empty($request->password)) {
+            $user->password = Hash::make($request->password);
+        }
         $user->branch_id = $request->branch_id;
         $user->save();
 
@@ -95,7 +99,6 @@ class UserController extends Controller
         }
 
         return response()->json($msg);
-        
     }
 
     /**

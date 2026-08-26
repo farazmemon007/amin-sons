@@ -20,13 +20,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // ✅ Ensure assets, links, and routes automatically use HTTPS when on live hosting or behind SSL proxy
+        // ✅ Ensure assets, links, and routes automatically use HTTPS when on live hosting or behind SSL proxy (excluding localhost)
         if (
-            config('app.env') === 'production' || 
-            request()->server('HTTPS') === 'on' || 
-            request()->header('x-forwarded-proto') === 'https' || 
-            request()->header('X-Forwarded-Proto') === 'https' ||
-            (config('app.url') && str_starts_with(config('app.url'), 'https://'))
+            !app()->isLocal() &&
+            !in_array(request()->getHost(), ['localhost', '127.0.0.1', '::1']) &&
+            (
+                config('app.env') === 'production' || 
+                request()->server('HTTPS') === 'on' || 
+                request()->header('x-forwarded-proto') === 'https' || 
+                request()->header('X-Forwarded-Proto') === 'https' ||
+                (config('app.url') && str_starts_with(config('app.url'), 'https://'))
+            )
         ) {
             URL::forceScheme('https');
         }
