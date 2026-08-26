@@ -64,8 +64,6 @@
                     <th style="width:120px">Code</th>
                     <th style="width:80px" class="text-center">Unit</th>
                     <th style="width:80px" class="text-end">Qty</th>
-                    <th style="width:100px" class="text-end">Rate</th>
-                    <th style="width:120px" class="text-end">Amount</th>
                 </tr>
             </thead>
             <tbody>
@@ -73,9 +71,7 @@
                     @php
                         $row = is_array($it) ? $it : (is_object($it) ? (array)$it : ['text' => $it]);
                         $qty = isset($row['qty']) ? (float)$row['qty'] : 0;
-                        $amt = isset($row['amount']) ? (float)$row['amount'] : ($row['retail_price'] && $qty ? (float)$row['retail_price'] * $qty : 0);
                         $totalQty += $qty;
-                        $totalAmount += $amt;
                     @endphp
                     <tr>
                         <td class="text-center">{{ $k+1 }}</td>
@@ -83,11 +79,9 @@
                         <td>{{ $row['item_code'] ?? '-' }}</td>
                         <td class="text-center">{{ !empty($row['unit']) ? $row['unit'] : (isset($row['unit']) ? 'N/A' : '-') }}</td>
                         <td class="text-end">{{ $qty ? rtrim(rtrim(number_format($qty,2), '0'), '.') : '-' }}</td>
-                        <td class="text-end">{{ isset($row['retail_price']) ? number_format($row['retail_price'],2) : '-' }}</td>
-                        <td class="text-end">{{ $amt ? number_format($amt,2) : '-' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center">No items recorded for this gate pass.</td></tr>
+                    <tr><td colspan="5" class="text-center">No items recorded for this gate pass.</td></tr>
                 @endforelse
             </tbody>
             @if(count($items))
@@ -95,8 +89,6 @@
                     <tr>
                         <th colspan="4" class="text-end">Totals</th>
                         <th class="text-end">{{ rtrim(rtrim(number_format($totalQty,2), '0'), '.') }}</th>
-                        <th></th>
-                        <th class="text-end">{{ number_format($totalAmount,2) }}</th>
                     </tr>
                 </tfoot>
             @endif

@@ -23,12 +23,36 @@ use App\Http\Controllers\Concerns\BranchScope;
 class ProductController extends Controller
 {
     use BranchScope;
-    public function getProductDetails($id){
-        $product = Product::with(['stock'])->find($id);
+    public function getProductDetails(Request $request, $id){
+        $branchId = $request->get('branch_id');
+        if (!$branchId && Auth::check()) {
+            $branchId = Auth::user()->branch_id;
+        }
+
+        $product = Product::with(['brand', 'unit'])->find($id);
         if ($product) {
+            // Branch-specific warehouse stock
+            $whStockQuery = WarehouseStock::with('warehouse')->where('product_id', $id);
+            if ($branchId) {
+                $whStockQuery->where('branch_id', $branchId);
+            }
+            $whStocks = $whStockQuery->get();
+
+            $totalAvailableStock = (float) $whStocks->sum('quantity');
+
+            $breakdown = $whStocks->map(function ($ws) {
+                return [
+                    'warehouse_id'   => $ws->warehouse_id,
+                    'warehouse_name' => $ws->warehouse ? $ws->warehouse->warehouse_name : 'Direct Stock',
+                    'quantity'       => (float) $ws->quantity
+                ];
+            })->values();
+
             return response()->json([
-                'status' => 'success',
-                'product' => $product
+                'status'              => 'success',
+                'product'             => $product,
+                'available_stock'     => $totalAvailableStock,
+                'warehouse_breakdown' => $breakdown
             ]);
         } else {
             return response()->json([
@@ -217,21 +241,16 @@ class ProductController extends Controller
          })
          ->limit(20)
          ->get()
-         ->map(function ($product) {
-             // ✅ Check if product has stock in login branch
-             $userBranchId = Auth::check() ? Auth::user()->branch_id : null;
-             $isPrimary = false;
-             
-             if ($userBranchId) {
-                 // Check stocks table for branch-level stock
-                 $stockRecord = DB::table('stocks')
+         ->map(function ($product) use ($request) {
+             $branchId = $request->get('branch_id') ?: (Auth::check() ? Auth::user()->branch_id : null);
+             $stockQty = 0;
+             if ($branchId) {
+                 $stockQty = (float) DB::table('warehouse_stocks')
                      ->where('product_id', $product->id)
-                     ->where('branch_id', $userBranchId)
-                     ->first();
-                 
-                 // Product is Primary if qty > 0 in login branch
-                 $isPrimary = ($stockRecord && $stockRecord->qty > 0);
+                     ->where('branch_id', $branchId)
+                     ->sum('quantity');
              }
+             $isPrimary = ($stockQty > 0);
              
              return [
                  'id'           => $product->id,
@@ -240,9 +259,9 @@ class ProductController extends Controller
                  'brand_name'   => $product->brand->name ?? '',
                  'unit_name'    => $product->unit->name ?? '',
                  'unit_id'      => $product->unit_id,
-                 'stock'        => $product->stockproduct->qty ?? 0,
+                 'stock'        => $stockQty,
                  'price'        => $product->price ?? 0,
-                 'is_primary'   => $isPrimary,  // ✅ NEW - Primary/Secondary status
+                 'is_primary'   => $isPrimary,
              ];
          });
  
@@ -258,10 +277,11 @@ public function searchProductsForSalebypagination(Request $request)
 
     // Allow searching by product name or code
     $q = trim((string) $request->get('q', ''));
+    $branchId = $request->get('branch_id') ?: (Auth::check() ? Auth::user()->branch_id : null);
 
     // ✅ GLOBAL PRODUCTS - Show all products from all branches
     // But mark Primary/Secondary based on login branch stock
-    $query = Product::with(['stock', 'brand', 'unit']);
+    $query = Product::with(['brand', 'unit']);
 
     // NO branch restriction - products are GLOBAL
 
@@ -279,30 +299,26 @@ public function searchProductsForSalebypagination(Request $request)
         ->get();
 
     // Add ownership information and Primary/Secondary status for each product
-    $userBranchId = Auth::check() ? Auth::user()->branch_id : null;
-    $productsWithOwnership = $products->map(function($p) use ($userBranchId) {
+    $productsWithOwnership = $products->map(function($p) use ($branchId) {
         // ✅ Check if product has stock in login branch
-        $isPrimary = false;
-        if ($userBranchId) {
-            // Check stocks table for branch-level stock
-            $stockRecord = DB::table('stocks')
+        $stockQty = 0;
+        if ($branchId) {
+            $stockQty = (float) DB::table('warehouse_stocks')
                 ->where('product_id', $p->id)
-                ->where('branch_id', $userBranchId)
-                ->first();
-            
-            // Product is Primary if qty > 0 in login branch
-            $isPrimary = ($stockRecord && $stockRecord->qty > 0);
+                ->where('branch_id', $branchId)
+                ->sum('quantity');
         }
+        $isPrimary = ($stockQty > 0);
         
         return [
             'id' => $p->id,
             'item_name' => $p->item_name,
             'item_code' => $p->item_code,
-            'stock' => $p->stock,
+            'stock' => $stockQty,
             'price' => $p->price,
             'retail_price' => $p->retail_price ?? $p->price,
             'branch_id' => $p->branch_id,
-            'is_owner' => ($userBranchId && $p->branch_id == $userBranchId),
+            'is_owner' => ($branchId && $p->branch_id == $branchId),
             'brand_name' => $p->brand->name ?? '',
             'unit_name' => $p->unit->name ?? '',
             'unit_id' => $p->unit_id,
@@ -315,7 +331,7 @@ public function searchProductsForSalebypagination(Request $request)
         'last_id'  => $products->last()->id ?? null,
         'has_more' => $products->count() == $perPage,
         'page' => $page,
-        'user_branch_id' => $userBranchId,
+        'user_branch_id' => $branchId,
     ]);
 }
 

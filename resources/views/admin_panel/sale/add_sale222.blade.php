@@ -1502,11 +1502,44 @@
                     }
                 });
 
-                // If branch selector present, bind change to reload customers
+                // If branch selector present, bind change to reload customers and refresh product rows
                 if (document.getElementById('branch_id')) {
                     $('#branch_id').off('change.branchCustomer').on('change.branchCustomer', function() {
                         const currentType = $('input[name="partyType"]:checked').val() || 'credit';
                         loadCustomersByType(currentType);
+
+                        const newBranchId = $(this).val();
+                        // 🔄 Refresh stock & prices for all existing product rows
+                        $('#salesTableBody tr').each(function() {
+                            const $row = $(this);
+                            const productId = $row.find('.product-select').val();
+                            if (productId) {
+                                $.get('/get-product-details/' + productId, { branch_id: newBranchId }, function(data) {
+                                    if (data && data.product) {
+                                        const price = parseFloat(data.product.retail_price ?? data.product.price ?? 0).toFixed(2);
+                                        const stockQty = data.available_stock !== undefined ? data.available_stock : 
+                                                        ((data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0);
+
+                                        let breakdownText = 'Warehouse Stock Breakdown:\n-------------------------\n';
+                                        if (data.warehouse_breakdown && data.warehouse_breakdown.length > 0) {
+                                            data.warehouse_breakdown.forEach(function(wb) {
+                                                breakdownText += `• ${wb.warehouse_name}: ${wb.quantity}\n`;
+                                            });
+                                            breakdownText += `-------------------------\nTotal Branch Stock: ${stockQty}`;
+                                        } else {
+                                            breakdownText += `Total Branch Stock: ${stockQty}`;
+                                        }
+
+                                        $row.find('.retail-price').val(price);
+                                        $row.find('.stock').val(stockQty).data('available-stock', stockQty).attr('title', breakdownText);
+                                        $row.find('.sales-qty').data('available-stock', stockQty);
+                                        computeRow($row);
+                                        updateGrandTotals();
+                                        refreshPostedState();
+                                    }
+                                });
+                            }
+                        });
                     });
                 }
             }
@@ -1703,7 +1736,7 @@
 
         <!-- STOCK -->
         <td class="stock-col">
-          <input type="text"  class="form-control stock text-center input-readonly" readonly data-available-stock="0">
+          <input type="text" class="form-control stock text-center input-readonly" readonly data-available-stock="0" style="cursor: help;" title="Hover to see warehouse stock breakdown">
         </td>
 
         <!-- QTY -->
@@ -3347,12 +3380,14 @@
                         // prefer params.data.term which Select2 populates
                         let term = (params.data && (params.data.term || params.data.q)) || '';
                         let page = (params.data && (params.data.page || 1)) || 1;
+                        let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || window.USER_BRANCH_ID || '';
                         let ajaxUrl = term && term.length > 0 ? searchUrl : url;
                         $.ajax({
                             url: ajaxUrl,
                             data: {
                                 q: term,
-                                page: page
+                                page: page,
+                                branch_id: branchId
                             },
                             dataType: 'json',
                             success: function(data) {
@@ -3365,7 +3400,8 @@
                     data: function(params) {
                         return {
                             q: params.term || '',
-                            page: params.page || 1
+                            page: params.page || 1,
+                            branch_id: $('#branch_id').val() || $('[name="branch_id"]').val() || window.USER_BRANCH_ID || ''
                         };
                     },
                     processResults: function(data, params) {
@@ -3426,17 +3462,33 @@
             // Log selected product id on selection
             $(document).on('select2:select', '.product-select', function(e) {
                 if (e && e.params && e.params.data && e.params.data.id) {
-                    $.get('/get-product-details/' + e.params.data.id, function(data) {
+                    const branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || window.USER_BRANCH_ID || '';
+                    $.get('/get-product-details/' + e.params.data.id, { branch_id: branchId }, function(data) {
                         const $row = $(e.target).closest('tr');
                         // console.log('Product details loaded:', data);
                         if (data && data.product) {
                             // price field may be `price` or `retail_price` depending on model
-                            const price = parseFloat(data.product.retail_price ?? data.product
-                                .price ?? 0).toFixed(2);
-                            const stockQty = (data.product.stock && (data.product.stock.qty ?? data
-                                .product.stock)) || 0;
+                            const price = parseFloat(data.product.retail_price ?? data.product.price ?? 0).toFixed(2);
+                            
+                            // Use calculated branch-specific available stock
+                            const stockQty = data.available_stock !== undefined ? data.available_stock : 
+                                            ((data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0);
+
+                            // Build Warehouse breakdown tooltip text
+                            let breakdownText = 'Warehouse Stock Breakdown:\n-------------------------\n';
+                            if (data.warehouse_breakdown && data.warehouse_breakdown.length > 0) {
+                                data.warehouse_breakdown.forEach(function(wb) {
+                                    breakdownText += `• ${wb.warehouse_name}: ${wb.quantity}\n`;
+                                });
+                                breakdownText += `-------------------------\nTotal Branch Stock: ${stockQty}`;
+                            } else {
+                                breakdownText += `Total Branch Stock: ${stockQty}`;
+                            }
+
                             $row.find('.retail-price').val(price);
-                            $row.find('.stock').val(stockQty).data('available-stock', stockQty);
+                            const $stockInput = $row.find('.stock');
+                            $stockInput.val(stockQty).data('available-stock', stockQty).attr('title', breakdownText);
+
                             $row.find('.sales-qty').data('available-stock', stockQty);
                             // set the underlying select value (product-select) so validation/serialize picks it up
                             $row.find('.product-select').val(data.product.id).trigger('change');

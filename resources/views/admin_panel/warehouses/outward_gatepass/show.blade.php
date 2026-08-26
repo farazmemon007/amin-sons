@@ -216,8 +216,6 @@
                                 <th>Item Code</th>
                                 <th class="text-center">Unit</th>
                                 <th class="text-end">Qty</th>
-                                <th class="text-end">Rate</th>
-                                <th class="text-end">Total Amount</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -243,11 +241,9 @@
                                         @endif
                                     </td>
                                     <td class="text-end fw-bold">{{ $qty > 0 ? number_format($qty, 2) : '-' }}</td>
-                                    <td class="text-end text-muted">{{ isset($row['retail_price']) ? number_format($row['retail_price'], 2) : '-' }}</td>
-                                    <td class="text-end fw-bold">{{ $amt > 0 ? number_format($amt, 2) : '-' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="7" class="text-center py-4">No items found.</td></tr>
+                                <tr><td colspan="5" class="text-center py-4">No items found.</td></tr>
                             @endforelse
                         </tbody>
                         @if(count($items))
@@ -255,8 +251,6 @@
                                 <tr class="fw-bold">
                                     <td colspan="4" class="text-end">GRAND TOTALS:</td>
                                     <td class="text-end text-primary">{{ number_format($totalQty, 2) }}</td>
-                                    <td></td>
-                                    <td class="text-end text-primary">{{ number_format($totalAmount, 2) }}</td>
                                 </tr>
                             </tfoot>
                         @endif
@@ -479,7 +473,7 @@
     };
 
     window.exportCSV = function () {
-        var rows = [['#', 'Product Description', 'Item Code', 'Unit', 'Qty', 'Rate', 'Total Amount']];
+        var rows = [['#', 'Product Description', 'Item Code', 'Unit', 'Qty']];
         
         $('.table-erp tbody tr').each(function () {
             var cells = [];
@@ -491,7 +485,7 @@
         });
         
         rows.push([]);
-        rows.push(['', '', '', 'GRAND TOTALS', '{{ number_format($totalQty, 2) }}', '', '{{ number_format($totalAmount, 2) }}']);
+        rows.push(['', '', '', 'GRAND TOTALS', '{{ number_format($totalQty ?? 0, 2) }}']);
 
         var csv  = rows.map(function(r){return r.join(',');}).join('\n');
         var blob = new Blob(["\uFEFF" + csv], {type:'text/csv;charset=utf-8;'});

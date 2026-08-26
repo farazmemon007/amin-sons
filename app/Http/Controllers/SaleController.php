@@ -4663,51 +4663,45 @@ public function finddc($invoice)
             // Fetch all warehouses that have products from this sale with available stock
             $saleProductIds = $sale->saleItems->pluck('product_id')->toArray();
             
-            // ✅ NEW: Filter by branch_id - only show warehouses from current branch  
-            // Pass as flat collection (no grouping - let JS handle filtering)
-            // Select only needed fields to keep JSON lean
+            // All warehouse stocks for products in this sale
             $warehouseStocks = WarehouseStock::whereIn('product_id', $saleProductIds)
-                ->where('branch_id', $sale->branch_id)  // ← Filter by sale's branch
-                ->whereNotNull('warehouse_id')  // ← WAREHOUSE ASSIGNMENTS ONLY
+                ->whereNotNull('warehouse_id')
                 ->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity', 'price')
                 ->get();
 
-            // ✅ NEW: Separate branch own stock from warehouse stock
-            $branchOwnStocks = WarehouseStock::whereIn('product_id', $saleProductIds)
-                ->where('branch_id', $sale->branch_id)
-                ->whereNull('warehouse_id')  // ← BRANCH'S OWN STOCK
+            // All branch stocks for products in this sale
+            $branchStocks = WarehouseStock::whereIn('product_id', $saleProductIds)
                 ->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity', 'price')
                 ->get();
 
-            $warehouseAssignments = WarehouseStock::whereIn('product_id', $saleProductIds)
-                ->where('branch_id', $sale->branch_id)
-                ->whereNotNull('warehouse_id')  // ← WAREHOUSE ASSIGNMENTS
-                ->select('id', 'product_id', 'warehouse_id', 'branch_id', 'quantity', 'price')
-                ->with('warehouse')
-                ->get();
+            // All branches & warehouses
+            $branches = Branch::all();
+            $uniqueWarehouses = Warehouse::all();
 
-            // Get unique warehouses for dropdown
-            $uniqueWarehouses = $warehouseAssignments->groupBy('warehouse_id')
-                ->map(function($group) {
-                    return $group->first();
-                })
-                ->values();
+            $isSuperAdmin = Auth::check() && Auth::user()->hasRole('super admin');
+            $userBranchId = Auth::check() ? Auth::user()->branch_id : null;
+            $selectedBranchId = $sale->branch_id ?: $userBranchId;
 
             Log::info('Showing warehouse selection form', [
-                'sale_id' => $sale->id,
-                'invoice' => $sale->invoice_no,
-                'items_count' => $sale->saleItems->count(),
-                'branch_id' => $sale->branch_id,
+                'sale_id'               => $sale->id,
+                'invoice'               => $sale->invoice_no,
+                'items_count'           => $sale->saleItems->count(),
+                'branch_id'             => $sale->branch_id,
+                'selected_branch_id'    => $selectedBranchId,
                 'warehouses_with_stock' => $warehouseStocks->count(),
-                'branch_own_stock_count' => $branchOwnStocks->count(),
-                'unique_warehouses' => $uniqueWarehouses->count()
+                'branches_count'        => $branches->count(),
+                'unique_warehouses'     => $uniqueWarehouses->count()
             ]);
 
             return view('admin_panel.sale.warehouse_select', [
-                'sale' => $sale,
-                'warehouseStocks' => $warehouseStocks,
-                'branchOwnStocks' => $branchOwnStocks,
+                'sale'             => $sale,
+                'warehouseStocks'  => $warehouseStocks,
+                'branchStocks'     => $branchStocks,
+                'branchOwnStocks'  => $branchStocks,
+                'branches'         => $branches,
                 'uniqueWarehouses' => $uniqueWarehouses,
+                'isSuperAdmin'     => $isSuperAdmin,
+                'selectedBranchId' => $selectedBranchId,
             ]);
         } catch (\Exception $e) {
             Log::error('Error showing warehouse selection', [

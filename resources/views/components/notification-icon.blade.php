@@ -417,9 +417,11 @@ document.addEventListener('DOMContentLoaded', function() {
         let html = '';
         notifications.forEach(notif => {
             let userIcon = '<i class="fas fa-user"></i>';
+            let detailIcon = '<i class="fas fa-file-invoice"></i> Ref: ' + (notif.booking_no || 'N/A');
+
             if (notif.type === 'stock_request') {
                 userIcon = '<i class="fas fa-user-tag"></i> Creator:';
-                detailIcon = '<i class="fas fa-exchange-alt"></i> ' + notif.booking_no;
+                detailIcon = '<i class="fas fa-exchange-alt"></i> ' + (notif.booking_no || 'Request');
             } else if (notif.type === 'po_created') {
                 userIcon = '<i class="fas fa-file-invoice-dollar text-warning"></i> Created By:';
                 detailIcon = '<i class="fas fa-warehouse text-primary"></i> ' + (notif.warehouse_name ? notif.warehouse_name : 'Warehouse Inward');
@@ -431,7 +433,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             html += `
-                <div class="notification-item ${notif.is_read ? '' : 'unread'}" data-id="${notif.id}">
+                <div class="notification-item ${notif.is_read ? '' : 'unread'}" data-id="${notif.id}" onclick="openNotificationUrl('${notif.target_url}', ${notif.id})">
                     <div class="notification-item-header">
                         <h6 class="notification-item-title">${notif.title}</h6>
                         <span class="notification-item-date">${formatDate(notif.notification_date)}</span>
@@ -439,14 +441,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="notification-item-customer">
                         ${userIcon} ${notif.customer_name}
                     </div>
-                    <div class="notification-item-booking">
-                        ${detailIcon}
+                    <div class="notification-item-booking d-flex justify-content-between align-items-center">
+                        <span>${detailIcon}</span>
+                        <span class="text-primary" style="font-size: 11px; font-weight: 600;"><i class="fas fa-external-link-alt ms-1"></i> Open</span>
                     </div>
-                    <div class="notification-item-actions">
-                        <button class="notification-action-btn notification-action-read" onclick="markAsRead(${notif.id})" title="Mark as Read">
+                    <div class="notification-item-actions" onclick="event.stopPropagation()">
+                        <button class="notification-action-btn notification-action-read" onclick="event.stopPropagation(); markAsRead(${notif.id})" title="Mark as Read">
                             <i class="fas fa-check"></i> Read
                         </button>
-                        <button class="notification-action-btn notification-action-dismiss" onclick="dismissNotification(${notif.id})" title="Dismiss">
+                        <button class="notification-action-btn notification-action-dismiss" onclick="event.stopPropagation(); dismissNotification(${notif.id})" title="Dismiss">
                             <i class="fas fa-times"></i> Dismiss
                         </button>
                     </div>
@@ -456,6 +459,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
         notificationPanelBody.innerHTML = html;
     }
+
+    // Open target URL and mark as read
+    window.openNotificationUrl = function(url, id) {
+        if (!url || url === '#' || url === '') return;
+        
+        // Mark as read in background
+        fetch(`/notifications/${id}/mark-as-read`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': getCsrfToken(),
+                'Content-Type': 'application/json'
+            }
+        }).catch(err => console.error('Error marking as read:', err));
+
+        // Navigate to target URL
+        window.location.href = url;
+    };
 
     // Mark as read
     window.markAsRead = function(id) {

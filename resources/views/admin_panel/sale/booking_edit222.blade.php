@@ -2749,10 +2749,11 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
                 // prefer params.data.term which Select2 populates
                 let term = (params.data && (params.data.term || params.data.q)) || '';
                 let page = (params.data && (params.data.page || 1)) || 1;
+                let branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || window.USER_BRANCH_ID || '';
                 let ajaxUrl = term && term.length > 0 ? searchUrl : url;
                 $.ajax({
                     url: ajaxUrl,
-                    data: { q: term, page: page },
+                    data: { q: term, page: page, branch_id: branchId },
                     dataType: 'json',
                     success: function (data) { success(data); },
                     error: failure
@@ -2762,7 +2763,8 @@ function computeRow($row, manualAmount = false, formatDiscount = true) {
             data: function (params) {
                 return {
                     q: params.term || '',
-                    page: params.page || 1
+                    page: params.page || 1,
+                    branch_id: $('#branch_id').val() || $('[name="branch_id"]').val() || window.USER_BRANCH_ID || ''
                 };
             },
             processResults: function (data, params) {
@@ -2800,18 +2802,31 @@ $(document).ready(function () {
     // Log selected product id on selection
     $(document).on('select2:select', '.product-select', function (e) {
         if (e && e.params && e.params.data && e.params.data.id) {
-            $.get('/get-product-details/' + e.params.data.id, function (data) {
+            const branchId = $('#branch_id').val() || $('[name="branch_id"]').val() || window.USER_BRANCH_ID || '';
+            $.get('/get-product-details/' + e.params.data.id, { branch_id: branchId }, function (data) {
                 const $row = $(e.target).closest('tr');
-                // console.log('Product details loaded:', data);
                 if (data && data.product) {
-                    // price field may be `price` or `retail_price` depending on model
                     const price = parseFloat(data.product.retail_price ?? data.product.price ?? 0).toFixed(2);
-                    const stockQty = (data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0;
+                    const stockQty = data.available_stock !== undefined ? data.available_stock : 
+                                    ((data.product.stock && (data.product.stock.qty ?? data.product.stock)) || 0);
+
+                    // Build Warehouse breakdown tooltip text
+                    let breakdownText = 'Warehouse Stock Breakdown:\n-------------------------\n';
+                    if (data.warehouse_breakdown && data.warehouse_breakdown.length > 0) {
+                        data.warehouse_breakdown.forEach(function(wb) {
+                            breakdownText += `• ${wb.warehouse_name}: ${wb.quantity}\n`;
+                        });
+                        breakdownText += `-------------------------\nTotal Branch Stock: ${stockQty}`;
+                    } else {
+                        breakdownText += `Total Branch Stock: ${stockQty}`;
+                    }
+
                     $row.find('.retail-price').val(price);
-                    $row.find('.stock').val(stockQty);
-                    // set the underlying select value (product-select) so validation/serialize picks it up
+                    const $stockInput = $row.find('.stock');
+                    $stockInput.val(stockQty).data('available-stock', stockQty).attr('title', breakdownText);
+
+                    $row.find('.sales-qty').data('available-stock', stockQty);
                     $row.find('.product-select').val(data.product.id).trigger('change');
-                    // Recompute row and totals
                     computeRow($row);
                     updateGrandTotals();
                     refreshPostedState();

@@ -56,7 +56,8 @@ class NotificationController extends Controller
             $query = $this->applyScope($query);
 
             $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy', 'sale'])
-                ->orderBy('notification_date', 'asc')
+                ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->get();
 
             return response()
@@ -92,6 +93,8 @@ class NotificationController extends Controller
                             $bookingNo = $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A');
                         }
 
+                        $targetUrl = $this->resolveTargetUrl($n);
+
                         return [
                             'id' => $n->id,
                             'title' => $n->title,
@@ -103,6 +106,7 @@ class NotificationController extends Controller
                             'product_name' => $n->product?->item_name,
                             'warehouse_name' => $n->warehouse?->warehouse_name,
                             'warehouse_order_id' => $n->warehouse_order_id,
+                            'target_url' => $targetUrl,
                             'status' => $n->status,
                             'is_read' => $n->is_read,
                         ];
@@ -124,6 +128,29 @@ class NotificationController extends Controller
                 ], 500)
                 ->header('Content-Type', 'application/json');
         }
+    }
+
+    /**
+     * Resolve destination URL based on notification type
+     */
+    private function resolveTargetUrl($n): string
+    {
+        if ($n->type === 'po_created') {
+            return $n->sale_id ? url('/inward-gatepass/from-po/' . $n->sale_id) : url('/InwardGatepass');
+        }
+        if ($n->type === 'dc_created') {
+            return $n->warehouse_order_id ? url('/add/OutwardGatepass/' . $n->warehouse_order_id) : url('/OutwardGatepass');
+        }
+        if ($n->type === 'stock_request') {
+            return url('/stock_transfers');
+        }
+        if ($n->type === 'product_stock_alert') {
+            return url('/productget');
+        }
+        if (str_contains((string)$n->type, 'booking')) {
+            return url('/bookings');
+        }
+        return url('/InwardGatepass');
     }
 
     /**
@@ -259,8 +286,8 @@ class NotificationController extends Controller
             $query = $this->applyScope($query);
 
             $notifications = $query->with(['booking', 'customer', 'product', 'warehouse', 'createdBy', 'sale'])
-                ->orderBy('notification_date', 'desc')
                 ->orderBy('created_at', 'desc')
+                ->orderBy('id', 'desc')
                 ->get();
 
             return response()
@@ -295,6 +322,8 @@ class NotificationController extends Controller
                             $bookingNo = $n->booking?->invoice_no ?? ($n->product?->item_code ?? 'N/A');
                         }
 
+                        $targetUrl = $this->resolveTargetUrl($n);
+
                         return [
                             'id' => $n->id,
                             'title' => $n->title,
@@ -306,6 +335,7 @@ class NotificationController extends Controller
                             'product_name' => $n->product?->item_name,
                             'warehouse_name' => $n->warehouse?->warehouse_name,
                             'warehouse_order_id' => $n->warehouse_order_id,
+                            'target_url' => $targetUrl,
                             'status' => $n->status,
                             'is_read' => $n->is_read,
                         ];

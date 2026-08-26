@@ -351,6 +351,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     
                     <div class="notification-actions-full">
+                        ${notif.target_url && notif.target_url !== '#' ? `
+                            <a href="${notif.target_url}" class="notification-btn btn-primary" style="background:#4f46e5;color:white;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" onclick="markAsRead(${notif.id})">
+                                <i class="fas fa-external-link-alt"></i> Open Page
+                            </a>
+                        ` : ''}
                         ${notif.status === 'pending' ? `
                             <button class="notification-btn btn-read" onclick="markAsRead(${notif.id})">
                                 <i class="fas fa-check"></i> Mark as Read
