@@ -1823,21 +1823,6 @@ public function finddc($invoice)
             }
         })->get();
 
-        // $customers = Customer::all();
-        // ✅ BRANCH-AWARE ACCOUNTS: Simple users see only their branch's accounts
-        $accounts = Account::when(!$isSuper && $branchId, function ($q) use ($branchId) {
-            $q->where('branch_id', $branchId);
-        })->get();
-        // Get next invoice from Sale model generator (ensures INVSLE-003 -> INVSLE-004)
-        $nextInvoiceNumber = Sale::generateInvoiceNo();
-        // return response()->json([
-        //     'products' => $products,
-        //     'customers' => $customer,
-        //     'warehouses' => $warehouse,
-        //     // 'accounts' => $accounts,
-        //     'next_invoice_number' => $nextInvoiceNumber,
-        // ]);
-
         $branches = Branch::all();
 
         // Prepare per-branch invoice counters so the view/JS can compute next invoice
@@ -1853,6 +1838,16 @@ public function finddc($invoice)
             $defaultBranchId = optional($branches->first())->id ?? null;
         }
 
+        // ✅ BRANCH-AWARE ACCOUNTS: Accounts filtered by default/active branch
+        $accounts = Account::when($defaultBranchId, function ($q) use ($defaultBranchId) {
+            $q->where('branch_id', $defaultBranchId);
+        })->get();
+
+        // ✅ BRANCH-AWARE SALESMEN: Salesmen filtered by default/active branch
+        $salesmen = SalesOfficer::when($defaultBranchId, function ($q) use ($defaultBranchId) {
+            $q->where('branch_id', $defaultBranchId);
+        })->get();
+
         if ($defaultBranchId && isset($branchCounters[$defaultBranchId])) {
             $next = ((int) $branchCounters[$defaultBranchId]) + 1;
             $nextInvoiceNumber = 'INV-' . str_pad($next, 4, '0', STR_PAD_LEFT);
@@ -1864,9 +1859,33 @@ public function finddc($invoice)
         // Get warehouse_stocks for client-side validation
         $warehouseStocks = WarehouseStock::all()->toArray();
 
-        $salesmen = SalesOfficer::all();
-
         return view('admin_panel.sale.add_sale222', compact('warehouse', 'customer', 'accounts', 'nextInvoiceNumber', 'products', 'branches', 'branchCounters', 'warehouseStocks', 'salesmen'));
+    }
+
+    public function getBranchSalesmen($branchId)
+    {
+        $salesmen = SalesOfficer::where('branch_id', $branchId)->get();
+        return response()->json($salesmen);
+    }
+
+    public function getBranchAccounts($branchId)
+    {
+        $accounts = Account::where('branch_id', $branchId)->get();
+        return response()->json($accounts);
+    }
+
+    public function getBranchInvoiceNo($branchId)
+    {
+        $branch = Branch::find($branchId);
+        $counter = $branch ? ((int) ($branch->invoice_counter ?? 0)) : 0;
+        $next = $counter + 1;
+        $invoiceNo = 'INV-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+        return response()->json([
+            'status' => 'success',
+            'branch_id' => (int)$branchId,
+            'invoice_no' => $invoiceNo,
+            'counter' => $counter,
+        ]);
     }
 
     public function searchpname(Request $request)

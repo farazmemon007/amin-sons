@@ -10,6 +10,11 @@ class SalesOfficer extends Model
      use HasFactory;
 
     protected $fillable = [
-        'name', 'name_urdu', 'mobile',
+        'branch_id', 'name', 'name_urdu', 'mobile',
     ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
 }

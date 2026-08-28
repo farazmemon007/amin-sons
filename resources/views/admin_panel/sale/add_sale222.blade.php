@@ -593,7 +593,7 @@
 
                         <div class="mb-2 d-flex align-items-center gap-2">
                             <label class="form-label fw-bold mb-0">Invoice No.</label>
-                            <input type="text" class="form-control input-readonly" name="Invoice_no" style="width:150px"
+                            <input type="text" class="form-control input-readonly" name="Invoice_no" id="Invoice_no" style="width:150px"
                                 value="{{ $nextInvoiceNumber }}" readonly>
                             <label class="form-label fw-bold mb-0">M. Inv#</label>
                             <input type="text" class="form-control" name="Invoice_main" placeholder="Manual invoice">
@@ -1502,14 +1502,68 @@
                     }
                 });
 
-                // If branch selector present, bind change to reload customers and refresh product rows
+                // If branch selector present, bind change to reload customers, salesmen, accounts, invoice number, and refresh product rows
                 if (document.getElementById('branch_id')) {
                     $('#branch_id').off('change.branchCustomer').on('change.branchCustomer', function() {
+                        const newBranchId = $(this).val();
+                        if (!newBranchId) return;
+
+                        // 1. Clear previous customer data
+                        if ($('#customerSelect').hasClass('select2-hidden-accessible')) {
+                            $('#customerSelect').val(null).trigger('change');
+                        } else {
+                            $('#customerSelect').val('');
+                        }
+                        $('#customer_id, #customer, #customerDisplay').val('');
+                        $('#address, #tel, #remarks').val('');
+                        $('#previousBalance').val('0.00');
+                        $('#creditLimit').val('0.00');
+                        $('#noCreditLimit').val(0);
+                        $('#noCreditLimitMsg').hide();
+                        $('#customerCountHint').text('');
+
+                        // 2. Reload Customers for newly selected branch
                         const currentType = $('input[name="partyType"]:checked').val() || 'credit';
                         loadCustomersByType(currentType);
 
-                        const newBranchId = $(this).val();
-                        // 🔄 Refresh stock & prices for all existing product rows
+                        // 3. Dynamic Next Invoice Number for branch
+                        $.get('/get-branch-invoice-no/' + newBranchId, function(res) {
+                            if (res && res.invoice_no) {
+                                $('#Invoice_no').val(res.invoice_no);
+                                $('input[name="Invoice_no"]').val(res.invoice_no);
+                                console.log('✅ Updated Invoice No for branch', newBranchId, res.invoice_no);
+                            }
+                        });
+
+                        // 4. Dynamic Salesmen for branch
+                        $.get('/get-branch-salesmen/' + newBranchId, function(salesmen) {
+                            const $smSelect = $('#salesman_id');
+                            let html = '<option value="">Select Salesman</option>';
+                            if (Array.isArray(salesmen) && salesmen.length > 0) {
+                                salesmen.forEach(function(sm) {
+                                    html += `<option value="${sm.id}">${sm.name}</option>`;
+                                });
+                            }
+                            $smSelect.html(html);
+                            if ($smSelect.hasClass('select2-hidden-accessible')) {
+                                $smSelect.select2('destroy');
+                            }
+                            $smSelect.select2({ placeholder: 'Select Salesman', allowClear: true, width: '100%' });
+                            console.log('✅ Updated Salesmen for branch', newBranchId);
+                        });
+
+                        // 5. Dynamic Accounts for branch
+                        $.get('/get-branch-accounts/' + newBranchId, function(accounts) {
+                            if (Array.isArray(accounts)) {
+                                window.RECEIPT_ACCOUNTS = accounts;
+                                $('.rv-account').each(function() {
+                                    loadAccountsInto($(this));
+                                });
+                                console.log('✅ Updated Accounts for branch', newBranchId, accounts.length);
+                            }
+                        });
+
+                        // 6. 🔄 Refresh stock & prices for all existing product rows
                         $('#salesTableBody tr').each(function() {
                             const $row = $(this);
                             const productId = $row.find('.product-select').val();
