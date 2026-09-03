@@ -148,6 +148,8 @@
     }
     .action-btn.print { background: #ede9fe; color: #7c3aed; }
     .action-btn.print:hover { background: #7c3aed; color: #fff; }
+    .action-btn.edit { background: #e0e7ff; color: #4338ca; }
+    .action-btn.edit:hover { background: #4338ca; color: #fff; }
     .action-btn.delete { background: #fee2e2; color: #dc2626; }
     .action-btn.delete:hover { background: #dc2626; color: #fff; }
 
@@ -315,12 +317,18 @@
                                    class="action-btn print" title="Print JV">
                                     <i class="bi bi-printer"></i>
                                 </a>
+                                @can('journal.voucher.create')
+                                <a href="{{ route('journal.vouchers.edit', $jv->id) }}"
+                                   class="action-btn edit" title="Edit JV">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                @endcan
                                 @can('journal.voucher.delete')
                                 <form action="{{ route('journal.vouchers.destroy', $jv->id) }}" method="POST"
-                                      onsubmit="return confirm('Delete Journal Voucher {{ $jv->jvid }}? This will NOT reverse ledger entries.')">
+                                      onsubmit="return confirm('Void Journal Voucher {{ $jv->jvid }}? All ledger entries will be reversed.')">
                                     @csrf @method('DELETE')
-                                    <button type="submit" class="action-btn delete" title="Delete">
-                                        <i class="bi bi-trash3"></i>
+                                    <button type="submit" class="action-btn delete" title="Void & Reverse">
+                                        <i class="bi bi-slash-circle"></i>
                                     </button>
                                 </form>
                                 @endcan

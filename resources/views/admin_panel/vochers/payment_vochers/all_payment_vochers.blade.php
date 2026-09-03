@@ -119,6 +119,13 @@
                                                     <i class="fas fa-print"></i>
                                                 </a>
 
+                                                @can('payment.voucher.create')
+                                                    <a href="{{ route('payment-vouchers.edit', $item->id) }}"
+                                                        class="btn btn-sm btn-primary" title="Edit Voucher">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                @endcan
+
                                                 @if($item->receiving_proof)
                                                     <button type="button" 
                                                         class="btn btn-sm btn-success btn-view-proof" 

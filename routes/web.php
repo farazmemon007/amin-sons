@@ -676,13 +676,19 @@ Route::post('/payment-vouchers/{id}/upload-proof', [VoucherController::class, 'u
 
     ////// expense voucher
     Route::get('/all-expense-vochers', [VoucherController::class, 'all_expense_vochers'])->middleware('permission:expense.voucher.view')->name('all-expense-vochers');
-Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->middleware('permission:expense.voucher.view')->name('expense-vochers');
-route::post('/expense/vochers/stote', [VoucherController::class, 'store_expense_vochers'])->middleware('permission:expense.voucher.create')->name('expense.vochers.store');
-Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expenseprint'])->middleware('permission:expense.voucher.print')->name('expenseVoucher.print');
+    Route::get('/expense-vochers', [VoucherController::class, 'expense_vochers'])->middleware('permission:expense.voucher.view')->name('expense-vochers');
+    Route::post('/expense/vochers/stote', [VoucherController::class, 'store_expense_vochers'])->middleware('permission:expense.voucher.create')->name('expense.vochers.store');
+    Route::get('/expense-voucher/print/{id}', [VoucherController::class, 'expenseprint'])->middleware('permission:expense.voucher.print')->name('expenseVoucher.print');
+    Route::get('/expense-vouchers/{id}/edit', [VoucherController::class, 'edit_expense'])->middleware('permission:expense.voucher.create')->name('expense-vouchers.edit');
+    Route::put('/expense-vouchers/{id}', [VoucherController::class, 'update_expense'])->middleware('permission:expense.voucher.create')->name('expense-vouchers.update');
+    Route::delete('/expense-vouchers/{id}', [VoucherController::class, 'destroy_expense'])->middleware('permission:expense.voucher.create')->name('expense-vouchers.destroy');
+
     ////// journal voucher
     Route::get('/journal-vouchers',         [VoucherController::class, 'journal_vouchers_index'])->middleware('permission:journal.voucher.view')->name('journal.vouchers.index');
     Route::get('/journal-vouchers/create',  [VoucherController::class, 'journal_voucher_create'])->middleware('permission:journal.voucher.create')->name('journal.vouchers.create');
     Route::post('/journal-vouchers/store',  [VoucherController::class, 'journal_voucher_store'])->middleware('permission:journal.voucher.create')->name('journal.vouchers.store');
+    Route::get('/journal-vouchers/{id}/edit', [VoucherController::class, 'journal_voucher_edit'])->middleware('permission:journal.voucher.create')->name('journal.vouchers.edit');
+    Route::put('/journal-vouchers/{id}',    [VoucherController::class, 'journal_voucher_update'])->middleware('permission:journal.voucher.create')->name('journal.vouchers.update');
     Route::get('/journal-vouchers/{id}/print',  [VoucherController::class, 'journal_voucher_print'])->middleware('permission:journal.voucher.view')->name('journal.vouchers.print');
     Route::delete('/journal-vouchers/{id}', [VoucherController::class, 'journal_voucher_destroy'])->middleware('permission:journal.voucher.delete')->name('journal.vouchers.destroy');
     Route::get('/get-journal-party-list',   [VoucherController::class, 'getJournalPartyList'])->name('journal.party.list');

@@ -299,6 +299,27 @@
             border-color: #1e3a5f;
         }
 
+        .btn-action-edit {
+            background: #ffffff;
+            border: 1.5px solid #93c5fd;
+            color: #2563eb;
+            border-radius: 6px;
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.15s ease;
+            text-decoration: none;
+        }
+
+        .btn-action-edit:hover {
+            background: #2563eb;
+            color: #ffffff !important;
+            border-color: #2563eb;
+        }
+
         .btn-action-void {
             background: #ffffff;
             border: 1.5px solid #fde68a;
@@ -548,6 +569,10 @@
                                                     <i class="fas fa-print"></i>
                                                 </a>
                                                 @can('receipts.voucher.create')
+                                                    <a href="{{ route('recepit-vochers.edit', $item->id) }}"
+                                                        class="btn-action-edit" title="Edit Receipt Voucher">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
                                                     <form action="{{ route('recepit-vochers.destroy', $item->id) }}" method="POST" class="d-inline void-form">
                                                         @csrf
                                                         @method('DELETE')

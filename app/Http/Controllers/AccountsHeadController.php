@@ -331,7 +331,16 @@ class AccountsHeadController extends Controller
         // Totals
         $totalDebit  = $entries->sum('debit');
         $totalCredit = $entries->sum('credit');
-        $openingBalance = (float)($account->opening_balance ?? 0);
+        $initialOpening = (float)($account->opening_balance ?? 0);
+        if ($dateFrom) {
+            $prevEntry = \App\Models\AccountLedgerEntry::where('account_id', $accountId)
+                ->where('transaction_date', '<', $dateFrom)
+                ->orderBy('id', 'desc')
+                ->first();
+            $openingBalance = $prevEntry ? (float)$prevEntry->running_balance : $initialOpening;
+        } else {
+            $openingBalance = $initialOpening;
+        }
 
         // Closing balance = last entry running balance (or opening balance if no entries)
         $closingBalance = $entries->last()?->running_balance ?? $openingBalance;

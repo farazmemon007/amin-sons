@@ -193,27 +193,35 @@ class VoucherController extends Controller
     {
         $voucher = ReceiptsVoucher::findOrFail($id);
 
-        // Decode JSON arrays
-        $narrations = json_decode($voucher->narration_id, true) ?? [];
-        $references = json_decode($voucher->reference_no, true) ?? [];
-        $accountHeads = json_decode($voucher->row_account_head, true) ?? [];
-        $accounts = json_decode($voucher->row_account_id, true) ?? [];
-        $amounts = json_decode($voucher->amount, true) ?? [];
+        // Decode JSON arrays safely
+        $narrations = \App\Services\VoucherService::safeDecodeArray($voucher->narration_id);
+        $references = \App\Services\VoucherService::safeDecodeArray($voucher->reference_no);
+        $accountHeads = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_head);
+        $accounts = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_id);
+        $amounts = \App\Services\VoucherService::safeDecodeArray($voucher->amount);
 
         // Rows build
+        $maxRows = max(count($accounts), count($amounts), count($accountHeads), count($references), count($narrations), 1);
         $rows = [];
-        foreach ($accounts as $index => $accountId) {
+        for ($index = 0; $index < $maxRows; $index++) {
+            $accountId = $accounts[$index] ?? null;
             $narrId = $narrations[$index] ?? null;
-            $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
+            $narration = $narrId ? DB::table('narrations')->where('id', $narrId)->value('narration') : null;
             $ref = $references[$index] ?? null;
-            $accountHead = DB::table('account_heads')->where('id', $accountHeads[$index] ?? null)->value('name');
-            $account = DB::table('accounts')->where('id', $accountId)->first();
-            $amount = (float)($amounts[$index] ?? 0);
+            $headVal = $accountHeads[$index] ?? null;
+            $accountHead = null;
+            if ($headVal) {
+                $accountHead = is_numeric($headVal)
+                    ? DB::table('account_heads')->where('id', $headVal)->value('name')
+                    : $headVal;
+            }
+            $account = $accountId ? DB::table('accounts')->where('id', $accountId)->first() : null;
+            $amount = isset($amounts[$index]) ? (float)$amounts[$index] : (float)($voucher->total_amount ?? 0);
 
             $rows[] = [
                 'narration' => $narration,
                 'reference' => $ref,
-                'account_head' => $accountHead,
+                'account_head' => $accountHead ?? ($account ? DB::table('account_heads')->where('id', $account->head_id)->value('name') : null),
                 'account_name' => $account->title ?? null,
                 'account_code' => $account->account_code ?? null,
                 'amount' => $amount,
@@ -260,6 +268,19 @@ class VoucherController extends Controller
                 ->where('id', $voucher->party_id)
                 ->where('customer_type', 'Walking Customer')
                 ->first();
+        } elseif ($voucher->type === 'SALE_RECEIPT') {
+            $custId = $voucher->party_id;
+            if (!$custId && $voucher->sale_id) {
+                $sale = \App\Models\Sale::find($voucher->sale_id);
+                $custId = $sale?->customer_id;
+            }
+            if ($custId) {
+                $party = DB::table('customers')->where('id', $custId)->first();
+                $previousBalance = DB::table('customer_ledgers')
+                    ->where('customer_id', $custId)
+                    ->orderByDesc('id')
+                    ->value('closing_balance') ?? 0;
+            }
         }
 
         $branch = null;
@@ -616,13 +637,193 @@ public function getOpeningBalance($type, $id)
 
     public function edit_receipt($id)
     {
-        // Edit logic can be added here
-        return back()->with('error', 'Edit feature is under construction for strict ERP mode. Please void and create a new voucher.');
+        $voucher = ReceiptsVoucher::findOrFail($id);
+        $narrations = \App\Models\Narration::where('expense_head', 'Receipts Voucher')
+            ->pluck('narration', 'id');
+        $AccountHeads = AccountHead::get();
+
+        $isSuperAdmin = Auth::user()->hasRole('super admin');
+        $currentBranch = $voucher->branch_id ?? (Auth::user()->branch_id ?? 1);
+        $Branch = \App\Models\Branch::all();
+
+        // Decode rows safely
+        $narrationsArray  = \App\Services\VoucherService::safeDecodeArray($voucher->narration_id);
+        $referenceArray   = \App\Services\VoucherService::safeDecodeArray($voucher->reference_no);
+        $accountHeadArray = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_head);
+        $accountIdArray   = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_id);
+        $discountArray    = \App\Services\VoucherService::safeDecodeArray($voucher->discount_value);
+        $rateArray        = \App\Services\VoucherService::safeDecodeArray($voucher->rate);
+        $amountArray      = \App\Services\VoucherService::safeDecodeArray($voucher->amount);
+
+        $maxRows = max(
+            count($accountIdArray),
+            count($accountHeadArray),
+            count($amountArray),
+            count($referenceArray),
+            count($narrationsArray),
+            1
+        );
+
+        $rows = [];
+        for ($index = 0; $index < $maxRows; $index++) {
+            $accId = $accountIdArray[$index] ?? null;
+            $headId = $accountHeadArray[$index] ?? null;
+
+            $resolvedHeadId = null;
+            if ($headId && is_numeric($headId)) {
+                $resolvedHeadId = (int)$headId;
+            } elseif ($headId) {
+                $head = AccountHead::where('name', $headId)->orWhere('name', 'LIKE', "%{$headId}%")->first();
+                $resolvedHeadId = $head?->id;
+            }
+
+            if (!$resolvedHeadId && $accId && is_numeric($accId)) {
+                $acc = Account::find($accId);
+                $resolvedHeadId = $acc?->head_id;
+            }
+
+            $headId = $resolvedHeadId;
+            $subAccounts = $headId ? Account::where('head_id', $headId)->where('status', 1)->get() : collect();
+
+            $rows[] = [
+                'narration_id'     => $narrationsArray[$index] ?? null,
+                'reference_no'     => $referenceArray[$index] ?? '',
+                'row_account_head' => $headId,
+                'row_account_id'   => $accId,
+                'discount_value'   => $discountArray[$index] ?? 0,
+                'rate'             => $rateArray[$index] ?? 0,
+                'amount'           => $amountArray[$index] ?? ($voucher->total_amount ?? 0),
+                'sub_accounts'     => $subAccounts,
+            ];
+        }
+
+        // Party info
+        $partyName = '';
+        $partyMobile = $voucher->tel ?? '';
+        $partyBalance = 0;
+
+        if ($voucher->type === 'customer' || $voucher->type === 'walkin') {
+            $cust = Customer::find($voucher->party_id);
+            $partyName = $cust?->customer_name ?? '';
+            $partyMobile = $partyMobile ?: ($cust?->mobile ?? '');
+            $lastLedger = CustomerLedger::where('customer_id', $voucher->party_id)->latest('id')->first();
+            $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($cust?->opening_balance ?? 0);
+        } elseif ($voucher->type === 'vendor') {
+            $ven = Vendor::find($voucher->party_id);
+            $partyName = $ven?->name ?? '';
+            $partyMobile = $partyMobile ?: ($ven?->phone_number ?? '');
+            $lastLedger = VendorLedger::where('vendor_id', $voucher->party_id)->latest('id')->first();
+            $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($ven?->opening_balance ?? 0);
+        } elseif (is_numeric($voucher->type)) {
+            $acc = Account::find($voucher->party_id);
+            $partyName = $acc?->title ?? '';
+            $partyMobile = $partyMobile ?: ($acc?->account_code ?? '');
+            $partyBalance = (float)($acc?->opening_balance ?? 0);
+        } elseif ($voucher->type === 'SALE_RECEIPT') {
+            $custId = $voucher->party_id;
+            if (!$custId && $voucher->sale_id) {
+                $sale = \App\Models\Sale::find($voucher->sale_id);
+                $custId = $sale?->customer_id;
+            }
+            if ($custId) {
+                $cust = Customer::find($custId);
+                $partyName = $cust?->customer_name ?? '';
+                $partyMobile = $partyMobile ?: ($cust?->mobile ?? '');
+                $lastLedger = CustomerLedger::where('customer_id', $custId)->latest('id')->first();
+                $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($cust?->opening_balance ?? 0);
+            }
+        }
+
+        return view('admin_panel.vochers.edit', compact(
+            'voucher',
+            'rows',
+            'narrations',
+            'AccountHeads',
+            'Branch',
+            'isSuperAdmin',
+            'currentBranch',
+            'partyName',
+            'partyMobile',
+            'partyBalance'
+        ));
     }
 
     public function update_receipt(Request $request, $id)
     {
-        // Update logic
+        $voucher = ReceiptsVoucher::findOrFail($id);
+
+        $request->validate([
+            'receipt_date' => 'required|date',
+            'vendor_type'  => 'required',
+            'amount'       => 'required|array',
+            'total_amount' => 'required|numeric|min:0.01',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Reverse previous effects completely if voucher was not voided
+            if ($voucher->status !== 'voided') {
+                \App\Services\VoucherService::reverseReceiptVoucher($voucher, auth()->id(), false);
+            }
+
+            // 2. Process Narrations
+            $narrationIds = [];
+            if ($request->narration_id) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    if (empty($narrId) && !empty($manualText)) {
+                        $newNar = \App\Models\Narration::create([
+                            'expense_head' => 'Receipts Voucher',
+                            'narration'    => $manualText,
+                        ]);
+                        $narrationIds[] = (string)$newNar->id;
+                    } else {
+                        $narrationIds[] = (string)$narrId;
+                    }
+                }
+            }
+
+            // 3. Branch
+            if (Auth::user()->hasRole('super admin') && $request->filled('branch_id')) {
+                $branchId = (int) $request->branch_id;
+            } else {
+                $branchId = (int) ($voucher->branch_id ?? auth()->user()->branch_id ?? 1);
+            }
+
+            $remarks = $request->remarks;
+            if ($request->vendor_type === 'walkin' && !empty($request->walking_customer_name)) {
+                $remarks = 'Walk-in Name: ' . $request->walking_customer_name . ($remarks ? ' - ' . $remarks : '');
+            }
+
+            $voucher->update([
+                'branch_id'        => $branchId,
+                'receipt_date'     => $request->receipt_date,
+                'type'             => $request->vendor_type,
+                'party_id'         => $request->vendor_id,
+                'tel'              => $request->tel,
+                'remarks'          => $remarks,
+                'narration_id'     => json_encode($narrationIds),
+                'reference_no'     => json_encode($request->reference_no),
+                'row_account_head' => json_encode($request->row_account_head),
+                'row_account_id'   => json_encode($request->row_account_id),
+                'discount_value'   => json_encode($request->discount_value),
+                'rate'             => json_encode($request->rate),
+                'amount'           => json_encode($request->amount),
+                'total_amount'     => (float)$request->total_amount,
+                'status'           => 'active',
+                'processed'        => true,
+            ]);
+
+            // 4. Apply new ledger effects
+            \App\Services\VoucherService::applyReceiptVoucher($voucher, $request->all(), auth()->id());
+
+            DB::commit();
+            return redirect()->route('all-recepit-vochers')->with('success', "Receipt Voucher #{$voucher->rvid} updated successfully! Ledgers synchronized.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Receipt Voucher Update Error: " . $e->getMessage());
+            return back()->with('error', "Error updating voucher: " . $e->getMessage());
+        }
     }
 
     public function Payment_vochers()
@@ -796,12 +997,174 @@ public function getOpeningBalance($type, $id)
 
     public function edit_payment($id)
     {
-        return back()->with('error', 'Edit feature is under construction for strict ERP mode. Please void and create a new voucher.');
+        $voucher = PaymentVoucher::findOrFail($id);
+        $narrations = \App\Models\Narration::where('expense_head', 'Payment voucher')
+            ->pluck('narration', 'id');
+        $AccountHeads = AccountHead::get();
+
+        $isSuperAdmin = Auth::user()->hasRole('super admin');
+        $currentBranch = $voucher->branch_id ?? (Auth::user()->branch_id ?? 1);
+        $Branch = \App\Models\Branch::all();
+
+        // Decode rows safely
+        $narrationsArray  = \App\Services\VoucherService::safeDecodeArray($voucher->narration_id);
+        $referenceArray   = \App\Services\VoucherService::safeDecodeArray($voucher->reference_no);
+        $accountHeadArray = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_head);
+        $accountIdArray   = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_id);
+        $amountArray      = \App\Services\VoucherService::safeDecodeArray($voucher->amount);
+
+        $maxRows = max(
+            count($accountIdArray),
+            count($accountHeadArray),
+            count($amountArray),
+            count($referenceArray),
+            count($narrationsArray),
+            1
+        );
+
+        $rows = [];
+        for ($index = 0; $index < $maxRows; $index++) {
+            $accId = $accountIdArray[$index] ?? null;
+            $headId = $accountHeadArray[$index] ?? null;
+
+            $resolvedHeadId = null;
+            if ($headId && is_numeric($headId)) {
+                $resolvedHeadId = (int)$headId;
+            } elseif ($headId) {
+                $head = AccountHead::where('name', $headId)->orWhere('name', 'LIKE', "%{$headId}%")->first();
+                $resolvedHeadId = $head?->id;
+            }
+
+            if (!$resolvedHeadId && $accId && is_numeric($accId)) {
+                $acc = Account::find($accId);
+                $resolvedHeadId = $acc?->head_id;
+            }
+
+            $headId = $resolvedHeadId;
+            $subAccounts = $headId ? Account::where('head_id', $headId)->where('status', 1)->get() : collect();
+
+            $rows[] = [
+                'narration_id'     => $narrationsArray[$index] ?? null,
+                'reference_no'     => $referenceArray[$index] ?? '',
+                'row_account_head' => $headId,
+                'row_account_id'   => $accId,
+                'amount'           => $amountArray[$index] ?? ($voucher->total_amount ?? 0),
+                'sub_accounts'     => $subAccounts,
+            ];
+        }
+
+        // Party info
+        $partyName = '';
+        $partyMobile = $voucher->tel ?? '';
+        $partyBalance = 0;
+
+        if ($voucher->type === 'vendor') {
+            $ven = Vendor::find($voucher->party_id);
+            $partyName = $ven?->name ?? '';
+            $partyMobile = $partyMobile ?: ($ven?->phone_number ?? '');
+            $lastLedger = VendorLedger::where('vendor_id', $voucher->party_id)->latest('id')->first();
+            $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($ven?->opening_balance ?? 0);
+        } elseif ($voucher->type === 'customer' || $voucher->type === 'walkin') {
+            $cust = Customer::find($voucher->party_id);
+            $partyName = $cust?->customer_name ?? '';
+            $partyMobile = $partyMobile ?: ($cust?->mobile ?? '');
+            $lastLedger = CustomerLedger::where('customer_id', $voucher->party_id)->latest('id')->first();
+            $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($cust?->opening_balance ?? 0);
+        } elseif (is_numeric($voucher->type)) {
+            $acc = Account::find($voucher->party_id);
+            $partyName = $acc?->title ?? '';
+            $partyMobile = $partyMobile ?: ($acc?->account_code ?? '');
+            $partyBalance = (float)($acc?->opening_balance ?? 0);
+        }
+
+        return view('admin_panel.vochers.payment_vochers.edit', compact(
+            'voucher',
+            'rows',
+            'narrations',
+            'AccountHeads',
+            'Branch',
+            'isSuperAdmin',
+            'currentBranch',
+            'partyName',
+            'partyMobile',
+            'partyBalance'
+        ));
     }
 
     public function update_payment(Request $request, $id)
     {
-        // Update logic
+        $voucher = PaymentVoucher::findOrFail($id);
+
+        $request->validate([
+            'receipt_date' => 'required|date',
+            'vendor_type'  => 'required',
+            'amount'       => 'required|array',
+            'total_amount' => 'required|numeric|min:0.01',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Reverse previous effects completely if voucher was not voided
+            if ($voucher->status !== 'voided') {
+                \App\Services\VoucherService::reversePaymentVoucher($voucher, auth()->id(), false);
+            }
+
+            // 2. Process Narrations
+            $narrationIds = [];
+            if ($request->narration_id) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    if (empty($narrId) && !empty($manualText)) {
+                        $newNar = \App\Models\Narration::create([
+                            'expense_head' => 'Payment voucher',
+                            'narration'    => $manualText,
+                        ]);
+                        $narrationIds[] = (string)$newNar->id;
+                    } else {
+                        $narrationIds[] = (string)$narrId;
+                    }
+                }
+            }
+
+            // 3. Branch
+            if (Auth::user()->hasRole('super admin') && $request->filled('branch_id')) {
+                $branchId = (int) $request->branch_id;
+            } else {
+                $branchId = (int) ($voucher->branch_id ?? auth()->user()->branch_id ?? 1);
+            }
+
+            $remarks = $request->remarks;
+            if ($request->vendor_type === 'walkin' && !empty($request->walking_customer_name)) {
+                $remarks = 'Walk-in Name: ' . $request->walking_customer_name . ($remarks ? ' - ' . $remarks : '');
+            }
+
+            $voucher->update([
+                'branch_id'        => $branchId,
+                'receipt_date'     => $request->receipt_date,
+                'type'             => $request->vendor_type,
+                'party_id'         => $request->vendor_id,
+                'tel'              => $request->tel,
+                'remarks'          => $remarks,
+                'narration_id'     => json_encode($narrationIds),
+                'reference_no'     => json_encode($request->reference_no),
+                'row_account_head' => json_encode($request->row_account_head),
+                'row_account_id'   => json_encode($request->row_account_id),
+                'amount'           => json_encode($request->amount),
+                'total_amount'     => (float)$request->total_amount,
+                'status'           => 'active',
+                'processed'        => true,
+            ]);
+
+            // 4. Apply new ledger effects
+            \App\Services\VoucherService::applyPaymentVoucher($voucher, $request->all(), auth()->id());
+
+            DB::commit();
+            return redirect()->route('all-Payment-vochers')->with('success', "Payment Voucher #{$voucher->pvid} updated successfully! Ledgers synchronized.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Payment Voucher Update Error: " . $e->getMessage());
+            return back()->with('error', "Error updating voucher: " . $e->getMessage());
+        }
     }
     
      public function all_Payment_vochers()
@@ -884,27 +1247,35 @@ public function getOpeningBalance($type, $id)
     {
         $voucher = \App\Models\PaymentVoucher::findOrFail($id);
 
-        // Decode JSON arrays
-        $narrations = json_decode($voucher->narration_id, true) ?? [];
-        $references = json_decode($voucher->reference_no, true) ?? [];
-        $accountHeads = json_decode($voucher->row_account_head, true) ?? [];
-        $accounts = json_decode($voucher->row_account_id, true) ?? [];
-        $amounts = json_decode($voucher->amount, true) ?? [];
+        // Decode JSON arrays safely
+        $narrations = \App\Services\VoucherService::safeDecodeArray($voucher->narration_id);
+        $references = \App\Services\VoucherService::safeDecodeArray($voucher->reference_no);
+        $accountHeads = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_head);
+        $accounts = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_id);
+        $amounts = \App\Services\VoucherService::safeDecodeArray($voucher->amount);
 
         // 🧾 Build detailed rows
+        $maxRows = max(count($accounts), count($amounts), count($accountHeads), count($references), count($narrations), 1);
         $rows = [];
-        foreach ($accounts as $index => $accountId) {
+        for ($index = 0; $index < $maxRows; $index++) {
+            $accountId = $accounts[$index] ?? null;
             $narrId = $narrations[$index] ?? null;
-            $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
+            $narration = $narrId ? DB::table('narrations')->where('id', $narrId)->value('narration') : null;
             $ref = $references[$index] ?? null;
-            $accountHead = DB::table('account_heads')->where('id', $accountHeads[$index] ?? null)->value('name');
-            $account = DB::table('accounts')->where('id', $accountId)->first();
-            $amount = (float)($amounts[$index] ?? 0);
+            $headVal = $accountHeads[$index] ?? null;
+            $accountHead = null;
+            if ($headVal) {
+                $accountHead = is_numeric($headVal)
+                    ? DB::table('account_heads')->where('id', $headVal)->value('name')
+                    : $headVal;
+            }
+            $account = $accountId ? DB::table('accounts')->where('id', $accountId)->first() : null;
+            $amount = isset($amounts[$index]) ? (float)$amounts[$index] : (float)($voucher->total_amount ?? 0);
 
             $rows[] = [
                 'narration' => $narration,
                 'reference' => $ref,
-                'account_head' => $accountHead,
+                'account_head' => $accountHead ?? ($account ? DB::table('account_heads')->where('id', $account->head_id)->value('name') : null),
                 'account_name' => $account->title ?? null,
                 'account_code' => $account->account_code ?? null,
                 'amount' => $amount,
@@ -1145,6 +1516,191 @@ public function getOpeningBalance($type, $id)
         return view('admin_panel.vochers.expense_vochers.all_expense_vochers', compact('receipts'));
     }
 
+    public function destroy_expense($id)
+    {
+        $voucher = ExpenseVoucher::findOrFail($id);
+
+        if ($voucher->status === 'voided') {
+            return back()->with('error', 'Expense Voucher is already voided!');
+        }
+
+        $success = \App\Services\VoucherService::reverseExpenseVoucher($voucher, auth()->id());
+
+        if ($success) {
+            return back()->with('success', 'Expense Voucher voided successfully! Ledgers reversed.');
+        } else {
+            return back()->with('error', 'Failed to void Expense Voucher.');
+        }
+    }
+
+    public function edit_expense($id)
+    {
+        $voucher = ExpenseVoucher::findOrFail($id);
+        $narrations = \App\Models\Narration::where('expense_head', 'Expense voucher')
+            ->pluck('narration', 'id');
+        $AccountHeads = AccountHead::get();
+
+        $isSuperAdmin = Auth::user()->hasRole('super admin');
+        $currentBranch = $voucher->branch_id ?? (Auth::user()->branch_id ?? 1);
+        $Branch = \App\Models\Branch::all();
+
+        // Decode rows safely
+        $narrationsArray  = \App\Services\VoucherService::safeDecodeArray($voucher->narration_id);
+        $accountHeadArray = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_head);
+        $accountIdArray   = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_id);
+        $amountArray      = \App\Services\VoucherService::safeDecodeArray($voucher->amount);
+
+        $maxRows = max(
+            count($accountIdArray),
+            count($accountHeadArray),
+            count($amountArray),
+            count($narrationsArray),
+            1
+        );
+
+        $rows = [];
+        for ($index = 0; $index < $maxRows; $index++) {
+            $accId = $accountIdArray[$index] ?? null;
+            $headId = $accountHeadArray[$index] ?? null;
+
+            $resolvedHeadId = null;
+            if ($headId && is_numeric($headId)) {
+                $resolvedHeadId = (int)$headId;
+            } elseif ($headId) {
+                $head = AccountHead::where('name', $headId)->orWhere('name', 'LIKE', "%{$headId}%")->first();
+                $resolvedHeadId = $head?->id;
+            }
+
+            if (!$resolvedHeadId && $accId && is_numeric($accId)) {
+                $acc = Account::find($accId);
+                $resolvedHeadId = $acc?->head_id;
+            }
+
+            $headId = $resolvedHeadId;
+            $subAccounts = $headId ? Account::where('head_id', $headId)->where('status', 1)->get() : collect();
+
+            $rows[] = [
+                'narration_id'     => $narrationsArray[$index] ?? null,
+                'row_account_head' => $headId,
+                'row_account_id'   => $accId,
+                'amount'           => $amountArray[$index] ?? ($voucher->total_amount ?? 0),
+                'sub_accounts'     => $subAccounts,
+            ];
+        }
+
+        // Party / Source Info
+        $partyName = '';
+        $partyMobile = $voucher->tel ?? '';
+        $partyBalance = 0;
+
+        if ($voucher->type === 'vendor') {
+            $ven = Vendor::find($voucher->party_id);
+            $partyName = $ven?->name ?? '';
+            $partyMobile = $partyMobile ?: ($ven?->phone_number ?? '');
+            $lastLedger = VendorLedger::where('vendor_id', $voucher->party_id)->latest('id')->first();
+            $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($ven?->opening_balance ?? 0);
+        } elseif ($voucher->type === 'customer' || $voucher->type === 'walkin') {
+            $cust = Customer::find($voucher->party_id);
+            $partyName = $cust?->customer_name ?? '';
+            $partyMobile = $partyMobile ?: ($cust?->mobile ?? '');
+            $lastLedger = CustomerLedger::where('customer_id', $voucher->party_id)->latest('id')->first();
+            $partyBalance = $lastLedger ? (float)$lastLedger->closing_balance : (float)($cust?->opening_balance ?? 0);
+        } elseif (is_numeric($voucher->type) || is_numeric($voucher->party_id)) {
+            $accId = is_numeric($voucher->party_id) ? $voucher->party_id : $voucher->type;
+            $acc = Account::find($accId);
+            $partyName = $acc?->title ?? '';
+            $partyMobile = $partyMobile ?: ($acc?->account_code ?? '');
+            $partyBalance = (float)($acc?->opening_balance ?? 0);
+        }
+
+        return view('admin_panel.vochers.expense_vochers.edit', compact(
+            'voucher',
+            'rows',
+            'narrations',
+            'AccountHeads',
+            'Branch',
+            'isSuperAdmin',
+            'currentBranch',
+            'partyName',
+            'partyMobile',
+            'partyBalance'
+        ));
+    }
+
+    public function update_expense(Request $request, $id)
+    {
+        $voucher = ExpenseVoucher::findOrFail($id);
+
+        $request->validate([
+            'entry_date'   => 'required|date',
+            'vendor_type'  => 'required',
+            'amount'       => 'required|array',
+            'total_amount' => 'required|numeric|min:0.01',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Reverse previous effects completely if voucher was not voided
+            if ($voucher->status !== 'voided') {
+                \App\Services\VoucherService::reverseExpenseVoucher($voucher, auth()->id(), false);
+            }
+
+            // 2. Process Narrations
+            $narrationIds = [];
+            if ($request->narration_id) {
+                foreach ($request->narration_id as $index => $narrId) {
+                    $manualText = $request->narration_text[$index] ?? null;
+                    if (empty($narrId) && !empty($manualText)) {
+                        $newNar = \App\Models\Narration::create([
+                            'expense_head' => 'Expense voucher',
+                            'narration'    => $manualText,
+                        ]);
+                        $narrationIds[] = (string)$newNar->id;
+                    } else {
+                        $narrationIds[] = (string)$narrId;
+                    }
+                }
+            }
+
+            // 3. Branch
+            if (Auth::user()->hasRole('super admin') && $request->filled('branch_id')) {
+                $branchId = (int) $request->branch_id;
+            } else {
+                $branchId = (int) ($voucher->branch_id ?? auth()->user()->branch_id ?? 1);
+            }
+
+            $remarks = $request->remarks;
+            if ($request->vendor_type === 'walkin' && !empty($request->walking_customer_name)) {
+                $remarks = 'Walk-in Name: ' . $request->walking_customer_name . ($remarks ? ' - ' . $remarks : '');
+            }
+
+            $voucher->update([
+                'branch_id'        => $branchId,
+                'entry_date'       => $request->entry_date,
+                'type'             => $request->vendor_type,
+                'party_id'         => $request->vendor_id,
+                'tel'              => $request->tel,
+                'remarks'          => $remarks,
+                'narration_id'     => json_encode($narrationIds),
+                'row_account_head' => json_encode($request->row_account_head),
+                'row_account_id'   => json_encode($request->row_account_id),
+                'amount'           => json_encode($request->amount),
+                'total_amount'     => (float)$request->total_amount,
+                'status'           => 'active',
+            ]);
+
+            // 4. Apply new ledger effects
+            \App\Services\VoucherService::applyExpenseVoucher($voucher, $request->all(), auth()->id());
+
+            DB::commit();
+            return redirect()->route('all-expense-vochers')->with('success', "Expense Voucher #{$voucher->evid} updated successfully! Ledgers synchronized.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("Expense Voucher Update Error: " . $e->getMessage());
+            return back()->with('error', "Error updating voucher: " . $e->getMessage());
+        }
+    }
+
 
 
     public function expenseprint($id)
@@ -1152,26 +1708,34 @@ public function getOpeningBalance($type, $id)
         $voucher = \App\Models\ExpenseVoucher::findOrFail($id);
 
         // Decode JSON arrays safely
-        $narrations = json_decode($voucher->narration_id, true) ?? [];
-        $references = json_decode($voucher->reference_no, true) ?? [];
-        $accountHeads = json_decode($voucher->row_account_head, true) ?? [];
-        $accounts = json_decode($voucher->row_account_id, true) ?? [];
-        $amounts = json_decode($voucher->amount, true) ?? [];
+        $narrations = \App\Services\VoucherService::safeDecodeArray($voucher->narration_id);
+        $references = \App\Services\VoucherService::safeDecodeArray($voucher->reference_no);
+        $accountHeads = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_head);
+        $accounts = \App\Services\VoucherService::safeDecodeArray($voucher->row_account_id);
+        $amounts = \App\Services\VoucherService::safeDecodeArray($voucher->amount);
 
         // 🧾 Prepare detailed rows
+        $maxRows = max(count($accounts), count($amounts), count($accountHeads), count($references), count($narrations), 1);
         $rows = [];
-        foreach ($accounts as $index => $accountId) {
+        for ($index = 0; $index < $maxRows; $index++) {
+            $accountId = $accounts[$index] ?? null;
             $narrId = $narrations[$index] ?? null;
-            $narration = DB::table('narrations')->where('id', $narrId)->value('narration');
+            $narration = $narrId ? DB::table('narrations')->where('id', $narrId)->value('narration') : null;
             $ref = $references[$index] ?? null;
-            $accountHead = DB::table('account_heads')->where('id', $accountHeads[$index] ?? null)->value('name');
-            $account = DB::table('accounts')->where('id', $accountId)->first();
-            $amount = (float)($amounts[$index] ?? 0);
+            $headVal = $accountHeads[$index] ?? null;
+            $accountHead = null;
+            if ($headVal) {
+                $accountHead = is_numeric($headVal)
+                    ? DB::table('account_heads')->where('id', $headVal)->value('name')
+                    : $headVal;
+            }
+            $account = $accountId ? DB::table('accounts')->where('id', $accountId)->first() : null;
+            $amount = isset($amounts[$index]) ? (float)$amounts[$index] : (float)($voucher->total_amount ?? 0);
 
             $rows[] = [
                 'narration' => $narration,
                 'reference' => $ref,
-                'account_head' => $accountHead,
+                'account_head' => $accountHead ?? ($account ? DB::table('account_heads')->where('id', $account->head_id)->value('name') : null),
                 'account_name' => $account->title ?? null,
                 'account_code' => $account->account_code ?? null,
                 'amount' => $amount,
@@ -1569,13 +2133,121 @@ public function getOpeningBalance($type, $id)
     }
 
     /**
-     * Delete (soft-delete) a Journal Voucher.
+     * Delete (soft-delete) a Journal Voucher with full ledger reversal.
      */
     public function journal_voucher_destroy(int $id)
     {
         $jv = JournalVoucher::findOrFail($id);
-        $jv->delete();
-        return back()->with('success', "Journal Voucher #{$jv->jvid} deleted.");
+
+        if ($jv->status === 'voided') {
+            return back()->with('error', 'Journal Voucher is already voided!');
+        }
+
+        $success = \App\Services\VoucherService::reverseJournalVoucher($jv, auth()->id(), true);
+
+        if ($success) {
+            $jv->delete();
+            return back()->with('success', "Journal Voucher #{$jv->jvid} voided and ledgers reversed successfully.");
+        } else {
+            return back()->with('error', "Failed to void Journal Voucher.");
+        }
+    }
+
+    /**
+     * Show Journal Voucher edit form.
+     */
+    public function journal_voucher_edit(int $id)
+    {
+        $jv = JournalVoucher::findOrFail($id);
+        $narrations    = \App\Models\Narration::where('expense_head', 'Journal Voucher')->pluck('narration', 'id');
+        $AccountHeads  = AccountHead::get();
+        $isSuperAdmin  = Auth::user()->hasRole('super admin');
+        $currentBranch = $jv->branch_id ?? Auth::user()->branch_id;
+        $Branch        = \App\Models\Branch::all();
+
+        $narrationsArray = \App\Services\VoucherService::safeDecodeArray($jv->narration_id);
+        $selectedNarration = $narrationsArray[0] ?? null;
+
+        $debitPartyName  = JournalVoucher::resolvePartyName($jv->debit_party_type,  $jv->debit_party_id);
+        $creditPartyName = JournalVoucher::resolvePartyName($jv->credit_party_type, $jv->credit_party_id);
+
+        return view('admin_panel.vochers.journal_vouchers.edit', compact(
+            'jv', 'narrations', 'AccountHeads', 'isSuperAdmin', 'currentBranch', 'Branch',
+            'selectedNarration', 'debitPartyName', 'creditPartyName'
+        ));
+    }
+
+    /**
+     * Update Journal Voucher with ledger reversal and re-application.
+     */
+    public function journal_voucher_update(Request $request, int $id)
+    {
+        $jv = JournalVoucher::findOrFail($id);
+
+        $request->validate([
+            'voucher_date'       => 'required|date',
+            'debit_party_type'   => 'required|string',
+            'debit_party_id'     => 'required',
+            'credit_party_type'  => 'required|string',
+            'credit_party_id'    => 'required',
+            'amount'             => 'required|numeric|min:0.01',
+            'remarks'            => 'nullable|string|max:500',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // 1. Reverse previous effects if not voided
+            if ($jv->status !== 'voided') {
+                \App\Services\VoucherService::reverseJournalVoucher($jv, auth()->id(), false);
+            }
+
+            // 2. Process Narrations
+            $narrationIds = [];
+            if ($request->has('narration_id')) {
+                foreach ($request->narration_id as $idx => $narrId) {
+                    $manualText = $request->narration_text[$idx] ?? null;
+                    if (empty($narrId) && !empty($manualText)) {
+                        $new = \App\Models\Narration::create([
+                            'expense_head' => 'Journal Voucher',
+                            'narration'    => $manualText,
+                        ]);
+                        $narrationIds[] = (string) $new->id;
+                    } else {
+                        $narrationIds[] = (string) $narrId;
+                    }
+                }
+            }
+
+            // 3. Branch
+            $branchId = (Auth::user()->hasRole('super admin') && $request->filled('branch_id'))
+                ? (int)$request->branch_id
+                : (int)($jv->branch_id ?? Auth::user()->branch_id ?? 0);
+
+            $jv->update([
+                'voucher_date'      => $request->voucher_date,
+                'remarks'           => $request->remarks,
+                'branch_id'         => $branchId,
+                'debit_party_type'  => $request->debit_party_type,
+                'debit_party_id'    => $request->debit_party_id,
+                'credit_party_type' => $request->credit_party_type,
+                'credit_party_id'   => $request->credit_party_id,
+                'amount'            => (float)$request->amount,
+                'narration_id'      => json_encode($narrationIds),
+                'reference_no'      => json_encode($request->reference_no ?? []),
+                'status'            => 'posted',
+            ]);
+
+            // 4. Apply new ledger effects
+            \App\Services\VoucherService::applyJournalVoucher($jv, $request->all(), auth()->id());
+
+            DB::commit();
+            return redirect()->route('journal.vouchers.index')
+                ->with('success', "Journal Voucher #{$jv->jvid} updated successfully! Ledgers synchronized.");
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Illuminate\Support\Facades\Log::error("JV Update Error: " . $e->getMessage());
+            return back()->with('error', "Error updating Journal Voucher: " . $e->getMessage());
+        }
     }
 
     /**

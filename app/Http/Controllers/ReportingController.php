@@ -165,6 +165,148 @@ class ReportingController extends Controller
      *  Gate Pass & DC numbers are looked up from outward_gatepasses.
      *  Running balance is calculated in PHP to stay accurate.
      * ═══════════════════════════════════════════════════════════════════════ */
+    /**
+     * Calculate mathematically exact Opening Balance for a Customer before $startDate.
+     * Opening = Initial + Prior Sales + Prior JV Debits - Prior Returns - Prior Receipts - Prior Payments - Prior JV Credits
+     */
+    public function getCustomerOpeningBalance(int $customerId, string $startDate): float
+    {
+        $customer = Customer::find($customerId);
+        $initialOpening = (float)($customer->opening_balance ?? 0);
+
+        // 1. Prior Sales (Debit)
+        $priorSales = DB::table('sales')
+            ->where('customer_id', $customerId)
+            ->where(DB::raw('DATE(created_at)'), '<', $startDate)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'cancelled');
+            })
+            ->sum(DB::raw('COALESCE(total_net, sub_total1 - discount_amount)'));
+
+        // 2. Prior Sale Returns (Credit)
+        $priorReturns = DB::table('sales_returns')
+            ->join('sales', 'sales.id', '=', 'sales_returns.sale_id')
+            ->where('sales.customer_id', $customerId)
+            ->where(DB::raw('DATE(sales_returns.created_at)'), '<', $startDate)
+            ->sum('sales_returns.total_net');
+
+        // 3. Prior Receipts (Credit)
+        $priorReceipts = DB::table('receipts_vouchers')
+            ->where('party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(receipt_date)'), '<', $startDate)
+            ->sum('total_amount');
+
+        // 4. Prior Payments (Credit - Customer discounts/rebates)
+        $priorPayments = DB::table('payment_vouchers')
+            ->where('party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(receipt_date)'), '<', $startDate)
+            ->sum('total_amount');
+
+        // 5. Prior Journal Vouchers (Debits & Credits)
+        $priorJvDebits = DB::table('journal_vouchers')
+            ->where('debit_party_type', 'customer')
+            ->where('debit_party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(voucher_date)'), '<', $startDate)
+            ->sum('amount');
+
+        $priorJvCredits = DB::table('journal_vouchers')
+            ->where('credit_party_type', 'customer')
+            ->where('credit_party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(voucher_date)'), '<', $startDate)
+            ->sum('amount');
+
+        return (float)$initialOpening 
+            + (float)$priorSales 
+            + (float)$priorJvDebits 
+            - (float)$priorReturns 
+            - (float)$priorReceipts 
+            - (float)$priorPayments 
+            - (float)$priorJvCredits;
+    }
+
+    /**
+     * Calculate mathematically exact Opening Balance for a Vendor before $startDate.
+     * Opening = Initial + Prior Purchases + Prior Receipts + Prior JV Credits - Prior Returns - Prior Payments - Prior JV Debits
+     */
+    public function getVendorOpeningBalance(int $vendorId, int $branchId, string $startDate): float
+    {
+        $vendor = \App\Models\Vendor::find($vendorId);
+        $initialOpening = (float)($vendor->opening_balance ?? 0);
+
+        // 1. Prior Purchases (Credit)
+        $priorPurchases = DB::table('purchases')
+            ->where('vendor_id', $vendorId)
+            ->where('branch_id', $branchId)
+            ->where(DB::raw('DATE(created_at)'), '<', $startDate)
+            ->whereNull('deleted_at')
+            ->sum(DB::raw('COALESCE(net_amount, 0)'));
+
+        // 2. Prior Purchase Returns (Debit)
+        $priorReturns = DB::table('purchase_returns')
+            ->where('vendor_id', $vendorId)
+            ->where(DB::raw('DATE(created_at)'), '<', $startDate)
+            ->sum('net_amount');
+
+        // 3. Prior Payments (Debit)
+        $priorPayments = DB::table('payment_vouchers')
+            ->where('party_id', $vendorId)
+            ->where('type', 'vendor')
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(receipt_date)'), '<', $startDate)
+            ->sum('total_amount');
+
+        // 4. Prior Receipts (Credit - refunds from vendor)
+        $priorReceipts = DB::table('receipts_vouchers')
+            ->where('party_id', $vendorId)
+            ->where('type', 'vendor')
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(receipt_date)'), '<', $startDate)
+            ->sum('total_amount');
+
+        // 5. Prior Journal Vouchers (Debits & Credits)
+        $priorJvCredits = DB::table('journal_vouchers')
+            ->where('credit_party_type', 'vendor')
+            ->where('credit_party_id', $vendorId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(voucher_date)'), '<', $startDate)
+            ->sum('amount');
+
+        $priorJvDebits = DB::table('journal_vouchers')
+            ->where('debit_party_type', 'vendor')
+            ->where('debit_party_id', $vendorId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->where(DB::raw('DATE(voucher_date)'), '<', $startDate)
+            ->sum('amount');
+
+        return (float)$initialOpening 
+            + (float)$priorPurchases 
+            + (float)$priorReceipts 
+            + (float)$priorJvCredits 
+            - (float)$priorReturns 
+            - (float)$priorPayments 
+            - (float)$priorJvDebits;
+    }
+
     public function fetch_customer_ledger_new(Request $request)
     {
         $user       = auth()->user();
@@ -193,14 +335,8 @@ class ReportingController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        // ── Opening Balance (last ledger entry BEFORE start_date) ──────────
-        $prevLedger     = CustomerLedger::where('customer_id', $customerId)
-            ->where('created_at', '<', $start . ' 00:00:00')
-            ->latest('created_at')
-            ->first();
-        $openingBalance = $prevLedger
-            ? floatval($prevLedger->closing_balance)
-            : floatval($customer->opening_balance ?? 0);
+        // ── Mathematically Exact Opening Balance ─────────────────────────
+        $openingBalance = $this->getCustomerOpeningBalance($customerId, $start);
 
         // ── Gate Pass lookup map: invoice_no → {dc_no, gatepass_number} ───
         $gpMap = [];
@@ -317,22 +453,11 @@ class ReportingController extends Controller
         // PART 3 – RECEIPT VOUCHERS  (Cash + Bank payments from customer)
         // ══════════════════════════════════════════════════════════════════
         $receiptsRaw = DB::table('receipts_vouchers')
-            ->leftJoin('accounts',      'accounts.id',       '=', 'receipts_vouchers.row_account_id')
-            ->leftJoin('account_heads', 'account_heads.id',  '=', 'receipts_vouchers.row_account_head')
-            ->leftJoin('narrations',    'narrations.id',     '=', 'receipts_vouchers.narration_id')
             ->where('receipts_vouchers.party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
             ->whereBetween(DB::raw('DATE(receipts_vouchers.receipt_date)'), [$start, $end])
-            ->select(
-                'receipts_vouchers.id           as id',
-                'receipts_vouchers.rvid         as rvid',
-                'receipts_vouchers.receipt_date as txn_date',
-                'receipts_vouchers.total_amount as credit_amount',
-                'receipts_vouchers.reference_no as reference_no',
-                'receipts_vouchers.remarks      as remarks',
-                'narrations.narration           as narration_text',
-                'accounts.title                 as account_title',
-                'account_heads.name             as head_name'
-            )
             ->orderBy('receipts_vouchers.receipt_date', 'asc')
             ->get();
 
@@ -340,23 +465,33 @@ class ReportingController extends Controller
         // PART 4 – PAYMENT VOUCHERS  (Discounts / Expenses against customer)
         // ══════════════════════════════════════════════════════════════════
         $paymentVouchersRaw = DB::table('payment_vouchers')
-            ->leftJoin('narrations', 'narrations.id', '=', 'payment_vouchers.narration_id')
-            ->leftJoin('accounts', 'accounts.id', '=', 'payment_vouchers.row_account_id')
-            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('payment_vouchers.party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
             ->whereBetween(DB::raw('DATE(payment_vouchers.receipt_date)'), [$start, $end])
-            ->select(
-                'payment_vouchers.id           as id',
-                'payment_vouchers.pvid         as pvid',
-                'payment_vouchers.receipt_date as txn_date',
-                'payment_vouchers.total_amount as credit_amount',
-                'payment_vouchers.reference_no as reference_no',
-                'payment_vouchers.remarks      as remarks',
-                'narrations.narration          as narration_text',
-                'account_heads.name            as head_name',
-                'accounts.title                as account_title'
-            )
             ->orderBy('payment_vouchers.receipt_date', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 5 – JOURNAL VOUCHERS  (Debits & Credits for Customer)
+        // ══════════════════════════════════════════════════════════════════
+        $jvsDebitRaw = DB::table('journal_vouchers')
+            ->where('debit_party_type', 'customer')
+            ->where('debit_party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->whereBetween(DB::raw('DATE(voucher_date)'), [$start, $end])
+            ->get();
+
+        $jvsCreditRaw = DB::table('journal_vouchers')
+            ->where('credit_party_type', 'customer')
+            ->where('credit_party_id', $customerId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->whereBetween(DB::raw('DATE(voucher_date)'), [$start, $end])
             ->get();
 
         // ══════════════════════════════════════════════════════════════════
@@ -371,7 +506,6 @@ class ReportingController extends Controller
             $gp      = $gpMap[$header['invoice_no']] ?? [];
             $dcNo    = !empty($gp) ? implode(' / ', array_unique(array_column($gp, 'dc_no'))) : '-';
             $gpNo    = !empty($gp) ? implode(' / ', array_unique(array_column($gp, 'gatepass_number'))) : '-';
-
 
             $events[] = [
                 'sort_date'   => $header['txn_date'],
@@ -411,24 +545,48 @@ class ReportingController extends Controller
 
         // Add Receipt Vouchers
         foreach ($receiptsRaw as $rec) {
-            $isBank = (isset($rec->head_name) && str_contains(strtolower($rec->head_name), 'bank')) 
-                || (isset($rec->account_title) && str_contains(strtolower($rec->account_title), 'bank'))
-                || (isset($rec->account_title) && in_array(strtoupper($rec->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
+            $rowAccountIds = \App\Services\VoucherService::safeDecodeArray($rec->row_account_id);
+            $narrationIds  = \App\Services\VoucherService::safeDecodeArray($rec->narration_id);
+
+            $accountTitles = [];
+            $isBank = false;
+            foreach ($rowAccountIds as $accId) {
+                if ($accId && is_numeric($accId)) {
+                    $acc = DB::table('accounts')->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')->where('accounts.id', $accId)->select('accounts.title', 'account_heads.name as head_name')->first();
+                    if ($acc) {
+                        $accountTitles[] = $acc->title;
+                        if ((isset($acc->head_name) && str_contains(strtolower($acc->head_name), 'bank')) 
+                            || (isset($acc->title) && str_contains(strtolower($acc->title), 'bank'))
+                            || (isset($acc->title) && in_array(strtoupper($acc->title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']))) {
+                            $isBank = true;
+                        }
+                    }
+                }
+            }
+            $accountStr = !empty($accountTitles) ? implode(', ', $accountTitles) : ($isBank ? 'Bank A/c' : 'Cash');
+
+            $narrTexts = [];
+            foreach ($narrationIds as $narrId) {
+                if ($narrId && is_numeric($narrId)) {
+                    $narr = DB::table('narrations')->where('id', $narrId)->value('narration');
+                    if ($narr) $narrTexts[] = $narr;
+                }
+            }
+            $narrText = !empty($narrTexts) ? implode(', ', $narrTexts) : null;
+
             $vno    = $rec->rvid ?? ('BRV-' . $rec->id);
-            // Description: narration or remarks or default
-            $desc   = $rec->narration_text
-                ?? ($rec->remarks ?: ($isBank ? 'ONLINE / BANK RECEIVED' : 'CASH RECEIVED'));
+            $desc   = $narrText ?? ($rec->remarks ?: ($isBank ? 'ONLINE / BANK RECEIVED' : 'CASH RECEIVED'));
             $events[] = [
-                'sort_date' => $rec->txn_date,
+                'sort_date' => $rec->receipt_date,
                 'type'      => 'receipt',
                 'priority'  => 3,
                 'data'      => [
                     'vno'          => $vno,
                     'reference_no' => $rec->reference_no ?? '-',
-                    'account'      => $rec->account_title ?? ($isBank ? 'Bank A/c' : 'Cash'),
+                    'account'      => $accountStr,
                     'description'  => strtoupper($desc),
-                    'txn_date'     => $rec->txn_date,
-                    'credit'       => floatval($rec->credit_amount ?? 0),
+                    'txn_date'     => $rec->receipt_date,
+                    'credit'       => floatval($rec->total_amount ?? 0),
                     'is_bank'      => $isBank,
                 ],
             ];
@@ -436,22 +594,84 @@ class ReportingController extends Controller
 
         // Add Payment Vouchers (discounts, tour expense, etc.)
         foreach ($paymentVouchersRaw as $pv) {
-            $isBank = (isset($pv->head_name) && str_contains(strtolower($pv->head_name), 'bank')) 
-                || (isset($pv->account_title) && str_contains(strtolower($pv->account_title), 'bank'))
-                || (isset($pv->account_title) && in_array(strtoupper($pv->account_title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']));
+            $rowAccountIds = \App\Services\VoucherService::safeDecodeArray($pv->row_account_id);
+            $narrationIds  = \App\Services\VoucherService::safeDecodeArray($pv->narration_id);
+
+            $accountTitles = [];
+            $isBank = false;
+            foreach ($rowAccountIds as $accId) {
+                if ($accId && is_numeric($accId)) {
+                    $acc = DB::table('accounts')->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')->where('accounts.id', $accId)->select('accounts.title', 'account_heads.name as head_name')->first();
+                    if ($acc) {
+                        $accountTitles[] = $acc->title;
+                        if ((isset($acc->head_name) && str_contains(strtolower($acc->head_name), 'bank')) 
+                            || (isset($acc->title) && str_contains(strtolower($acc->title), 'bank'))
+                            || (isset($acc->title) && in_array(strtoupper($acc->title), ['HBL', 'MCB', 'UBL', 'MEEZAN', 'ALLIED', 'ASKARI']))) {
+                            $isBank = true;
+                        }
+                    }
+                }
+            }
+            $accountStr = !empty($accountTitles) ? implode(', ', $accountTitles) : ($isBank ? 'Bank A/c' : 'Cash');
+
+            $narrTexts = [];
+            foreach ($narrationIds as $narrId) {
+                if ($narrId && is_numeric($narrId)) {
+                    $narr = DB::table('narrations')->where('id', $narrId)->value('narration');
+                    if ($narr) $narrTexts[] = $narr;
+                }
+            }
+            $narrText = !empty($narrTexts) ? implode(', ', $narrTexts) : null;
+
             $vno  = $pv->pvid ?? ('PV-' . $pv->id);
-            $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT VOUCHER');
+            $desc = $narrText ?? ($pv->remarks ?: 'PAYMENT VOUCHER');
             $events[] = [
-                'sort_date' => $pv->txn_date,
+                'sort_date' => $pv->receipt_date,
                 'type'      => 'payment_voucher',
                 'priority'  => 4,
                 'data'      => [
                     'vno'          => $vno,
                     'reference_no' => $pv->reference_no ?? '-',
+                    'account'      => $accountStr,
                     'description'  => strtoupper($desc),
-                    'txn_date'     => $pv->txn_date,
-                    'credit'       => floatval($pv->credit_amount ?? 0),
+                    'txn_date'     => $pv->receipt_date,
+                    'credit'       => floatval($pv->total_amount ?? 0),
                     'is_bank'      => $isBank,
+                ],
+            ];
+        }
+
+        // Add Journal Vouchers (Debits & Credits)
+        foreach ($jvsDebitRaw as $jv) {
+            $events[] = [
+                'sort_date' => $jv->voucher_date,
+                'type'      => 'journal_debit',
+                'priority'  => 5,
+                'data'      => [
+                    'vno'          => $jv->jvid,
+                    'reference_no' => $jv->reference_no ?? '-',
+                    'account'      => 'JV Adjustment',
+                    'description'  => 'JOURNAL VOUCHER: ' . ($jv->remarks ?: 'ADJUSTMENT DEBIT'),
+                    'txn_date'     => $jv->voucher_date,
+                    'debit'        => floatval($jv->amount ?? 0),
+                    'credit'       => 0,
+                ],
+            ];
+        }
+
+        foreach ($jvsCreditRaw as $jv) {
+            $events[] = [
+                'sort_date' => $jv->voucher_date,
+                'type'      => 'journal_credit',
+                'priority'  => 6,
+                'data'      => [
+                    'vno'          => $jv->jvid,
+                    'reference_no' => $jv->reference_no ?? '-',
+                    'account'      => 'JV Adjustment',
+                    'description'  => 'JOURNAL VOUCHER: ' . ($jv->remarks ?: 'ADJUSTMENT CREDIT'),
+                    'txn_date'     => $jv->voucher_date,
+                    'debit'        => 0,
+                    'credit'       => floatval($jv->amount ?? 0),
                 ],
             ];
         }
@@ -606,7 +826,49 @@ class ReportingController extends Controller
                     'dc_no'       => '-',
                     'gp_no'       => '-',
                     'description' => $d['description'],
-                    'item_name'   => null,
+                    'item_name'   => $d['account'],
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => 0,
+                    'credit'      => $credit,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'journal_debit') {
+                $debit          = $d['debit'];
+                $runningBalance += $debit;
+                $totalDebit     += $debit;
+
+                $transactions[] = [
+                    'row_type'    => 'payment_voucher',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['vno'],
+                    'bill'        => $d['reference_no'],
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => $d['account'] ?? 'JV Adjustment',
+                    'qty'         => null,
+                    'rate'        => null,
+                    'debit'       => $debit,
+                    'credit'      => 0,
+                    'balance'     => $runningBalance,
+                ];
+
+            } elseif ($type === 'journal_credit') {
+                $credit          = $d['credit'];
+                $runningBalance -= $credit;
+                $totalCredit    += $credit;
+
+                $transactions[] = [
+                    'row_type'    => 'receipt',
+                    'date'        => date('d-m-y', strtotime($d['txn_date'])),
+                    'vno'         => $d['vno'],
+                    'bill'        => $d['reference_no'],
+                    'dc_no'       => '-',
+                    'gp_no'       => '-',
+                    'description' => $d['description'],
+                    'item_name'   => $d['account'] ?? 'JV Adjustment',
                     'qty'         => null,
                     'rate'        => null,
                     'debit'       => 0,
@@ -745,47 +1007,8 @@ class ReportingController extends Controller
             return response()->json(['error' => 'Unauthorized branch access'], 403);
         }
 
-        // ── Branch-Specific Opening Balance Calculation ──────────
-        // Since vendors are global, the running balance for a branch is the sum of all its prior transactions
-        
-        // 1. Prior Purchases (Credit)
-        $priorPurchases = DB::table('purchases')
-            ->where('vendor_id', $vendorId)
-            ->where('branch_id', $branchId)
-            ->where('created_at', '<', $start . ' 00:00:00')
-            ->sum('net_amount');
-            
-        // 2. Prior Purchase Returns (Debit)
-        // Since purchase_returns lacks a direct branch_id, we will show all returns globally for this vendor
-        $priorReturns = DB::table('purchase_returns')
-            ->where('vendor_id', $vendorId)
-            ->where('created_at', '<', $start . ' 00:00:00')
-            ->sum('net_amount');
-
-        // 3. Prior Payment Vouchers (Debit)
-        // Note: payment_vouchers table does not have a branch_id column, so we count all payments globally or exclude them?
-        // Since we cannot filter by branch, we will not filter by branch_id here to avoid SQL errors.
-        $priorPayments = DB::table('payment_vouchers')
-            ->where('party_id', $vendorId)
-            ->where('type', 'vendor')
-            ->where('receipt_date', '<', $start)
-            ->sum('amount');
-
-        // 4. Prior Receipt Vouchers (Credit)
-        $priorReceipts = DB::table('receipts_vouchers')
-            ->where('party_id', $vendorId)
-            ->where('type', 'vendor')
-            ->where('receipt_date', '<', $start)
-            ->sum('amount');
-
-        // 5. Prior Vendor Payments (Legacy) (Debit)
-        // Check if vendor_payments has branch_id, assuming no for now as it uses admin_or_user_id. 
-        // We will exclude legacy vendor_payments from branch logic if it has no branch_id, or assume 0 for branch.
-        $priorLegacyPayments = 0; 
-        
-        // Net Branch Opening Balance = (Initial) + (Credits) - (Debits)
-        // Vendors are now branch-specific, so we include their base opening balance
-        $openingBalance = (float)($vendor->opening_balance ?? 0) + ($priorPurchases + $priorReceipts) - ($priorReturns + $priorPayments);
+        // ── Mathematically Exact Branch Opening Balance ──────────
+        $openingBalance = $this->getVendorOpeningBalance($vendorId, $branchId, $start);
 
         // ── Gate Pass lookup map for Purchases: purchase_id → {dc_no, gp_no} ───
         $gpMap = [];
@@ -808,6 +1031,7 @@ class ReportingController extends Controller
             ->leftJoin('products', 'products.id', '=', 'purchase_items.product_id')
             ->where('purchases.vendor_id', $vendorId)
             ->where('purchases.branch_id', $branchId)
+            ->whereNull('purchases.deleted_at')
             ->whereBetween(DB::raw('DATE(purchases.created_at)'), [$start, $end])
             ->select(
                 'purchases.id          as purchase_id',
@@ -870,9 +1094,12 @@ class ReportingController extends Controller
         $paymentVouchersRaw = DB::table('payment_vouchers')
             ->leftJoin('narrations', 'narrations.id', '=', 'payment_vouchers.narration_id')
             ->leftJoin('accounts', 'accounts.id', '=', 'payment_vouchers.row_account_id')
-            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id') // Corrected column name
+            ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('payment_vouchers.party_id', $vendorId)
             ->where('payment_vouchers.type', 'vendor')
+            ->where(function ($q) {
+                $q->whereNull('payment_vouchers.status')->orWhere('payment_vouchers.status', '!=', 'voided');
+            })
             ->whereBetween(DB::raw('DATE(payment_vouchers.receipt_date)'), [$start, $end])
             ->select(
                 'payment_vouchers.id           as id',
@@ -899,6 +1126,9 @@ class ReportingController extends Controller
             ->leftJoin('account_heads', 'account_heads.id', '=', 'accounts.head_id')
             ->where('receipts_vouchers.party_id', $vendorId)
             ->where('receipts_vouchers.type', 'vendor')
+            ->where(function ($q) {
+                $q->whereNull('receipts_vouchers.status')->orWhere('receipts_vouchers.status', '!=', 'voided');
+            })
             ->whereBetween(DB::raw('DATE(receipts_vouchers.receipt_date)'), [$start, $end])
             ->select(
                 'receipts_vouchers.id           as id',
@@ -930,6 +1160,27 @@ class ReportingController extends Controller
                 'note as remarks'
             )
             ->orderBy('payment_date', 'asc')
+            ->get();
+
+        // ══════════════════════════════════════════════════════════════════
+        // PART 6 – JOURNAL VOUCHERS (Debits & Credits for Vendor)
+        // ══════════════════════════════════════════════════════════════════
+        $jvsDebitVendor = DB::table('journal_vouchers')
+            ->where('debit_party_type', 'vendor')
+            ->where('debit_party_id', $vendorId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->whereBetween(DB::raw('DATE(voucher_date)'), [$start, $end])
+            ->get();
+
+        $jvsCreditVendor = DB::table('journal_vouchers')
+            ->where('credit_party_type', 'vendor')
+            ->where('credit_party_id', $vendorId)
+            ->where(function ($q) {
+                $q->whereNull('status')->orWhere('status', '!=', 'voided');
+            })
+            ->whereBetween(DB::raw('DATE(voucher_date)'), [$start, $end])
             ->get();
 
         // ══════════════════════════════════════════════════════════════════
@@ -987,8 +1238,8 @@ class ReportingController extends Controller
             $vno  = $rec->rvid ?? ('RV-' . $rec->id);
             $desc = $rec->narration_text ?? ($rec->remarks ?: 'REFUND RECEIVED');
             
-            $accIds = json_decode($rec->row_account_id, true) ?: [$rec->row_account_id];
-            $amounts = json_decode($rec->amount, true) ?: [];
+            $accIds = \App\Services\VoucherService::safeDecodeArray($rec->row_account_id);
+            $amounts = \App\Services\VoucherService::safeDecodeArray($rec->amount);
             $accountInfo = null;
             if (!empty($accIds)) {
                 $accounts = DB::table('accounts')
@@ -1002,7 +1253,7 @@ class ReportingController extends Controller
                 foreach ($accIds as $idx => $id) {
                     if (isset($accounts[$id])) {
                         $acc = $accounts[$id];
-                        $amt = isset($amounts[$idx]) ? number_format($amounts[$idx], 2) : '0.00';
+                        $amt = isset($amounts[$idx]) ? number_format((float)$amounts[$idx], 2) : '0.00';
                         $accDetails[] = $acc->title . ($acc->account_code ? " ({$acc->account_code})" : "") . ": " . $amt;
                     }
                 }
@@ -1033,8 +1284,8 @@ class ReportingController extends Controller
             $vno  = $pv->pvid ?? ('PV-' . $pv->id);
             $desc = $pv->narration_text ?? ($pv->remarks ?: 'PAYMENT TO VENDOR');
             
-            $accIds = json_decode($pv->row_account_id, true) ?: [$pv->row_account_id];
-            $amounts = json_decode($pv->amount, true) ?: [];
+            $accIds = \App\Services\VoucherService::safeDecodeArray($pv->row_account_id);
+            $amounts = \App\Services\VoucherService::safeDecodeArray($pv->amount);
             $accountInfo = null;
             if (!empty($accIds)) {
                 $accounts = DB::table('accounts')
@@ -1047,7 +1298,7 @@ class ReportingController extends Controller
                 foreach ($accIds as $idx => $id) {
                     if (isset($accounts[$id])) {
                         $acc = $accounts[$id];
-                        $amt = isset($amounts[$idx]) ? number_format($amounts[$idx], 2) : '0.00';
+                        $amt = isset($amounts[$idx]) ? number_format((float)$amounts[$idx], 2) : '0.00';
                         $accDetails[] = $acc->title . ($acc->account_code ? " ({$acc->account_code})" : "") . ": " . $amt;
                     }
                 }
@@ -1082,6 +1333,41 @@ class ReportingController extends Controller
                     'account_info' => strtoupper($vp->payment_method ?? 'CASH/BANK'),
                     'txn_date'     => $vp->txn_date,
                     'debit'        => floatval($vp->debit_amount ?? 0),
+                ],
+            ];
+        }
+
+        // Add Journal Vouchers for Vendor
+        foreach ($jvsDebitVendor as $jv) {
+            $events[] = [
+                'sort_date' => $jv->voucher_date,
+                'type'      => 'journal_debit',
+                'priority'  => 6,
+                'data'      => [
+                    'vno'          => $jv->jvid,
+                    'reference_no' => $jv->reference_no ?? '-',
+                    'description'  => 'JOURNAL VOUCHER: ' . ($jv->remarks ?: 'ADJUSTMENT DEBIT'),
+                    'account_info' => 'JV Adjustment',
+                    'txn_date'     => $jv->voucher_date,
+                    'debit'        => floatval($jv->amount ?? 0),
+                    'credit'       => 0,
+                ],
+            ];
+        }
+
+        foreach ($jvsCreditVendor as $jv) {
+            $events[] = [
+                'sort_date' => $jv->voucher_date,
+                'type'      => 'journal_credit',
+                'priority'  => 7,
+                'data'      => [
+                    'vno'          => $jv->jvid,
+                    'reference_no' => $jv->reference_no ?? '-',
+                    'description'  => 'JOURNAL VOUCHER: ' . ($jv->remarks ?: 'ADJUSTMENT CREDIT'),
+                    'account_info' => 'JV Adjustment',
+                    'txn_date'     => $jv->voucher_date,
+                    'debit'        => 0,
+                    'credit'       => floatval($jv->amount ?? 0),
                 ],
             ];
         }
@@ -1155,9 +1441,10 @@ class ReportingController extends Controller
                 $transactions[] = [
                     'row_type'  => 'sale_total',
                     'total_qty' => $invoiceTotalQty,
+                    'total_stk' => 0,
                     'add_disc'  => $d['add_disc'] ?? 0,
                     'extra_chg' => $d['extra_chg'] ?? 0,
-                    'total_net' => $d['credit'], // Use credit as total net for formatting
+                    'total_net' => $d['credit'],
                 ];
 
             } elseif ($type === 'return') {
@@ -1181,15 +1468,15 @@ class ReportingController extends Controller
                     'balance'     => $runningBalance,
                 ];
 
-            } elseif ($type === 'payment_voucher' || $type === 'legacy_payment') {
+            } elseif ($type === 'payment_voucher' || $type === 'legacy_payment' || $type === 'journal_debit') {
                 $debit           = $d['debit'];
-                $runningBalance -= $debit; // We pay them, liability decreases
+                $runningBalance -= $debit; // We pay them / JV adjustment, liability decreases
                 $totalDebit     += $debit;
 
                 $isBank = $d['is_bank'] ?? false;
                 $prefix = $isBank ? 'BP' : 'CP';
                 $count  = $isBank ? ++$bpCounter : ++$cpCounter;
-                $displayVno = $d['vno'] . " ($prefix-$count)";
+                $displayVno = $type === 'journal_debit' ? $d['vno'] : ($d['vno'] . " ($prefix-$count)");
 
                 $transactions[] = [
                     'row_type'    => 'payment_voucher',
@@ -1207,15 +1494,15 @@ class ReportingController extends Controller
                     'balance'     => $runningBalance,
                 ];
 
-            } elseif ($type === 'receipt') {
+            } elseif ($type === 'receipt' || $type === 'journal_credit') {
                 $credit          = $d['credit'];
-                $runningBalance += $credit; // Refund to us increases liability
+                $runningBalance += $credit; // Refund to us / JV adjustment increases liability
                 $totalCredit    += $credit;
 
                 $isBank = $d['is_bank'] ?? false;
                 $prefix = $isBank ? 'BR' : 'CR';
                 $count  = $isBank ? ++$brCounter : ++$crCounter;
-                $displayVno = $d['vno'] . " ($prefix-$count)";
+                $displayVno = $type === 'journal_credit' ? $d['vno'] : ($d['vno'] . " ($prefix-$count)");
 
                 $transactions[] = [
                     'row_type'    => 'receipt',
@@ -1974,12 +2261,7 @@ class ReportingController extends Controller
         }
 
         // ================= DETERMINE OPENING BALANCE =================
-        $previousLedger = CustomerLedger::where('customer_id', $customerId)
-            ->where('created_at', '<', $start)
-            ->latest('created_at')
-            ->first();
-
-        $openingBalance = $previousLedger ? floatval($previousLedger->closing_balance) : floatval($customer->opening_balance ?? 0);
+        $openingBalance = $this->getCustomerOpeningBalance($customerId, $start);
 
         // ================= FETCH SALES IN DATE RANGE =================
         $salesMap = [];
@@ -2169,12 +2451,7 @@ class ReportingController extends Controller
         }
 
         // ✅ Get opening balance
-        $previousLedger = CustomerLedger::where('customer_id', $customerId)
-            ->where('created_at', '<', $start)
-            ->latest('created_at')
-            ->first();
-
-        $openingBalance = $previousLedger ? floatval($previousLedger->closing_balance) : floatval($customer->opening_balance ?? 0);
+        $openingBalance = $this->getCustomerOpeningBalance($customerId, $start);
 
         // ✅ Fetch all sales with their items (for Qty, Rate, Bill)
         $sales = Sale::where('customer_id', $customerId)
