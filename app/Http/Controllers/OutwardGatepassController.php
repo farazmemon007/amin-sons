@@ -443,6 +443,11 @@ class OutwardGatepassController extends Controller
             // Production safety: All or nothing operation
             $id = DB::transaction(function () use ($data, $items, $orderRow, $orderPreparedBy, $orderWarehouseId, $remainingItems, $saleCustomerId, $saleSubCustomer, $branchId) {
                 
+                $gatepassDate = $data['gatepass_date'] ?? date('Y-m-d');
+                $gpTimestamp = !empty($data['gatepass_date']) 
+                    ? \Carbon\Carbon::parse($data['gatepass_date'])->setTimeFrom(now()) 
+                    : now();
+
                 // 1️⃣ Create outward gatepass with "delivered" status (NEW)
                 $id = DB::table('outward_gatepasses')->insertGetId([
                     'order_id' => $data['order_id'],
@@ -463,11 +468,12 @@ class OutwardGatepassController extends Controller
                     'invoice_no' => $data['invoice_no'] ?? null,
                     'customer_name' => $data['customer_name'] ?? null,
                     'delivery_city' => $data['delivery_city'] ?? null,
+                    'gatepass_date' => $gatepassDate,
                     'packing_notes' => $data['note'] ?? null,
                     'prepared_by' => $orderPreparedBy ?? null,
                     'status' => 'delivered', // ✅ NEW: Set status to delivered
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                    'created_at' => $gpTimestamp,
+                    'updated_at' => $gpTimestamp,
                 ]);
                 
                 // ✅ Generate branch-specific gatepass number using actual gatepass count

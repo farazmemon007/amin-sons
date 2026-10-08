@@ -22,7 +22,7 @@
         <div class="header">
             <h3 style="margin:0">Outward Gate Pass <small class="muted">{{ $gp->gatepass_number ?? ('GP-' . str_pad($gp->id, 4, '0', STR_PAD_LEFT)) }}</small></h3>
             <div class="small muted">
-                Created: {{ optional($gp->created_at)->format('Y-m-d H:i') ?? '-' }} | 
+                Date: {{ !empty($gp->gatepass_date) ? \Carbon\Carbon::parse($gp->gatepass_date)->format('d-M-Y') : (optional($gp->created_at)->format('d-M-Y') ?? '-') }} | 
                 Invoice: {{ $gp->invoice_no ?? '-' }}
             </div>
         </div>

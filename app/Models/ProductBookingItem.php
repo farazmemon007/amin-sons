@@ -25,7 +25,9 @@ class ProductBookingItem extends Model
         'amount',
         'invoice_no',
         'customer_id',
-        'items'
+        'items',
+        'created_at',
+        'updated_at'
     ];
 
     // include branch_id so items can carry branch context

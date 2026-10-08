@@ -185,6 +185,13 @@
 
                     <div class="form-section">
                         <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                            📅 DC Date:
+                        </label>
+                        <input type="date" name="dc_date" class="quantity-input" value="{{ date('Y-m-d') }}" style="max-width: 220px;" required>
+                    </div>
+
+                    <div class="form-section">
+                        <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
                             📦 Delivery Quantity:
                         </label>
                         <div style="display: flex; gap: 1rem; align-items: flex-end;">

@@ -441,6 +441,10 @@
                 {{-- HEADER --}}
                 <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
                     <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <label for="sale_date" class="form-label fw-bold mb-0 text-secondary" style="font-size: 0.85rem;">Sale Date:</label>
+                            <input type="date" id="sale_date" name="sale_date" class="form-control form-control-sm" style="width: 145px;" value="{{ $sale->created_at ? \Carbon\Carbon::parse($sale->created_at)->format('Y-m-d') : date('Y-m-d') }}">
+                        </div>
                         <small class="text-secondary" id="entryDateTime">Entry Date_Time: --</small> <br>
                         <a href="{{ route('sale.index') }}" target="_blank" rel="noopener"
                             class="btn btn-sm btn-outline-secondary" title="Sales List (opens new tab)">

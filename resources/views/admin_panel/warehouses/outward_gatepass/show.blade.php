@@ -81,7 +81,7 @@
                         <div class="text-muted small text-start px-2">
                             <div class="d-flex justify-content-between">
                                 <strong>Date:</strong> 
-                                <span>{{ optional($gp->created_at)->format('d-M-Y') }}</span>
+                                <span>{{ !empty($gp->gatepass_date) ? \Carbon\Carbon::parse($gp->gatepass_date)->format('d-M-Y') : optional($gp->created_at)->format('d-M-Y') }}</span>
                             </div>
                             <div class="d-flex justify-content-between">
                                 <strong>Invoice:</strong> 

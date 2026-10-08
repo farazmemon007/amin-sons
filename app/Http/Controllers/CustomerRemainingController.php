@@ -414,7 +414,7 @@ class CustomerRemainingController extends Controller
             }
 
             // ✅ CREATE NEW DC FOR THIS REMAINING ITEM
-            return DB::transaction(function () use ($remaining, $warehouseId, $deliveryQty, $remainingQty) {
+            return DB::transaction(function () use ($request, $remaining, $warehouseId, $deliveryQty, $remainingQty) {
                 $sale = $remaining->sale;
                 
                 // Generate DC number
@@ -438,6 +438,13 @@ class CustomerRemainingController extends Controller
                     'amount' => $deliveryQty * (optional($remaining->product)->retail_price ?? 0),
                 ]];
 
+                $dcTimestamp = now();
+                if ($request->filled('dc_date')) {
+                    $dcTimestamp = \Carbon\Carbon::parse($request->dc_date)->setTimeFrom(now());
+                } elseif ($sale && $sale->created_at) {
+                    $dcTimestamp = $sale->created_at;
+                }
+
                 // Create WarehouseOrder (DC)
                 $warehouseOrder = \App\Models\WarehouseOrder::create([
                     'dc_no' => $dcNo,
@@ -450,6 +457,8 @@ class CustomerRemainingController extends Controller
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
                     'items' => $itemsArray,
+                    'created_at' => $dcTimestamp,
+                    'updated_at' => $dcTimestamp,
                 ]);
 
                 \Log::info('Created DC from customer remaining', [
@@ -477,6 +486,8 @@ class CustomerRemainingController extends Controller
                     'remarks' => "From customer_remaining partial delivery",
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
+                    'created_at' => $dcTimestamp,
+                    'updated_at' => $dcTimestamp,
                 ]);
 
                 // ✅ UPDATE CUSTOMER_REMAINING WITH NEW REMAINDER

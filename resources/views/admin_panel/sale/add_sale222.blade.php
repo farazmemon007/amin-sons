@@ -568,6 +568,10 @@
                 {{-- HEADER --}}
                 <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
                     <div>
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <label for="sale_date" class="form-label fw-bold mb-0 text-secondary" style="font-size: 0.85rem;">Sale Date:</label>
+                            <input type="date" id="sale_date" name="sale_date" class="form-control form-control-sm" style="width: 145px;" value="{{ isset($booking) && $booking->created_at ? $booking->created_at->format('Y-m-d') : date('Y-m-d') }}">
+                        </div>
                         <small class="text-secondary" id="entryDateTime">Entry Date_Time: --</small> <br>
                         <a href="{{ route('sale.index') }}" target="_blank" rel="noopener"
                             class="btn btn-sm btn-outline-secondary" title="Sales List (opens new tab)">
@@ -2066,6 +2070,15 @@
                 value: bookingId
             });
 
+            // sale date ensure
+            const saleDateVal = $('#sale_date').val();
+            if (saleDateVal) {
+                data.push({
+                    name: 'sale_date',
+                    value: saleDateVal
+                });
+            }
+
             // Include receipt rows (if any) so ajaxPost can create/process them
             $('.rv-account').each(function(i) {
                 const acc = $(this).val();
@@ -2415,6 +2428,7 @@
                     booking_id: bookingId,
                     partyType: partyType,
                     branch_id: $('input[name="branch_id"]').val(),  // Include selected branch for admin
+                    sale_date: $('#sale_date').val(),
                     receipt_account_id: receiptAccountIds,
                     receipt_amount: receiptAmounts
                 };
@@ -3678,6 +3692,7 @@
                     let formData = new FormData();
                     formData.append('_token', '{{ csrf_token() }}');
                     formData.append('booking_id', bookingId);
+                    formData.append('sale_date', $('#sale_date').val() || '');
 
                     // Collect warehouse selections per product
                     $('#salesTableBody tr').each(function() {

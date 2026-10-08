@@ -23,6 +23,8 @@ class WarehouseOrder extends Model
         'items',
         'delivered_qty',
         'remaining_qty',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [

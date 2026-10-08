@@ -19,7 +19,8 @@ class ReceiptsVoucher extends Model
     ];
 
     protected $fillable = [
-        'branch_id', 'rvid', 'receipt_date', 'entry_date', 'type', 'party_id', 'tel', 'remarks', 'reference_no', 'booking_id', 'sale_id', 'row_account_head', 'row_account_id', 'amount', 'total_amount', 'processed'
+        'branch_id', 'rvid', 'receipt_date', 'entry_date', 'type', 'party_id', 'tel', 'remarks', 'reference_no', 'booking_id', 'sale_id', 'row_account_head', 'row_account_id', 'amount', 'total_amount', 'processed',
+        'created_at', 'updated_at'
     ];
 
     /* ===========================

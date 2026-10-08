@@ -20,7 +20,7 @@
         <div class="center">
             <h3 style="margin:4px 0">GATE PASS</h3>
             <div class="small bold">{{ $gp->gatepass_number ?? ('GP-' . str_pad($gp->id, 4, '0', STR_PAD_LEFT)) }}</div>
-            <div class="small">{{ optional($gp->created_at)->format('Y-m-d H:i') ?? '' }}</div>
+            <div class="small">{{ !empty($gp->gatepass_date) ? \Carbon\Carbon::parse($gp->gatepass_date)->format('d-M-Y') : (optional($gp->created_at)->format('d-M-Y') ?? '') }}</div>
         </div>
 
         <table class="no-border">
@@ -69,7 +69,7 @@
         <div style="display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
             <div style="width:55%">
                 <div><strong>GP #:</strong> {{ $gp->id }}</div>
-                <div class="muted small">Date: {{ optional($gp->created_at)->format('Y-m-d H:i') ?? '' }}</div>
+                <div class="muted small">Date: {{ !empty($gp->gatepass_date) ? \Carbon\Carbon::parse($gp->gatepass_date)->format('d-M-Y') : (optional($gp->created_at)->format('d-M-Y') ?? '') }}</div>
                 <div class="muted small">Order: {{ $gp->order_id }}</div>
                 <div class="muted small"><strong>Invoice:</strong> {{ $gp->invoice_no ?? '-' }}</div>
                 <div class="muted small"><strong>Customer:</strong> {{ $gp->customer_name ?? '-' }}</div>

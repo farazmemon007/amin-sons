@@ -131,6 +131,13 @@ class SaleController extends Controller
                     Log::warning('Using fallback sale invoice (counter not available)', ['invoice_no' => $invoiceNo]);
                 }
 
+                $saleTimestamp = now();
+                if ($request->filled('sale_date')) {
+                    $saleTimestamp = Carbon::parse($request->sale_date)->setTimeFrom(now());
+                } elseif ($booking && $booking->created_at) {
+                    $saleTimestamp = $booking->created_at;
+                }
+
                 $saleData = [
                     'invoice_no'       => $invoiceNo,
                     'manual_invoice'   => $booking->manual_invoice,
@@ -150,6 +157,8 @@ class SaleController extends Controller
                     'previous_balance' => $booking->previous_balance,
                     'total_balance'    => $booking->total_balance,
                     'total_net'        => $booking->sub_total2 ?? 0,
+                    'created_at'       => $saleTimestamp,
+                    'posted_at'        => $saleTimestamp,
                 ];
 
                 // ✅ ERP Standard: Only add branch_id and booking_id if columns exist in DB
@@ -214,6 +223,8 @@ class SaleController extends Controller
                         'total_debit'        => $saleAmount,
                         'total_credit'       => $totalReceipts,
                         'closing_balance'    => $closingBalance,   // Use total_balance value from booking
+                        'created_at'         => $saleTimestamp,
+                        'updated_at'         => $saleTimestamp,
                     ]);
                 }
 
@@ -296,6 +307,8 @@ class SaleController extends Controller
                         'discount_percent' => (float) ($it->discount_percent ?? 0),
                         'discount_amount' => (float) ($it->discount_amount ?? 0),
                         'amount'        => $it->amount,
+                        'created_at'    => $saleTimestamp,
+                        'updated_at'    => $saleTimestamp,
                     ]);
 
                     // Stock Movement
@@ -308,6 +321,8 @@ class SaleController extends Controller
                         'ref_uuid'      => $booking->invoice_no,
                         'is_auto_pluck' => 1,
                         'note'          => 'Sale Invoice ' . $booking->invoice_no . ($wid ? ' (Warehouse: ' . $wid . ')' : ' (Branch Stock)'),
+                        'created_at'    => $saleTimestamp,
+                        'updated_at'    => $saleTimestamp,
                     ]);
 
                     /* ================= CHECK STOCK ALERT ================= */
@@ -428,8 +443,8 @@ class SaleController extends Controller
                                     $rv = ReceiptsVoucher::create([
                                         'branch_id' => $sale->branch_id ?? ($booking->branch_id ?? (auth()->user()->branch_id ?? 1)),
                                         'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
-                                        'receipt_date' => Carbon::today(),
-                                        'entry_date' => Carbon::now(),
+                                        'receipt_date' => Carbon::parse($saleTimestamp)->toDateString(),
+                                        'entry_date' => $saleTimestamp,
                                         'type' => 'SALE_RECEIPT',
                                         'party_id' => $booking->customer_id,
                                         'booking_id' => $booking->id,
@@ -442,6 +457,8 @@ class SaleController extends Controller
                                         'amount' => is_array($amt) ? json_encode($amt) : $amt,
                                         'total_amount' => $amt,
                                         'processed' => true,
+                                        'created_at' => $saleTimestamp,
+                                        'updated_at' => $saleTimestamp,
                                     ]);
 
                                     Log::info('✅ Receipt voucher created', [
@@ -774,6 +791,13 @@ class SaleController extends Controller
                     $invoiceNo = 'INV-' . str_pad($maxSaleId + 1, 4, '0', STR_PAD_LEFT);
                 }
 
+                $saleTimestamp = now();
+                if ($request->filled('sale_date')) {
+                    $saleTimestamp = Carbon::parse($request->sale_date)->setTimeFrom(now());
+                } elseif ($booking && $booking->created_at) {
+                    $saleTimestamp = $booking->created_at;
+                }
+
                 $sale = Sale::create([
                     'branch_id'            => $booking->branch_id,
                     'invoice_no'           => $invoiceNo,
@@ -783,7 +807,7 @@ class SaleController extends Controller
                     'sub_customer'         => (($booking->party_type ?? '') === 'walking') ? ($booking->customer_name ?? null) : null,
                     'party_type'           => $booking->party_type,
                     'address'              => $booking->address,
-                    'tel'                  => $booking->tel,
+                    'tel'              => $booking->tel,
                     'remarks'              => $booking->remarks,
                     'sub_total1'           => $booking->sub_total1,
                     'sub_total2'           => $booking->sub_total2,
@@ -795,6 +819,8 @@ class SaleController extends Controller
                     'total_balance'        => $booking->total_balance,
                     'total_net'            => $booking->sub_total2 ?? 0,
                     'status'               => 'draft_posted',
+                    'created_at'           => $saleTimestamp,
+                    'posted_at'            => $saleTimestamp,
                 ]);
 
                 Log::info('Draft sale record created', ['sale_id' => $sale->id, 'invoice' => $sale->invoice_no]);
@@ -841,6 +867,8 @@ class SaleController extends Controller
                         'total_debit'        => $saleAmount,
                         'total_credit'       => $totalReceipts,
                         'closing_balance'    => $closingBalance,
+                        'created_at'         => $saleTimestamp,
+                        'updated_at'         => $saleTimestamp,
                     ]);
                 }
 
@@ -862,6 +890,8 @@ class SaleController extends Controller
                         'source_type'  => $sourceType,
                         'source_id'    => $sourceId,
                         'status'       => 'pending',
+                        'created_at'   => $saleTimestamp,
+                        'updated_at'   => $saleTimestamp,
                     ]);
 
                     Log::info('Saved to sale_postings (draft)', [
@@ -883,6 +913,8 @@ class SaleController extends Controller
                         'discount_percent' => (float) ($it->discount_percent ?? 0),
                         'discount_amount' => (float) ($it->discount_amount ?? 0),
                         'amount'        => $it->amount,
+                        'created_at'    => $saleTimestamp,
+                        'updated_at'    => $saleTimestamp,
                     ]);
 
                     Log::info('Saved to sale_items (draft)', [
@@ -903,6 +935,8 @@ class SaleController extends Controller
                         'ref_uuid'      => $booking->invoice_no,
                         'is_auto_pluck' => 1,
                         'note'          => 'Sale Invoice ' . $booking->invoice_no . ' (Draft - Stock deduction pending) ' . ($warehouseId ? ' (Warehouse: ' . $warehouseId . ')' : ' (Branch Stock)'),
+                        'created_at'    => $saleTimestamp,
+                        'updated_at'    => $saleTimestamp,
                     ]);
 
                     // ✅ CHECK STOCK ALERT (same as ajaxPost for consistency)
@@ -994,8 +1028,8 @@ class SaleController extends Controller
                                     $rv = ReceiptsVoucher::create([
                                         'branch_id' => $sale->branch_id ?? ($booking->branch_id ?? (auth()->user()->branch_id ?? 1)),
                                         'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
-                                        'receipt_date' => Carbon::today(),
-                                        'entry_date' => Carbon::now(),
+                                        'receipt_date' => Carbon::parse($saleTimestamp)->toDateString(),
+                                        'entry_date' => $saleTimestamp,
                                         'type' => 'SALE_RECEIPT',
                                         'party_id' => $booking->customer_id,
                                         'booking_id' => $booking->id,
@@ -1008,6 +1042,8 @@ class SaleController extends Controller
                                         'amount' => is_array($amt) ? json_encode($amt) : $amt,
                                         'total_amount' => $amt,
                                         'processed' => true,
+                                        'created_at' => $saleTimestamp,
+                                        'updated_at' => $saleTimestamp,
                                     ]);
 
                                     Log::info('Created and applied per-account SALE_RECEIPT (Draft)', ['rv_id' => $rv->id, 'rvid' => $rv->rvid, 'account' => $acctId, 'amount' => $amt, 'reference' => $sale->invoice_no, 'sale_id' => $sale->id]);
@@ -1454,6 +1490,12 @@ class SaleController extends Controller
             $booking->discount_amount = 0;
 
             $booking->quantity = 0;
+
+            if ($request->filled('sale_date')) {
+                $saleDate = Carbon::parse($request->sale_date)->setTimeFrom(now());
+                $booking->created_at = $saleDate;
+            }
+
             $booking->save();
 
             /* ================= SAVE ITEMS ================= */
@@ -1470,7 +1512,7 @@ class SaleController extends Controller
                     $warehouseId = $request->warehouse_id[$productId] ?? null;
                 }
 
-                ProductBookingItem::create([
+                $itemData = [
                     'invoice_no' => $booking->invoice_no,
                     'booking_id' => $booking->id,
                     'branch_id'  => $branchId,
@@ -1482,11 +1524,20 @@ class SaleController extends Controller
                     'discount_type' => $request->discount_type[$i] ?? 'percent',
                     'amount' => $request->sales_amount[$i] ?? 0,
                     'warehouse_id' => $warehouseId,
-                ]);
+                ];
+                if ($request->filled('sale_date')) {
+                    $itemData['created_at'] = $saleDate;
+                    $itemData['updated_at'] = $saleDate;
+                }
+
+                ProductBookingItem::create($itemData);
             }
 
 
             $booking->quantity = $totalQty;
+            if ($request->filled('sale_date')) {
+                $booking->created_at = $saleDate;
+            }
             $booking->save();
 
             /* ================= SAVE RECEIPTS ================= */
@@ -2145,6 +2196,11 @@ public function finddc($invoice)
                 }
             }
 
+            $saleTimestamp = now();
+            if ($request->filled('sale_date')) {
+                $saleTimestamp = Carbon::parse($request->sale_date)->setTimeFrom(now());
+            }
+
             $sale = Sale::create([
                 'branch_id' => $branch->id,
                 'invoice_no' => $invoiceNo,
@@ -2168,6 +2224,8 @@ public function finddc($invoice)
                 'final_balance1' => $request->finalBalance1 ?? 0,
                 'final_balance2' => $request->finalBalance2 ?? 0,
                 'weight' => $request->weight ?? null,
+                'created_at' => $saleTimestamp,
+                'posted_at' => $saleTimestamp,
             ]);
 
             // Persist optional notify_me value on sale (days integer)
@@ -2245,6 +2303,8 @@ public function finddc($invoice)
                     'discount_percent' => (float) $request->input("discount-percent.$i", 0),
                     'discount_amount' => (float) $request->input("discount-amount.$i", 0),
                     'amount' => (float) $request->input("sales-amount.$i", 0),
+                    'created_at' => $saleTimestamp,
+                    'updated_at' => $saleTimestamp,
                 ]);
             }
 
@@ -2280,8 +2340,8 @@ public function finddc($invoice)
                         $rv = ReceiptsVoucher::create([
                             'branch_id' => $sale->branch_id ?? (auth()->user()->branch_id ?? 1),
                             'rvid' => ReceiptsVoucher::generateRVID(auth()->id()),
-                            'receipt_date' => Carbon::today(),
-                            'entry_date' => Carbon::now(),
+                            'receipt_date' => Carbon::parse($saleTimestamp)->toDateString(),
+                            'entry_date' => $saleTimestamp,
                             'type' => 'SALE_RECEIPT',
                             'party_id' => $customerId,
                             'booking_id' => null,
@@ -2294,6 +2354,8 @@ public function finddc($invoice)
                             'amount' => is_array($amt) ? json_encode($amt) : $amt,
                             'total_amount' => $amt,
                             'processed' => false,
+                            'created_at' => $saleTimestamp,
+                            'updated_at' => $saleTimestamp,
                         ]);
 
                         // Immediately apply this receipt to account and customer ledger
@@ -2316,6 +2378,8 @@ public function finddc($invoice)
                                 'previous_balance' => $custPrev,
                                 'opening_balance' => 0,
                                 'closing_balance' => $custNew,
+                                'created_at' => $saleTimestamp,
+                                'updated_at' => $saleTimestamp,
                             ]);
 
                             $rv->processed = true;
@@ -3298,7 +3362,7 @@ public function finddc($invoice)
                 $newDiscountAmount = floatval($request->input('discountAmount', 0));
                 $newTotal = floatval($request->input('totalBalance', 0));
 
-                $sale->update([
+                $updateData = [
                     'customer_id' => $customerId ?? $sale->customer_id,
                     'salesman_id' => $request->salesman_id ?? $sale->salesman_id,
                     'manual_invoice' => $request->input('manual_invoice', $sale->manual_invoice),
@@ -3312,7 +3376,13 @@ public function finddc($invoice)
                     'total_net' => $newTotal,
                     'previous_balance' => floatval($request->input('previousBalance', 0)),
                     'total_balance' => $newTotal,
-                ]);
+                ];
+
+                if ($request->filled('sale_date')) {
+                    $updateData['created_at'] = Carbon::parse($request->sale_date)->setTimeFrom($sale->created_at ?? now());
+                }
+
+                $sale->update($updateData);
 
                 /* ================= STEP 3: DELETE OLD SALE ITEMS ================= */
                 $sale->saleItems()->delete();
@@ -3820,7 +3890,8 @@ public function finddc($invoice)
                         // Create a WarehouseOrder for this DC
                         $warehouseOrder = new \App\Models\WarehouseOrder();
                         $warehouseOrder->dc_no = $dcNo;
-                        $warehouseOrder->warehouse_id = (int) $warehouseId;
+                        $warehouseOrder->warehouse_id = $warehouseId ? (int) $warehouseId : null;
+                        $warehouseOrder->delivery_location_type = $warehouseId ? 'warehouse' : 'branch';
                         $warehouseOrder->branch_id = $sale->branch_id;
                         $warehouseOrder->customer_id = $sale->customer_id;
                         $warehouseOrder->sale_id = $sale->id;
@@ -3829,6 +3900,9 @@ public function finddc($invoice)
                         $warehouseOrder->prepared_by = auth()->user()->name ?? null;
                         $warehouseOrder->created_by = auth()->id();
                         $warehouseOrder->updated_by = auth()->id();
+                        if ($sale->created_at) {
+                            $warehouseOrder->created_at = $sale->created_at;
+                        }
 
                         // Map sale items into array for storage
                         $itemsArray = $items->map(function($si) {
@@ -4238,6 +4312,8 @@ public function finddc($invoice)
                     // New closing balance = previous + sale - receipts
                     $newClosingBalance = $previousBalance + $saleAmount - $totalReceiptsProcessed;
 
+                    $saleTimestamp = $sale->created_at ?? now();
+
                     CustomerLedger::create([
                         'customer_id' => $sale->customer_id,
                         'admin_or_user_id' => auth()->id(),
@@ -4248,6 +4324,8 @@ public function finddc($invoice)
                         'closing_balance' => $newClosingBalance,
                         'reference_type' => 'Sale Finalization',
                         'reference_id' => $sale->id,
+                        'created_at' => $saleTimestamp,
+                        'updated_at' => $saleTimestamp,
                     ]);
 
                     Log::info('Customer ledger created', [
@@ -4270,11 +4348,12 @@ public function finddc($invoice)
                 Log::info('Sale items marked ready for delivery', ['count' => $sale->saleItems->count()]);
 
                 /* ========== STEP 4: FINALIZE SALE ========== */
+                $saleTimestamp = $sale->created_at ?? now();
                 $sale->update([
                     'finalized_at' => now(),
                     'finalized_by' => auth()->id(),
                     'is_posted' => 1,
-                    'posted_at' => now(),
+                    'posted_at' => $saleTimestamp,
                 ]);
 
                 Log::info('====== FINALIZE POSTING COMPLETED ======', [

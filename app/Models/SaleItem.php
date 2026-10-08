@@ -26,7 +26,8 @@ class SaleItem extends Model
         'discount_percent',
         'discount_amount',
         'amount',
-        'invoice_no', 'customer_id', 'items'
+        'invoice_no', 'customer_id', 'items',
+        'created_at', 'updated_at'
     ];
 
     // Relation to Sale

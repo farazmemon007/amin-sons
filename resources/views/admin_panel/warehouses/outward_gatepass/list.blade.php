@@ -397,7 +397,7 @@
                                 <td>{{ $gp->vehicle_number ?? '-' }}</td>
                                 <td><span class="badge-items">{{ $gp->items_count }} items</span></td>
                                 <td>
-                                    <small>{{ $gp->created_at ? \Carbon\Carbon::parse($gp->created_at)->format('M d, Y') : '-' }}</small>
+                                    <small>{{ !empty($gp->gatepass_date) ? \Carbon\Carbon::parse($gp->gatepass_date)->format('M d, Y') : ($gp->created_at ? \Carbon\Carbon::parse($gp->created_at)->format('M d, Y') : '-') }}</small>
                                     <br>
                                     <small style="color: #9ca3af;">{{ $gp->created_at ? \Carbon\Carbon::parse($gp->created_at)->format('h:i A') : '' }}</small>
                                 </td>
